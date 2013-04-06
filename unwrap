@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# input phase list to be unwrapped
+# usage: unwrap ph*.nii
+# requires: mag*.nii and BET_mask.nii under the same folder as ph*.nii
+
+for ph in $@
+do
+	base=`basename $ph`;
+	dir=`dirname $ph`;
+	mag=$dir/"mag"${base:2};
+	unph="unph"${base:2};
+	prelude -a $mag -p $ph -u $unph -m BET_mask.nii -n 8&
+done
+
+wait
+
+gunzip -f unph*.gz
+
