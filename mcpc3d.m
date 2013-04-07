@@ -17,9 +17,9 @@ TE2 = TE(2);
 % unwrap first 2 echoes, all channels
 for echo = 1:2
     for chan = 1:nrcvrs
-        nii = make_nii(abs(img(:,:,:,echo,chan)));
+        nii = make_nii(abs(img(:,:,:,echo,chan)),res);
         save_nii(nii,['mag_te' num2str(echo) '_ch' num2str(chan) '.nii']);
-	nii = make_nii(angle(img(:,:,:,echo,chan)));
+	nii = make_nii(angle(img(:,:,:,echo,chan)),res);
 	save_nii(nii,['ph_te' num2str(echo) '_ch' num2str(chan) '.nii']);
     end
 end
@@ -41,10 +41,10 @@ offsets = squeeze((TE1*unph(:,:,:,2,:)-TE2*unph(:,:,:,1,:))/(TE1-TE2));
 
 % smooth phase-offsets using median filter 5*5*5 pixels
 for chan = 1:nrcvrs
-    nii = make_nii(offsets(:,:,:,chan));
+    nii = make_nii(offsets(:,:,:,chan),res);
     save_nii(nii,['raw_offset' num2str(chan) '.nii']);
     offsets(:,:,:,chan) = medfilt3(offsets(:,:,:,chan), [5,5,5]);
-    nii = make_nii(offsets(:,:,:,chan));
+    nii = make_nii(offsets(:,:,:,chan),res);
     save_nii(nii,['smooth_offset' num2str(chan) '.nii']);
 end
 
