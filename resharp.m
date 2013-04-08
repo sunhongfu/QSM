@@ -1,16 +1,16 @@
-function [field_local, mask_ero] = resharp(field_total,mask,par,radius,tik_reg)
+function [lfs, mask_ero] = resharp(tfs,mask,par,radius,tik_reg)
 %RESHARP Background field removal using RESHARP method.
-%   [FIELD_LOCAL,MASK_ERO] = RESHARP(FIELD_TOTAL,MASK,PAR,TIK_REG)
+%   [LSF,MASK_ERO] = RESHARP(TSF,MASK,PAR,TIK_REG)
 %
-%   FIELD_TOTAL : input total field
+%   TFS         : input total field shift
 %   MASK        : binary mask defining the ROI
 %   PAR         : parameter sets of the sequence
 %   RADIUS      : Radius of convolution kernel size (mm)
 %   TIK_REG     : Tikhonov regularization parameter
-%   FIELD_LOCAL : local field after background removal
+%   LFS         : local field shift after background removal
 %   MASK_ERO    : eroded mask after convolution
 
-imsize = size(field_total);
+imsize = size(tfs);
 % resolution pix/mm
 res = [par.lro/(par.np/2), par.lpe/par.nv, par.lpe2/par.nv2]*10; 
 
@@ -47,10 +47,10 @@ DKER = fftn(dker,imsize); % dker in Fourier domain
 %   Ax = b, solve with cgs
 
 H = cls_smvconv(imsize,DKER,csh,mask_ero); 
-b = H'*(H*field_total(:));
+b = H'*(H*tfs(:));
 m = cgs(@Afun, b, 1e-6, 200);
 
-field_local = real(reshape(m,imsize)).*mask_ero;
+lfs = real(reshape(m,imsize)).*mask_ero;
 
 
     function y = Afun(x)
