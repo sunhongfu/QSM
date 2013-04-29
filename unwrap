@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # input phase list to be unwrapped
 # usage: unwrap ph*.nii
 # requires: mag*.nii and BET_mask.nii under the same folder as ph*.nii

@@ -12,7 +12,7 @@
 
 %% default settings and prompts
 if ~ exist('PATH_IN','var')
-    PATH_IN = pwd;
+    PATH_IN = [pwd '/gemsme3d_R2s_01.fid'];
 end
 
 if ~ exist('PATH_OUT','var')
@@ -28,7 +28,7 @@ if ~ exist('TIK_REG','var')
 end
 
 if ~ exist('TV_REG','var')
-    TV_REG = 5e-4;
+    TV_REG = 1e-3;
 end
 
 if ~ exist('SAVE_MAT','var')
@@ -39,7 +39,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 confirm = input([ ...
 '*** Please confirm the settings of the following required parameters ***\n\n' ...
-'(1) PATH_IN  - directory of .fid from gemsme3d sequence  : ' PATH_IN '\n' ...
+'(1) PATH_IN  - directory of gemsme3d_R2s_01.fid rawdata  : ' PATH_IN '\n' ...
 '(2) PATH_OUT - directory to save nifti and/or matrixes   : ' PATH_OUT '\n' ...
 '(3) KER_RAD  - radius (mm) of RESHARP convolution kernel : ' num2str(KER_RAD) '\n' ...
 '(4) TIK_REG  - Tikhonov regularization parameter         : ' num2str(TIK_REG) '\n' ...
@@ -62,12 +62,15 @@ end
 
 
 %% define directories
-MATRIX = [PATH_OUT '/matrix'];
-NIFTI  = [PATH_OUT '/nifti'];
-TEMP    = [PATH_OUT '/temp'];
+if SAVE_MAT
+    MATRIX = [PATH_OUT '/matrix'];
+    mkdir(MATRIX);
+end
 
-mkdir(MATRIX);
+NIFTI = [PATH_OUT '/nifti'];
 mkdir(NIFTI);
+
+TEMP = [PATH_OUT '/temp'];
 mkdir(TEMP);
 
 cd(TEMP);
@@ -104,7 +107,7 @@ end
 mkdir([NIFTI '/combine']);
 for echo =  1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),res);
-    save_nii(nii,[NIFTI '/cmb/mag_te' num2str(echo) '.nii']);
+    save_nii(nii,[NIFTI '/combine/mag_te' num2str(echo) '.nii']);
 end
 
 
@@ -162,22 +165,22 @@ end
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (1) calucate the unph_diff directly (uncomment the following line)
-% unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
+unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
 % (2) might be better to unwrap the ph_diff
-ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
-nii = make_nii(ph_diff,res);
-save_nii(nii,'ph_diff.nii');
-unix('prelude -a BET.nii -p ph_diff.nii -u unph_diff.nii -m BET_mask.nii -n 8');
-unix('gunzip -f unph_diff.nii.gz');
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
+% ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
+% nii = make_nii(ph_diff,res);
+% save_nii(nii,'ph_diff.nii');
+% unix('prelude -a BET.nii -p ph_diff.nii -u unph_diff.nii -m BET_mask.nii -n 8');
+% unix('gunzip -f unph_diff.nii.gz');
+% nii = load_nii('unph_diff.nii');
+% unph_diff = double(nii.img);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-for echo = 3:ne
+for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
     meandiff = meandiff(mask==1);
-    meandiff = median(meandiff(:));
+    meandiff = mean(meandiff(:));
     njump = round(meandiff/(2*pi));
-    disp([num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
+    disp(['    ' num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
     unph_cmb(:,:,:,echo) = unph_cmb(:,:,:,echo) - njump*2*pi;
 end
 
@@ -203,7 +206,7 @@ disp('--> (7/9) magnitude weighted LS fit of phase to TE ...');
 
 % generate reliability map
 R = ones(size(fit_residual));
-R(fit_residual >= 1) = 0;
+R(fit_residual >= 10) = 0;
 
 % save matrix
 if SAVE_MAT
@@ -227,7 +230,7 @@ clear unph_cmb mag_cmb
 
 %% RESHARP (TIK_REG: Tikhonov regularization parameter)
 disp('--> (8/9) RESHARP to remove background field ...');
-[lfs, mask_ero] = resharp(tfs.*R,mask.*R,par,KER_RAD,TIK_REG);
+[lfs, mask_ero] = resharp(tfs,mask.*R,par,KER_RAD,TIK_REG);
 
 % save matrix
 if SAVE_MAT
@@ -249,7 +252,7 @@ nii = make_nii(mask_ero,res);
 save_nii(nii,[NIFTI '/mask/mask_ero.nii']);
 
 
-%% inversion of SHARP
+%% inversion of RESHARP
 disp('--> (9/9) Total variation susceptibility inversion ...');
 sus = tvdi(lfs, mask_ero, par, TV_REG); 
 
