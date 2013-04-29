@@ -168,7 +168,7 @@ end
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (1) calucate the unph_diff directly (uncomment the following line)
-% unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
+unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
 % (2) might be better to unwrap the ph_diff
 % ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
 % nii = make_nii(ph_diff,res);
@@ -177,9 +177,6 @@ disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
 % unix('gunzip -f unph_diff.nii.gz');
 % nii = load_nii('unph_diff.nii');
 % unph_diff = double(nii.img);
-% (3) unph_diff is available using sense.m
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
