@@ -35,9 +35,15 @@ if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
     Options.voxelSize = DEFAULT_VOXELSIZE ;
 end
 
+% forloop to unwrap in larger than 3D
+[np, nv, nv2, ne, nrcvrs] = size(rawPhase);
+unwrappedPhase = zeros(size(rawPhase));
+
+for i = 1:ne*nrcvrs
+
 %% initialize
-phase = rawPhase ;
-GDV   = size( phase ) ;
+phase = squeeze(rawPhase(:,:,:,i)) ;
+GDV   = size( phase ); 
 
 tmp   = zeros( 2*GDV );
 
@@ -64,6 +70,6 @@ phase( abs(phase) == Inf )  = 0;
 phase                 = ifftn(phase);
 
 %% output
-unwrappedPhase    = real(phase(1:GDV(1),1:GDV(2),1:GDV(3)));
+unwrappedPhase(:,:,:,i)    = real(phase(1:GDV(1),1:GDV(2),1:GDV(3)));
 end
 
