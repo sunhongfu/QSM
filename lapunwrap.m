@@ -21,7 +21,7 @@ function[unwrappedPhase]=lapunwrap(rawPhase, Options)
 % Based on Schofield & Zhu "Fast phase unwrapping algorithm for interferometric applications" Optics Letters 2003 
 
 %% constants
-DEFAULT_VOXELSIZE                       = [1 1 1] ;
+DEFAULT_VOXELSIZE = [1 1 1];
 
 
 %% check inputs
@@ -35,41 +35,41 @@ if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
     Options.voxelSize = DEFAULT_VOXELSIZE ;
 end
 
-% forloop to unwrap in larger than 3D
+% forloop to unwrap input phase in more than 3D formats
 [np, nv, nv2, ne, nrcvrs] = size(rawPhase);
 unwrappedPhase = zeros(size(rawPhase));
 
-for i = 1:ne*nrcvrs
-
-%% initialize
-phase = squeeze(rawPhase(:,:,:,i)) ;
-GDV   = size( phase ); 
-
+GDV   = [np,nv,nv2];
 tmp   = zeros( 2*GDV );
 
 k2    = sum( makekspace( 2*GDV, Options ).^2, 4) ;
 k2    = fftshift( k2 ) ;
 
-%% mirroring
-tmp(1:GDV(1), 1:GDV(2), 1:GDV(3))                            = phase ;
-tmp(1:GDV(1), GDV(2)+1:2*GDV(2), 1:GDV(3))                   = flipdim(phase,2);
-tmp(1:GDV(1), 1:GDV(2), GDV(3)+1:2*GDV(3))                   = flipdim(phase,3);
-tmp(1:GDV(1), GDV(2)+1:2*GDV(2), GDV(3)+1:2*GDV(3))          = flipdim(flipdim(phase,2),3);
-tmp(GDV(1)+1:2*GDV(1), GDV(2)+1:2*GDV(2), GDV(3)+1:2*GDV(3)) = flipdim(flipdim(flipdim(phase,1),2),3);
-tmp(GDV(1)+1:2*GDV(1), GDV(2)+1:2*GDV(2), 1:GDV(3))          = flipdim(flipdim(phase,1),2);
-tmp(GDV(1)+1:2*GDV(1), 1:GDV(2), GDV(3)+1:2*GDV(3))          = flipdim(flipdim(phase,1),3);
-tmp(GDV(1)+1:2*GDV(1), 1:GDV(2), 1:GDV(3))                   = flipdim(phase,1);
+for i = 1:ne*nrcvrs
+    %% initialize
+    phase = squeeze(rawPhase(:,:,:,i)) ;
+    
+    %% mirroring
+    tmp(1:GDV(1), 1:GDV(2), 1:GDV(3))                            = phase ;
+    tmp(1:GDV(1), GDV(2)+1:2*GDV(2), 1:GDV(3))                   = flipdim(phase,2);
+    tmp(1:GDV(1), 1:GDV(2), GDV(3)+1:2*GDV(3))                   = flipdim(phase,3);
+    tmp(1:GDV(1), GDV(2)+1:2*GDV(2), GDV(3)+1:2*GDV(3))          = flipdim(flipdim(phase,2),3);
+    tmp(GDV(1)+1:2*GDV(1), GDV(2)+1:2*GDV(2), GDV(3)+1:2*GDV(3)) = flipdim(flipdim(flipdim(phase,1),2),3);
+    tmp(GDV(1)+1:2*GDV(1), GDV(2)+1:2*GDV(2), 1:GDV(3))          = flipdim(flipdim(phase,1),2);
+    tmp(GDV(1)+1:2*GDV(1), 1:GDV(2), GDV(3)+1:2*GDV(3))          = flipdim(flipdim(phase,1),3);
+    tmp(GDV(1)+1:2*GDV(1), 1:GDV(2), 1:GDV(3))                   = flipdim(phase,1);
+    
+    %% unwrap
+    phase = tmp; 
+    clear tmp
 
-%% unwrap
-phase             = tmp; 
-clear tmp
-phase             = fftn(cos(phase).*ifftn(k2.*fftn(sin(phase)))-sin(phase).*ifftn(k2.*fftn(cos(phase))))./k2;
-
-phase( abs(phase) == Inf )  = 0;
-
-phase                 = ifftn(phase);
-
-%% output
-unwrappedPhase(:,:,:,i)    = real(phase(1:GDV(1),1:GDV(2),1:GDV(3)));
+    phase = fftn(cos(phase).*ifftn(k2.*fftn(sin(phase)))-sin(phase).*ifftn(k2.*fftn(cos(phase))))./k2;
+    
+    phase( abs(phase) == Inf ) = 0;
+    
+    phase = ifftn(phase);
+    
+    %% output
+    unwrappedPhase(:,:,:,i) = real(phase(1:GDV(1),1:GDV(2),1:GDV(3)));
 end
 
