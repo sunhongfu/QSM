@@ -1,12 +1,13 @@
+function sus = qsm(PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT)
 %QSM Quantitative susceptibility mapping.
 %   QSM is the main script to reconstruct QSM from the R2* sequence.
 %
 %   The following parameter settings need to be re-defined if necessary:
-%   (1) PATH_IN  - directory of .fid from gemsme3d sequence  : pwd
+%   (1) PATH_IN  - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
 %   (2) PATH_OUT - directory to save nifti and/or matrixes   : pwd
 %   (3) KER_RAD  - radius (mm) of RESHARP convolution kernel : 5
 %   (4) TIK_REG  - Tikhonov regularization parameter         : 0.005
-%   (5) TV_REG   - Total variation regularization parameter  : 0.0005
+%   (5) TV_REG   - Total variation regularization parameter  : 0.001
 %   (6) SAVE_MAT - whether to save matrixes (1) or not (0)   : 1
 
 
