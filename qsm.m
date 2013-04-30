@@ -1,4 +1,4 @@
-function sus = qsm(PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT)
+function sus = qsm(PATH_IN, PATH_OUT, PARAMS)
 %QSM Quantitative susceptibility mapping.
 %   QSM is the main script to reconstruct QSM from the R2* sequence.
 %
@@ -12,29 +12,33 @@ function sus = qsm(PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT)
 
 
 %% default settings and prompts
-if ~ exist('PATH_IN','var')
+if ~ exist('PATH_IN','var') | isempty(PATH_IN)
     PATH_IN = [pwd '/gemsme3d_R2s_01.fid'];
 end
 
-if ~ exist('PATH_OUT','var')
+if ~ exist('PATH_OUT','var') | isempty(PATH_OUT)
     PATH_OUT = pwd;
 end
 
-if ~ exist('KER_RAD','var')
-    KER_RAD = 5;
+if ~ exist('PARAMS.KER_RAD','var') | isempty(PARAMS.KER_RAD)
+    PARAMS.KER_RAD = 5;
 end
 
-if ~ exist('TIK_REG','var')
-    TIK_REG = 5e-3;
+if ~ exist('PARAMS.TIK_REG','var') | isempty(PARAMS.TIK_REG)
+    PARAMS.TIK_REG = 5e-3;
 end
 
-if ~ exist('TV_REG','var')
-    TV_REG = 1e-3;
+if ~ exist('PARAMS.TV_REG','var') | isempty(PARAMS.TV_REG)
+    PARAMS.TV_REG = 1e-3;
 end
 
-if ~ exist('SAVE_MAT','var')
-    SAVE_MAT = 1;
+if ~ exist('PARAMS.SAVE_MAT','var') | isempty(PARAMS.SAVE_MAT)
+    PARAMS.SAVE_MAT = 1;
 end
+
+KER_RAD  = PARAMS.KER_RAD;
+TIK_REG  = PARAMS.TIK_REG;
+SAVE_MAT = PARAMS.SAVE_MAT;
 
 % comment this following part if you do not need confirmation prompts
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
