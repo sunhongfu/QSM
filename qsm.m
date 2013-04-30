@@ -159,7 +159,7 @@ clear img;
 %% unwrap phase from each echo
 disp('--> (5/9) unwrap aliasing phase for each TE ...');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% external bash script
+%(1) PRELUDE:external bash script
 unix('~/projects/QSM/scripts/unwrap $NIFTI/combine/ph*');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 unph_cmb = zeros(np,nv,nv2,ne);
@@ -167,6 +167,9 @@ for echo = 1:ne
     nii = load_nii(['unph_te' num2str(echo) '.nii']);
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
+%(2) LAPLACIAN unwrapping
+Options.voxelSize = par.res;
+unph_cmb = lapunwrap(ph_cmb,Options);
 
 % check and correct for 2pi jump between echoes
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
