@@ -1,12 +1,13 @@
+function sus = qsm(PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT)
 %QSM Quantitative susceptibility mapping.
 %   QSM is the main script to reconstruct QSM from the R2* sequence.
 %
 %   The following parameter settings need to be re-defined if necessary:
-%   (1) PATH_IN  - directory of .fid from gemsme3d sequence  : pwd
+%   (1) PATH_IN  - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
 %   (2) PATH_OUT - directory to save nifti and/or matrixes   : pwd
 %   (3) KER_RAD  - radius (mm) of RESHARP convolution kernel : 5
 %   (4) TIK_REG  - Tikhonov regularization parameter         : 0.005
-%   (5) TV_REG   - Total variation regularization parameter  : 0.0005
+%   (5) TV_REG   - Total variation regularization parameter  : 0.001
 %   (6) SAVE_MAT - whether to save matrixes (1) or not (0)   : 1
 
 
@@ -37,27 +38,30 @@ end
 
 % comment this following part if you do not need confirmation prompts
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-confirm = input([ ...
-'*** Please confirm the settings of the following required parameters ***\n\n' ...
-'(1) PATH_IN  - directory of gemsme3d_R2s_01.fid rawdata  : ' PATH_IN '\n' ...
-'(2) PATH_OUT - directory to save nifti and/or matrixes   : ' PATH_OUT '\n' ...
-'(3) KER_RAD  - radius (mm) of RESHARP convolution kernel : ' num2str(KER_RAD) '\n' ...
-'(4) TIK_REG  - Tikhonov regularization parameter         : ' num2str(TIK_REG) '\n' ...
-'(5) TV_REG   - Total variation regularization parameter  : ' num2str(TV_REG) '\n' ...
-'(6) SAVE_MAT - whether to save matrixes (1) or not (0)   : ' num2str(SAVE_MAT) '\n\n' ...
-'To confirm the above parameters, enter "y", otherwise "n": '], 's');
+prompt = fprintf(['\n' ...
+'Please confirm the settings of the following required parameters \n\n' ...
+'(1) PATH_IN  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
+'(2) PATH_OUT -- directory to save nifti and/or matrixes   :  %s \n' ...
+'(3) KER_RAD  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
+'(4) TIK_REG  -- Tikhonov regularization parameter         :  %g \n' ...
+'(5) TV_REG   -- Total variation regularization parameter  :  %g \n' ...
+'(6) SAVE_MAT -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
+'Start in 10 sec, Ctrl-C to terminate!\n\n'],PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT);
 
-while true
-    if lower(confirm) == 'y'
-        disp('Begin QSM reconstruction!');
-        break;
-    elseif lower(confirm) == 'n'
-        error('Please re-define any above parameters and re-run the srcipt');
-    else
-        confirm = input('please enter "y" for yes, or "n" for no: ', 's');
-        continue;
-    end
-end
+
+%while true
+%    if lower(confirm) == 'y'
+%        disp('Begin QSM reconstruction!');
+%        break;
+%    elseif lower(confirm) == 'n'
+%        error('Please re-define any above parameters and re-run the srcipt');
+%    else
+%        confirm = input('please enter "y" for yes, or "n" for no: ', 's');
+%        continue;
+%    end
+%end
+
+pause(10);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
