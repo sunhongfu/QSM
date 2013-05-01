@@ -82,7 +82,7 @@ disp('--> (1/9) reconstruct fid to complex img ...');
 
 % keep only the first 5 echoes
 img = img(:,:,:,1:5,:);
-par.te = 5;
+par.ne = 5;
 [np,nv,nv2,ne,~] = size(img);
 res = par.res; % resolution in mm/pixel
 
