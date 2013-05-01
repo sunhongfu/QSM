@@ -2,13 +2,14 @@ function sus = qsm(PATH_IN, PATH_OUT, PARAMS)
 %QSM Quantitative susceptibility mapping.
 %   QSM is the main script to reconstruct QSM from the R2* sequence.
 %
-%   The following parameter settings need to be re-defined if necessary:
-%   (1) PATH_IN  - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   (2) PATH_OUT - directory to save nifti and/or matrixes   : pwd
-%   (3) KER_RAD  - radius (mm) of RESHARP convolution kernel : 5
-%   (4) TIK_REG  - Tikhonov regularization parameter         : 0.005
-%   (5) TV_REG   - Total variation regularization parameter  : 0.001
-%   (6) SAVE_MAT - whether to save matrixes (1) or not (0)   : 1
+%   Re-define the following default settings if necessary
+%   (1) PATH_IN  - directory of .fid from gemsme3d sequence      : pwd/gemsme3d_R2s_01.fid
+%   (2) PATH_OUT - directory to save nifti and/or matrixes       : pwd
+%   (3) PARAMS   - parameter structure including fields below
+%   	(*) KER_RAD  - radius (mm) of RESHARP convolution kernel : 5
+%   	(*) TIK_REG  - Tikhonov regularization parameter         : 0.005
+%   	(*) TV_REG   - Total variation regularization parameter  : 0.001
+%   	(*) SAVE_MAT - whether to save matrixes (1) or not (0)   : 1
 
 
 %% default settings and prompts
@@ -20,53 +21,43 @@ if ~ exist('PATH_OUT','var') | isempty(PATH_OUT)
     PATH_OUT = pwd;
 end
 
-if ~ exist('PARAMS.KER_RAD','var') | isempty(PARAMS.KER_RAD)
+if ~ exist('PARAMS','var') | isempty(PARAMS)
+    PARAMS = [];
+end
+
+if ~ isfield(PARAMS,'KER_RAD')
     PARAMS.KER_RAD = 5;
 end
 
-if ~ exist('PARAMS.TIK_REG','var') | isempty(PARAMS.TIK_REG)
+if ~ isfield(PARAMS,'TIK_REG')
     PARAMS.TIK_REG = 5e-3;
 end
 
-if ~ exist('PARAMS.TV_REG','var') | isempty(PARAMS.TV_REG)
+if ~ isfield(PARAMS,'TV_REG')
     PARAMS.TV_REG = 1e-3;
 end
 
-if ~ exist('PARAMS.SAVE_MAT','var') | isempty(PARAMS.SAVE_MAT)
+if ~ isfield(PARAMS,'SAVE_MAT')
     PARAMS.SAVE_MAT = 1;
 end
 
 KER_RAD  = PARAMS.KER_RAD;
 TIK_REG  = PARAMS.TIK_REG;
+TV_REG   = PARAMS.TV_REG;
 SAVE_MAT = PARAMS.SAVE_MAT;
 
-% comment this following part if you do not need confirmation prompts
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 prompt = fprintf(['\n' ...
 'Please confirm the settings of the following required parameters \n\n' ...
-'(1) PATH_IN  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
-'(2) PATH_OUT -- directory to save nifti and/or matrixes   :  %s \n' ...
-'(3) KER_RAD  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
-'(4) TIK_REG  -- Tikhonov regularization parameter         :  %g \n' ...
-'(5) TV_REG   -- Total variation regularization parameter  :  %g \n' ...
-'(6) SAVE_MAT -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
-'Start in 10 sec, Ctrl-C to terminate!\n\n'],PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT);
-
-
-%while true
-%    if lower(confirm) == 'y'
-%        disp('Begin QSM reconstruction!');
-%        break;
-%    elseif lower(confirm) == 'n'
-%        error('Please re-define any above parameters and re-run the srcipt');
-%    else
-%        confirm = input('please enter "y" for yes, or "n" for no: ', 's');
-%        continue;
-%    end
-%end
+'--> PATH_IN  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
+'--> PATH_OUT -- directory to save nifti and/or matrixes   :  %s \n' ...
+'--> KER_RAD  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
+'--> TIK_REG  -- Tikhonov regularization parameter         :  %g \n' ...
+'--> TV_REG   -- Total variation regularization parameter  :  %g \n' ...
+'--> SAVE_MAT -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
+'Start in 10 sec, Ctrl-C to terminate!\n\n'], ...
+PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT);
 
 pause(10);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %% define directories
@@ -163,7 +154,7 @@ clear img;
 %% unwrap phase from each echo
 disp('--> (5/9) unwrap aliasing phase for each TE ...');
 
-%(1) PRELUDE:bash script
+% (1) PRELUDE:bash script
 bash_command = sprintf(['for ph in $NIFTI/combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
@@ -183,14 +174,14 @@ for echo = 1:ne
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
-%(2) LAPLACIAN unwrapping
-%Options.voxelSize = par.res;
-%unph_cmb = lapunwrap(ph_cmb,Options);
+% (2) LAPLACIAN unwrapping
+% Options.voxelSize = par.res;
+% unph_cmb = lapunwrap(ph_cmb,Options);
 
 % check and correct for 2pi jump between echoes
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (1) calucate the unph_diff directly (uncomment the following line)
+% (1) calucate the unph_diff directly
 % unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
 % (2) might be better to unwrap the ph_diff
 % ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
