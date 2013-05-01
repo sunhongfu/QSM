@@ -1,75 +1,76 @@
-function sus = qsm(PATH_IN, PATH_OUT, PARAMS)
+function sus = qsm(path_in, path_out, params)
 %QSM Quantitative susceptibility mapping.
-%   QSM is the main script to reconstruct QSM from the R2* sequence.
+%   sus = qsm(path_in, path_out, params) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
-%   (1) PATH_IN  - directory of .fid from gemsme3d sequence      : pwd/gemsme3d_R2s_01.fid
-%   (2) PATH_OUT - directory to save nifti and/or matrixes       : pwd
-%   (3) PARAMS   - parameter structure including fields below
-%   	(*) KER_RAD  - radius (mm) of RESHARP convolution kernel : 5
-%   	(*) TIK_REG  - Tikhonov regularization parameter         : 0.005
-%   	(*) TV_REG   - Total variation regularization parameter  : 0.001
-%   	(*) SAVE_MAT - whether to save matrixes (1) or not (0)   : 1
-
+%
+%   path_in    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
+%   path_out   - directory to save nifti and/or matrixes   : pwd
+%   params     - parameter structure including fields below
+%    .ker_rad  - radius (mm) of RESHARP convolution kernel : 5
+%    .tik_reg  - Tikhonov regularization parameter         : 0.005
+%    .tv_reg   - Total variation regularization parameter  : 0.001
+%    .save_mat - whether to save matrixes (1) or not (0)   : 1
+%   sus        - susceptibility maps as output
 
 %% default settings and prompts
-if ~ exist('PATH_IN','var') | isempty(PATH_IN)
-    PATH_IN = [pwd '/gemsme3d_R2s_01.fid'];
+if ~ exist('path_in','var') | isempty(path_in)
+    path_in = [pwd '/gemsme3d_R2s_01.fid'];
 end
 
-if ~ exist('PATH_OUT','var') | isempty(PATH_OUT)
-    PATH_OUT = pwd;
+if ~ exist('path_out','var') | isempty(path_out)
+    path_out = pwd;
 end
 
-if ~ exist('PARAMS','var') | isempty(PARAMS)
-    PARAMS = [];
+if ~ exist('params','var') | isempty(params)
+    params = [];
 end
 
-if ~ isfield(PARAMS,'KER_RAD')
-    PARAMS.KER_RAD = 5;
+if ~ isfield(params,'ker_rad')
+    params.ker_rad = 5;
 end
 
-if ~ isfield(PARAMS,'TIK_REG')
-    PARAMS.TIK_REG = 5e-3;
+if ~ isfield(params,'tik_reg')
+    params.tik_reg = 5e-3;
 end
 
-if ~ isfield(PARAMS,'TV_REG')
-    PARAMS.TV_REG = 1e-3;
+if ~ isfield(params,'tv_reg')
+    params.tv_reg = 1e-3;
 end
 
-if ~ isfield(PARAMS,'SAVE_MAT')
-    PARAMS.SAVE_MAT = 1;
+if ~ isfield(params,'save_mat')
+    params.save_mat = 1;
 end
 
-KER_RAD  = PARAMS.KER_RAD;
-TIK_REG  = PARAMS.TIK_REG;
-TV_REG   = PARAMS.TV_REG;
-SAVE_MAT = PARAMS.SAVE_MAT;
+ker_rad  = params.ker_rad;
+tik_reg  = params.tik_reg;
+tv_reg   = params.tv_reg;
+save_mat = params.save_mat;
 
 prompt = fprintf(['\n' ...
 'Please confirm the settings of the following required parameters \n\n' ...
-'--> PATH_IN  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
-'--> PATH_OUT -- directory to save nifti and/or matrixes   :  %s \n' ...
-'--> KER_RAD  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
-'--> TIK_REG  -- Tikhonov regularization parameter         :  %g \n' ...
-'--> TV_REG   -- Total variation regularization parameter  :  %g \n' ...
-'--> SAVE_MAT -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
+'--> path_in  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
+'--> path_out -- directory to save nifti and/or matrixes   :  %s \n' ...
+'--> ker_rad  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
+'--> tik_reg  -- Tikhonov regularization parameter         :  %g \n' ...
+'--> tv_reg   -- Total variation regularization parameter  :  %g \n' ...
+'--> save_mat -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
 'Start in 10 sec, Ctrl-C to terminate!\n\n'], ...
-PATH_IN, PATH_OUT, KER_RAD, TIK_REG, TV_REG, SAVE_MAT);
+path_in, path_out, ker_rad, tik_reg, tv_reg, save_mat);
 
 pause(10);
 
 
 %% define directories
-if SAVE_MAT
-    MATRIX = [PATH_OUT '/matrix'];
-    mkdir(MATRIX);
+if save_mat
+    path_mat = [path_out '/matrix'];
+    mkdir(path_mat);
 end
 
-NIFTI = [PATH_OUT '/nifti'];
-mkdir(NIFTI);
+path_nft = [path_out '/nifti'];
+mkdir(path_nft);
 
-TEMP = [PATH_OUT '/temp'];
+TEMP = [path_out '/temp'];
 mkdir(TEMP);
 
 cd(TEMP);
@@ -77,15 +78,20 @@ cd(TEMP);
 
 %% reconstruct complex image from fid file
 disp('--> (1/9) reconstruct fid to complex img ...');
-[img,par] = reconfid(PATH_IN);
+[img,par] = reconfid(path_in);
+
+% keep only the first 5 echoes
+img = img(:,:,:,1:5,:);
+par.te = 5;
 [np,nv,nv2,ne,~] = size(img);
 res = par.res; % resolution in mm/pixel
 
+
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/rawdata']);
-    save([MATRIX '/rawdata/img.mat'],'img','-v7.3');
-    save([MATRIX '/rawdata/par.mat'],'par','-v7.3');
+if save_mat
+    mkdir([path_mat '/rawdata']);
+    save([path_mat '/rawdata/img.mat'],'img','-v7.3');
+    save([path_mat '/rawdata/par.mat'],'par','-v7.3');
 end
 
 
@@ -97,37 +103,37 @@ for echo = 1:ne
 end
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/combine']);
-    save([MATRIX '/combine/mag_cmb.mat'],'mag_cmb','-v7.3');
+if save_mat
+    mkdir([path_mat '/combine']);
+    save([path_mat '/combine/mag_cmb.mat'],'mag_cmb','-v7.3');
 end
 
 % save nifti
-mkdir([NIFTI '/combine']);
+mkdir([path_nft '/combine']);
 for echo =  1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),res);
-    save_nii(nii,[NIFTI '/combine/mag_te' num2str(echo) '.nii']);
+    save_nii(nii,[path_nft '/combine/mag_te' num2str(echo) '.nii']);
 end
 
 
 %% generate mask from SOS combined magnitude of first echo
 disp('--> (3/9) extract brain volume and generate mask ...');
-setenv('NIFTI', NIFTI);
-unix('bet $NIFTI/combine/mag_te1.nii BET -f 0.5 -m -R');
+setenv('path_nft', path_nft);
+unix('bet $path_nft/combine/mag_te1.nii BET -f 0.5 -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/mask']);
-    save([MATRIX '/mask/mask.mat'],'mask','-v7.3');
+if save_mat
+    mkdir([path_mat '/mask']);
+    save([path_mat '/mask/mask.mat'],'mask','-v7.3');
 end
 
 % save nifti
-mkdir([NIFTI '/mask']);
-copyfile('BET_mask.nii',[NIFTI '/mask/mask.nii']);
+mkdir([path_nft '/mask']);
+copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 
 %% combine phase channels
@@ -138,14 +144,14 @@ disp('--> (4/9) combine rcvrs for phase ...');
 ph_cmb = sense(img,par);
 
 % save matrix
-if SAVE_MAT
-    save([MATRIX '/combine/ph_cmb.mat'],'ph_cmb','-v7.3');
+if save_mat
+    save([path_mat '/combine/ph_cmb.mat'],'ph_cmb','-v7.3');
 end
 
 % save nifti
 for echo =  1:ne
     nii = make_nii(ph_cmb(:,:,:,echo),res);
-    save_nii(nii,[NIFTI '/combine/ph_te' num2str(echo) '.nii']);
+    save_nii(nii,[path_nft '/combine/ph_te' num2str(echo) '.nii']);
 end
 
 clear img;
@@ -155,7 +161,7 @@ clear img;
 disp('--> (5/9) unwrap aliasing phase for each TE ...');
 
 % (1) PRELUDE:bash script
-bash_command = sprintf(['for ph in $NIFTI/combine/ph*\n' ...
+bash_command = sprintf(['for ph in $path_nft/combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
 '	dir=`dirname $ph`;\n' ...
@@ -205,16 +211,16 @@ for echo = 2:ne
 end
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/unwrap']);
-    save([MATRIX '/unwrap/unph_cmb.mat'],'unph_cmb','-v7.3'); 
+if save_mat
+    mkdir([path_mat '/unwrap']);
+    save([path_mat '/unwrap/unph_cmb.mat'],'unph_cmb','-v7.3'); 
 end
 
 % save nifti
-mkdir([NIFTI '/unwrap']);
+mkdir([path_nft '/unwrap']);
 for echo = 1:ne
     nii = make_nii(unph_cmb(:,:,:,echo),res);
-    save_nii(nii,[NIFTI '/unwrap/unph_te' num2str(echo) '.nii']);
+    save_nii(nii,[path_nft '/unwrap/unph_te' num2str(echo) '.nii']);
 end
 
 clear ph_cmb
@@ -222,73 +228,73 @@ clear ph_cmb
 
 %% fit phase images with echo times
 disp('--> (7/9) magnitude weighted LS fit of phase to TE ...');
-[tfs, fit_residual] = echofit(unph_cmb(:,:,:,1:5),mag_cmb(:,:,:,1:5),par); 
+[tfs, fit_residual] = echofit(unph_cmb,mag_cmb,par); 
 
 % generate reliability map
 R = ones(size(fit_residual));
 R(fit_residual >= 10) = 0;
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/fit']);
-    save([MATRIX '/fit/tfs.mat'],'tfs','-v7.3');
-    save([MATRIX '/fit/fit_residual.mat'],'fit_residual','-v7.3');
-    save([MATRIX '/fit/R.mat'],'R','-v7.3');
+if save_mat
+    mkdir([path_mat '/fit']);
+    save([path_mat '/fit/tfs.mat'],'tfs','-v7.3');
+    save([path_mat '/fit/fit_residual.mat'],'fit_residual','-v7.3');
+    save([path_mat '/fit/R.mat'],'R','-v7.3');
 end
 
 % save nifti
-mkdir([NIFTI '/fit']);
+mkdir([path_nft '/fit']);
 nii = make_nii(tfs,res);
-save_nii(nii,[NIFTI '/fit/tfs.nii']);
+save_nii(nii,[path_nft '/fit/tfs.nii']);
 nii = make_nii(fit_residual,res);
-save_nii(nii,[NIFTI '/fit/fit_residual.nii']);
+save_nii(nii,[path_nft '/fit/fit_residual.nii']);
 nii = make_nii(R,res);
-save_nii(nii,[NIFTI '/fit/R.nii']);
+save_nii(nii,[path_nft '/fit/R.nii']);
 
 clear unph_cmb mag_cmb
 
 
-%% RESHARP (TIK_REG: Tikhonov regularization parameter)
+%% RESHARP (tik_reg: Tikhonov regularization parameter)
 disp('--> (8/9) RESHARP to remove background field ...');
-[lfs, mask_ero] = resharp(tfs,mask.*R,par,KER_RAD,TIK_REG);
+[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/rmbkg']);
-    save([MATRIX '/rmbkg/lfs.mat'],'lfs','-v7.3'); 
-    save([MATRIX '/mask/mask_ero.mat'],'mask_ero','-v7.3'); 
+if save_mat
+    mkdir([path_mat '/rmbkg']);
+    save([path_mat '/rmbkg/lfs.mat'],'lfs','-v7.3'); 
+    save([path_mat '/mask/mask_ero.mat'],'mask_ero','-v7.3'); 
 end
 
 % save nifti
-mkdir([NIFTI '/rmbkg/']);
+mkdir([path_nft '/rmbkg/']);
 nii = make_nii(lfs,res);
-save_nii(nii,[NIFTI '/rmbkg/lfs_xy_' num2str(TIK_REG) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_xy_' num2str(tik_reg) '.nii']);
 nii = make_nii(permute(lfs,[1 3 2]),res);
-save_nii(nii,[NIFTI '/rmbkg/lfs_xz_' num2str(TIK_REG) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_xz_' num2str(tik_reg) '.nii']);
 nii = make_nii(permute(lfs,[2 3 1]),res);
-save_nii(nii,[NIFTI '/rmbkg/lfs_yz_' num2str(TIK_REG) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_yz_' num2str(tik_reg) '.nii']);
 
 nii = make_nii(mask_ero,res);
-save_nii(nii,[NIFTI '/mask/mask_ero.nii']);
+save_nii(nii,[path_nft '/mask/mask_ero.nii']);
 
 
 %% inversion of RESHARP
 disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, TV_REG); 
+sus = tvdi(lfs, mask_ero, par, tv_reg); 
 
 % save matrix
-if SAVE_MAT
-    mkdir([MATRIX '/inversion']);
-    save([MATRIX '/inversion/sus.mat'],'sus','-v7.3'); 
+if save_mat
+    mkdir([path_mat '/inversion']);
+    save([path_mat '/inversion/sus.mat'],'sus','-v7.3'); 
 end
 
 % save nifti
-mkdir([NIFTI '/inversion']);
+mkdir([path_nft '/inversion']);
 nii = make_nii(sus,res);
-save_nii(nii,[NIFTI '/inversion/sus_xy_' num2str(TV_REG) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_xy_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[1 3 2]),res);
-save_nii(nii,[NIFTI '/inversion/sus_xz_' num2str(TV_REG) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_xz_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[2 3 1]),res);
-save_nii(nii,[NIFTI '/inversion/sus_yz_' num2str(TV_REG) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_yz_' num2str(tv_reg) '.nii']);
 
 
