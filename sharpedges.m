@@ -1,4 +1,4 @@
-function[ EdgeOut, outputName ] = sharpedges(dataArray, ROI, reducedROI, Options)
+function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 
 %SHARPEDGES recovery of phase information near ROI boundary post-SHARP
 %
@@ -16,11 +16,7 @@ function[ EdgeOut, outputName ] = sharpedges(dataArray, ROI, reducedROI, Options
 %   B = SHARPEDGES(A,ROI,reducedROI) returns object containing the
 %   following variables:
 %   
-%
-%   [B, outputName] = SHARPEDGES(A,ROI,reducedROI)
-%       also returns the filename where B was written to disk (done by
-%       default - to not bother writing to disk, set
-%       Options.isWritingToDisk = 'false' )
+%    .......................
 %   
 %   The following Option-fields are supported
 %       expansionOrder
@@ -95,43 +91,6 @@ function[ EdgeOut, outputName ] = sharpedges(dataArray, ROI, reducedROI, Options
 % R Topfer 2012     topfer@ualberta.ca
 %
 
-%%
-% TODO
-%
-% variable ComputationTime may be inaccurate ?/useless 
-%
-%
-% would be easy to 'remember' which image quadrant the IEPs came from in
-% the 1st iteration and use this during the second iteration to speed
-% things up
-%
-% examining convergence ~ look at > last 3 orders? 
-%
-% 'expansionCapacity' should not be created where it is :indexKey for IEPtoEdgeDist: fill EP w/IEP-values quickly
-% 
-% write 'prepareforparfor' sub-function?
-%
-% Reformulate T-expansion into a parfor loop
-% 
-% The actual Taylor expansion COULD be performed w/out the use of a for
-% loop if memory wasn't an issue...
-%
-%
-% Should be a 'final output' consisting only of expansionCapacity &
-% extendedBackgroundField(:,:,:,order)
-%
-% W/ low orders where the 1st it. succeeded up to the bdry, the 2nd will
-% choose IEPs w/ negligible expansionCapacity ?
-%
-% for numIterations > 1
-% Were there a way to determine 'expansionCapacity' first, and then
-% solve for these points alone, this could be faster...
-% But the only ways I can think of by which one could do this likely wouldn't be much
-% faster.
-%
-% odd dimension exit condition ?
-%
-% get rid of voxelSize/aspectRatio considerations in Taylor and gradient calculations
 
 disp(' ')
 ComputationTime.total = tic ;
@@ -781,5 +740,4 @@ end
 end
 
 
-outputName = Options.name ; %TEMP??
 end
