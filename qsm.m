@@ -14,15 +14,15 @@ function sus = qsm(path_in, path_out, params)
 %   sus        - susceptibility maps as output
 
 %% default settings and prompts
-if ~ exist('path_in','var') | isempty(path_in)
+if ~ exist('path_in','var') || isempty(path_in)
     path_in = [pwd '/gemsme3d_R2s_01.fid'];
 end
 
-if ~ exist('path_out','var') | isempty(path_out)
+if ~ exist('path_out','var') || isempty(path_out)
     path_out = pwd;
 end
 
-if ~ exist('params','var') | isempty(params)
+if ~ exist('params','var') || isempty(params)
     params = [];
 end
 
@@ -47,7 +47,7 @@ tik_reg  = params.tik_reg;
 tv_reg   = params.tv_reg;
 save_mat = params.save_mat;
 
-prompt = fprintf(['\n' ...
+fprintf(['\n' ...
 'Please confirm the settings of the following required parameters \n\n' ...
 '--> path_in  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
 '--> path_out -- directory to save nifti and/or matrixes   :  %s \n' ...
