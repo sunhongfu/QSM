@@ -1,16 +1,15 @@
 function ph_cmb = sense(img,par)
-%MCPC-3D combination (for phase).
-%   IMG_CMB = mcpc3d(IMG,PAR) combines data from multiple receivers
+%SENSE combination (for phase).
+%   PH_CMB = SENSE(IMG,PAR) combines phase from multiple receivers
 %
-%   IMG: raw complex images from multiple receivers, [np nv nv2 ne nrcvrs]
-%   PAR: parameters of the sequence
-%
-%   requires: bash script 'unwrap'
+%   IMG:    raw complex images from multiple receivers, [np nv nv2 ne nrcvrs]
+%   PAR:    parameters of the sequence
+%   PH_CMB: phase after combination
 
 
 [~,~,~,ne,nrcvrs] = size(img);
 res = par.res;
-TE = par.te + (0:par.ne-1)*par.esp;
+TE  = par.te + (0:par.ne-1)*par.esp;
 TE1 = TE(1);
 TE2 = TE(2);
 

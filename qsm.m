@@ -1,17 +1,17 @@
 function sus = qsm(path_in, path_out, params)
 %QSM Quantitative susceptibility mapping.
-%   sus = qsm(path_in, path_out, params) reconstructs susceptibility maps.
+%   SUS = QSM(PATH_IN, PATH_OUT, PARAMS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
 %
-%   path_in    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
-%   path_out   - directory to save nifti and/or matrixes   : pwd
-%   params     - parameter structure including fields below
+%   PATH_IN    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
+%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd
+%   PARAMS     - parameter structure including fields below (!in small case!)
 %    .ker_rad  - radius (mm) of RESHARP convolution kernel : 5
 %    .tik_reg  - Tikhonov regularization parameter         : 0.005
 %    .tv_reg   - Total variation regularization parameter  : 0.001
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
-%   sus        - susceptibility maps as output
+%   SUS        - susceptibility maps as output
 
 %% default settings and prompts
 if ~ exist('path_in','var') || isempty(path_in)
@@ -138,9 +138,6 @@ copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 %% combine phase channels
 disp('--> (4/9) combine rcvrs for phase ...');
-% (1) use MCPC-3D
-% ph_cmb = mcpc3d(img,par);
-% (2) use self-estimated SENSE
 ph_cmb = sense(img,par);
 
 % save matrix
@@ -160,7 +157,6 @@ clear img;
 %% unwrap phase from each echo
 disp('--> (5/9) unwrap aliasing phase for each TE ...');
 
-% (1) PRELUDE:bash script
 bash_command = sprintf(['for ph in $path_nft/combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
@@ -180,27 +176,13 @@ for echo = 1:ne
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
-% (2) LAPLACIAN unwrapping
-% Options.voxelSize = par.res;
-% unph_cmb = lapunwrap(ph_cmb,Options);
 
 % check and correct for 2pi jump between echoes
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (1) calucate the unph_diff directly
-% unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
-% (2) might be better to unwrap the ph_diff
-% ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
-% nii = make_nii(ph_diff,res);
-% save_nii(nii,'ph_diff.nii');
-% unix('prelude -a BET.nii -p ph_diff.nii -u unph_diff.nii -m BET_mask.nii -n 8');
-% unix('gunzip -f unph_diff.nii.gz');
-% nii = load_nii('unph_diff.nii');
-% unph_diff = double(nii.img);
-% (3) unph_diff is available using sense.m
+
 nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
     meandiff = meandiff(mask==1);
