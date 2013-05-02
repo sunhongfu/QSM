@@ -62,13 +62,9 @@ function [obj,RES,TVterm] = objFunc(m, dm, t, params)
 p = params.pNorm;
 w1 = m+t*dm;
 
-if params.TVWeight
-    w2 = params.TV*w1;
-    TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
-    TVterm = sum(params.TVWeight(:).*TV(:));
-else
-    TVterm = 0;
-end 
+w2 = params.TV*w1;
+TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
+TVterm = sum(params.TVWeight(:).*TV(:));
 
 RES = params.FT*w1 - params.data;
 RES = RES(:)'*(params.wt(:).*RES(:));
@@ -80,11 +76,7 @@ function grad = wGradient(m,params)
 p = params.pNorm;
 w1 = params.TV*m;
 
-if params.TVWeight
-    gradTV = params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1));
-else
-    gradTV = 0;
-end
+gradTV = params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1));
 
 gradRES = params.FT'*(params.wt.*((params.FT*m)-params.data));
 
