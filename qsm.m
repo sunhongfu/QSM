@@ -251,7 +251,7 @@ save_nii(nii,[path_nft '/fit/fit_residual.nii']);
 nii = make_nii(R,res);
 save_nii(nii,[path_nft '/fit/R.nii']);
 
-clear unph_cmb mag_cmb
+clear unph_cmb
 
 
 %% RESHARP (tik_reg: Tikhonov regularization parameter)
@@ -280,7 +280,7 @@ save_nii(nii,[path_nft '/mask/mask_ero.nii']);
 
 %% inversion of RESHARP
 disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, tv_reg); 
+sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,5)); 
 
 % save matrix
 if save_mat
