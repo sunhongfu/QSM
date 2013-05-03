@@ -9,7 +9,7 @@ function sus = qsm(path_in, path_out, params)
 %   PARAMS     - parameter structure including fields below (!in small case!)
 %    .ker_rad  - radius (mm) of RESHARP convolution kernel : 5
 %    .tik_reg  - Tikhonov regularization parameter         : 0.005
-%    .tv_reg   - Total variation regularization parameter  : 0.001
+%    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
 %   SUS        - susceptibility maps as output
 
@@ -35,7 +35,7 @@ if ~ isfield(params,'tik_reg')
 end
 
 if ~ isfield(params,'tv_reg')
-    params.tv_reg = 1e-3;
+    params.tv_reg = 5e-4;
 end
 
 if ~ isfield(params,'save_mat')
@@ -80,9 +80,9 @@ cd(TEMP);
 disp('--> (1/9) reconstruct fid to complex img ...');
 [img,par] = reconfid(path_in);
 
-% keep only the first 5 echoes
-img = img(:,:,:,1:5,:);
-par.ne = 5;
+% keep only the first 4 echoes
+img = img(:,:,:,1:4,:);
+par.ne = 4;
 [np,nv,nv2,ne,~] = size(img);
 res = par.res; % resolution in mm/pixel
 
@@ -116,7 +116,7 @@ for echo =  1:ne
 end
 
 
-%% generate mask from SOS combined magnitude of first echo
+%% generate mask from SOS combined magnitude of third echo
 disp('--> (3/9) extract brain volume and generate mask ...');
 setenv('path_nft', path_nft);
 unix('bet $path_nft/combine/mag_te1.nii BET -f 0.5 -m -R');
@@ -214,7 +214,7 @@ disp('--> (7/9) magnitude weighted LS fit of phase to TE ...');
 
 % generate reliability map
 R = ones(size(fit_residual));
-R(fit_residual >= 10) = 0;
+R(fit_residual >= 1) = 0;
 
 % save matrix
 if save_mat
@@ -238,6 +238,7 @@ clear unph_cmb
 
 %% RESHARP (tik_reg: Tikhonov regularization parameter)
 disp('--> (8/9) RESHARP to remove background field ...');
+%[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
 [lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
 
 % save matrix
@@ -262,7 +263,7 @@ save_nii(nii,[path_nft '/mask/mask_ero.nii']);
 
 %% inversion of RESHARP
 disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,5)); 
+sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,3)); 
 
 % save matrix
 if save_mat
