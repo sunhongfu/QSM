@@ -26,6 +26,10 @@ if ~ exist('params','var') || isempty(params)
     params = [];
 end
 
+if ~ isfield(params,'bkgrm')
+    params.bkgrm = 'resharp';
+end
+
 if ~ isfield(params,'ker_rad')
     params.ker_rad = 5;
 end
@@ -42,6 +46,7 @@ if ~ isfield(params,'save_mat')
     params.save_mat = 1;
 end
 
+bkgrm    = params.bkgrm;
 ker_rad  = params.ker_rad;
 tik_reg  = params.tik_reg;
 tv_reg   = params.tv_reg;
@@ -80,7 +85,7 @@ cd(TEMP);
 disp('--> (1/9) reconstruct fid to complex img ...');
 [img,par] = reconfid(path_in);
 
-% keep only the first 4 echoes
+% keep only the first 4 echoes (last 15.2ms)
 img = img(:,:,:,1:4,:);
 par.ne = 4;
 [np,nv,nv2,ne,~] = size(img);
@@ -138,7 +143,10 @@ copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 %% combine phase channels
 disp('--> (4/9) combine rcvrs for phase ...');
-ph_cmb = sense(img,par);
+% (1) filter smooth the complex offsets
+% ph_cmb = sense(img,par);
+% (2) without smoothing the offsets
+ph_cmb = sense_nof(img,par);
 
 % save matrix
 if save_mat
@@ -155,7 +163,7 @@ clear img;
 
 
 %% unwrap phase from each echo
-disp('--> (5/9) unwrap aliasing phase for each TE ...');
+disp('--> (5/9) unwrap aliasing phase for 4 TEs ...');
 
 bash_command = sprintf(['for ph in $path_nft/combine/ph*\n' ...
 'do\n' ...
@@ -235,35 +243,53 @@ save_nii(nii,[path_nft '/fit/R.nii']);
 
 clear unph_cmb
 
+switch lower(bkgrm)
+%% (1) RESHARP (tik_reg: Tikhonov regularization parameter)
+case 'resharp'
+	disp('--> (8/9) RESHARP to remove background field ...');
+	[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
+	mask_final = mask_ero;
 
-%% RESHARP (tik_reg: Tikhonov regularization parameter)
-disp('--> (8/9) RESHARP to remove background field ...');
-%[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
-[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
+% (2) SHARP 
+
+% (3) E-SHARP
+case 'esharp'
+	disp('--> (8/9) E-SHARP to remove background field ...')'
+	Options.voxelSize = res;
+	lfs = esharp(tfs,mask.*R,Options);
+	mask_final = mask.*R;
+
+% (4) PDF
+case 'pdf'
+	disp('--> (8/9) PDF to remove background field ...')'
+	lfs = pdf(tfs,mask.*R,par,mag_cmb(:,:,:,4));
+	mask_final = mask.*R;
+
+end
 
 % save matrix
 if save_mat
     mkdir([path_mat '/rmbkg']);
     save([path_mat '/rmbkg/lfs.mat'],'lfs','-v7.3'); 
-    save([path_mat '/mask/mask_ero.mat'],'mask_ero','-v7.3'); 
+    save([path_mat '/mask/mask_final.mat'],'mask_final','-v7.3'); 
 end
 
 % save nifti
 mkdir([path_nft '/rmbkg/']);
 nii = make_nii(lfs,res);
-save_nii(nii,[path_nft '/rmbkg/lfs_xy_' num2str(tik_reg) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_' bkgrm '_xy_' num2str(tik_reg) '.nii']);
 nii = make_nii(permute(lfs,[1 3 2]),res);
-save_nii(nii,[path_nft '/rmbkg/lfs_xz_' num2str(tik_reg) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_' bkgrm 'xz_' num2str(tik_reg) '.nii']);
 nii = make_nii(permute(lfs,[2 3 1]),res);
-save_nii(nii,[path_nft '/rmbkg/lfs_yz_' num2str(tik_reg) '.nii']);
+save_nii(nii,[path_nft '/rmbkg/lfs_' bkgrm 'yz_' num2str(tik_reg) '.nii']);
 
-nii = make_nii(mask_ero,res);
-save_nii(nii,[path_nft '/mask/mask_ero.nii']);
+nii = make_nii(mask_final,res);
+save_nii(nii,[path_nft '/mask/mask_final.nii']);
 
 
-%% inversion of RESHARP
+%% inversion of susceptibility 
 disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,3)); 
+sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
 
 % save matrix
 if save_mat
@@ -274,10 +300,10 @@ end
 % save nifti
 mkdir([path_nft '/inversion']);
 nii = make_nii(sus,res);
-save_nii(nii,[path_nft '/inversion/sus_xy_' num2str(tv_reg) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_' bkgrm 'xy_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[1 3 2]),res);
-save_nii(nii,[path_nft '/inversion/sus_xz_' num2str(tv_reg) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_' bkgrm 'xz_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[2 3 1]),res);
-save_nii(nii,[path_nft '/inversion/sus_yz_' num2str(tv_reg) '.nii']);
+save_nii(nii,[path_nft '/inversion/sus_' bkgrm 'yz_' num2str(tv_reg) '.nii']);
 
 

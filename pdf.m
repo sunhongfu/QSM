@@ -25,7 +25,7 @@ W = weight.*mask; % weights
 b = M.*ifftn(D.*fftn(W.*W.*tfs));
 b = b(:);
 
-res = cgs(@Afun,b,1e-6, 100);
+res = cgs(@Afun,b,1e-6, 200);
 lfs = mask.*real(tfs-ifftn(D.*fftn(M.*reshape(res,[np,nv,ns]))));
 
 function y = Afun(x)
