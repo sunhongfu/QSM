@@ -11,7 +11,6 @@ function sus = qsm(path_in, path_out, params)
 %    .tik_reg  - Tikhonov regularization parameter         : 0.005
 %    .tv_reg   - Total variation regularization parameter  : 0.001
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
-%   SUS        - susceptibility maps as output
 
 %% default settings and prompts
 if ~ exist('path_in','var') || isempty(path_in)
@@ -157,6 +156,7 @@ clear img;
 %% unwrap phase from each echo
 disp('--> (5/9) unwrap aliasing phase for each TE ...');
 
+% (1) PRELUDE:bash script
 bash_command = sprintf(['for ph in $path_nft/combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
@@ -176,10 +176,24 @@ for echo = 1:ne
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
+% (2) LAPLACIAN unwrapping
+% Options.voxelSize = par.res;
+% unph_cmb = lapunwrap(ph_cmb,Options);
 
 % check and correct for 2pi jump between echoes
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (1) calucate the unph_diff directly
+% unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
+% (2) might be better to unwrap the ph_diff
+% ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
+% nii = make_nii(ph_diff,res);
+% save_nii(nii,'ph_diff.nii');
+% unix('prelude -a BET.nii -p ph_diff.nii -u unph_diff.nii -m BET_mask.nii -n 8');
+% unix('gunzip -f unph_diff.nii.gz');
+% nii = load_nii('unph_diff.nii');
+% unph_diff = double(nii.img);
+% (3) unph_diff is available using sense.m
 nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
 
@@ -278,5 +292,3 @@ nii = make_nii(permute(sus,[1 3 2]),res);
 save_nii(nii,[path_nft '/inversion/sus_xz_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[2 3 1]),res);
 save_nii(nii,[path_nft '/inversion/sus_yz_' num2str(tv_reg) '.nii']);
-
-
