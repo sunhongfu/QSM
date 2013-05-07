@@ -80,7 +80,7 @@ k = flipdim(flipdim(flipdim(k,1),2),3);
 
 % truncation in the 3rd dimension
 disp('truncating kspace');
-k = k(:,:,round(np/4)+1:round(np/4)+1+np/2-1,:,:,:);
+k = k(:,:,round(nv2/4)+1:round(nv2/4)+1+nv2/2-1,:,:,:);
 
 
 %   Convert to image space
