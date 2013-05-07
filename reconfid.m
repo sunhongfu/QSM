@@ -61,27 +61,8 @@ if abs(ppe2) > 0.001
     clear ph_ramp pix
 end
 
-
-% % 
-% % %   Convert to image space
-% % img = zeros(size(k));
-% % for i=1:ne*rcvrs*ad
-% %     img(:,:,:,i) = fftshift(fftn(fftshift(k(:,:,:,i))));
-% % end
-% % 
-% % %   Flip data for proper orientation
-% % img = flipdim(flipdim(flipdim(img,1),2),3);
-
-
-
 %   Flip data for proper orientation
 k = flipdim(flipdim(flipdim(k,1),2),3);
-
-
-% truncation in the 3rd dimension
-disp('truncating kspace');
-k = k(:,:,round(nv2/4)+1:round(nv2/4)+1+nv2/2-1,:,:,:);
-
 
 %   Convert to image space
 img = zeros(size(k),'single');
