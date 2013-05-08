@@ -1,17 +1,16 @@
 function sus = qsm(path_in, path_out, params)
 %QSM Quantitative susceptibility mapping.
-%   sus = qsm(path_in, path_out, params) reconstructs susceptibility maps.
+%   SUS = QSM(PATH_IN, PATH_OUT, PARAMS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
 %
-%   path_in    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
-%   path_out   - directory to save nifti and/or matrixes   : pwd
-%   params     - parameter structure including fields below
+%   PATH_IN    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
+%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd
+%   PARAMS     - parameter structure including fields below (!in small case!)
 %    .ker_rad  - radius (mm) of RESHARP convolution kernel : 5
 %    .tik_reg  - Tikhonov regularization parameter         : 0.005
 %    .tv_reg   - Total variation regularization parameter  : 0.001
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
-%   sus        - susceptibility maps as output
 
 %% default settings and prompts
 if ~ exist('path_in','var') || isempty(path_in)
@@ -138,9 +137,6 @@ copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 %% combine phase channels
 disp('--> (4/9) combine rcvrs for phase ...');
-% (1) use MCPC-3D
-% ph_cmb = mcpc3d(img,par);
-% (2) use self-estimated SENSE
 ph_cmb = sense(img,par);
 
 % save matrix
@@ -200,7 +196,7 @@ disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
 % (3) unph_diff is available using sense.m
 nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
     meandiff = meandiff(mask==1);
@@ -251,7 +247,7 @@ save_nii(nii,[path_nft '/fit/fit_residual.nii']);
 nii = make_nii(R,res);
 save_nii(nii,[path_nft '/fit/R.nii']);
 
-clear unph_cmb mag_cmb
+clear unph_cmb
 
 
 %% RESHARP (tik_reg: Tikhonov regularization parameter)
@@ -280,7 +276,7 @@ save_nii(nii,[path_nft '/mask/mask_ero.nii']);
 
 %% inversion of RESHARP
 disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, tv_reg); 
+sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,5)); 
 
 % save matrix
 if save_mat
@@ -296,5 +292,3 @@ nii = make_nii(permute(sus,[1 3 2]),res);
 save_nii(nii,[path_nft '/inversion/sus_xz_' num2str(tv_reg) '.nii']);
 nii = make_nii(permute(sus,[2 3 1]),res);
 save_nii(nii,[path_nft '/inversion/sus_yz_' num2str(tv_reg) '.nii']);
-
-

@@ -1,4 +1,4 @@
-function sus = tvdi(lfs, mask, par, TVWeight)
+function sus = tvdi(lfs, mask, par, TVWeight, magWeight)
 %TVDI Total variation dipole inversion.
 %   SUS = tvdi(LFS,MASK,PAR,TV_REG)
 %
@@ -11,7 +11,9 @@ function sus = tvdi(lfs, mask, par, TVWeight)
 
 [np,nv,ns] = size(lfs);
 
-W1 = ones([np nv ns]); % weights for data consistancy term
+W1 = mask.*magWeight; % weights for data consistancy term
+W1 = W1/sum(W1(:))*sum(mask(:));
+% W1 = ones([np nv ns]);
 
 % % normalize lfs
 % % ph = gamma*dB*TE
@@ -37,6 +39,7 @@ D = 1/3 - kz.^2./(kx.^2 + ky.^2 + kz.^2);
 D = fftshift(D);
 D(1,1,1) = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 param.FT = cls_dipconv([np,nv,ns],D);
 param.TV = cls_tv;
