@@ -61,19 +61,19 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 %       ALSO: Although these are essentially 3D things, they are SAVED in a
 %       COMPRESSED LINEAR form
 %
-%       IEPtoEdgeDistance
+%       IPtoEdgeDistance
 %       specifies path of MATLAB matrix containing the variables
-%           -IEPtoEdgeDistance : determines 'harmonic neighbourhood' about
-%           each IEP
+%           -IPtoEdgeDistance : determines 'harmonic neighbourhood' about
+%           each IP
 %               
-%       IEPtoEPassociations
+%       IPtoEPAssociations
 %           specifies path of MATLAB matrix containing the variables
 %           -associatedIEPs : linear indices of IEPs for each EP 
 %           
-%           -associatedIEPtoEPDistance : Euclidean distance b/tw them
+%           -associatedIPtoEPDistance : Euclidean distance b/tw them
 %           
-%           -associatedIEPtoEdgeDistance : Each EP contains the
-%           IEPtoEdgeDistance of its corresponding IEP.               
+%           -associatedIPtoEdgeDistance : Each EP contains the
+%           IPtoEdgeDistance of its corresponding IP.               
 %
 %       GradientTerms
 %           specifies path of MATLAB matrix containing the variables
@@ -84,7 +84,7 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 %           -taylorTerms : expansionOutput
 %
 % ABBRV:
-%       IEP = Internal Expansion Point : point at which extrapolation is based   
+%       IP = Internal Point : point at which extrapolation is based   
 %       EP  = Extension Point : looking to determine Bkgr. Field here 
 %
 %
@@ -93,7 +93,7 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 
 
 disp(' ')
-ComputationTime.total = tic ;
+
 
 %% constants
 
@@ -160,13 +160,13 @@ if ~myisfield( Options, 'isUsingConvergenceCriterion') || isempty(Options.isUsin
     Options.isUsingConvergenceCriterion = DEFAULT_ISUSINGCONVERGENCECRITERION ;
 end
 
-if  ~myisfield( Options, 'IEPtoEPassociations' ) || isempty(Options.IEPtoEPassociations)
+if  ~myisfield( Options, 'IPtoEPAssociations' ) || isempty(Options.IPtoEPAssociations)
     isMappingExpansionPoints = DEFAULT_ISMAPPINGEXPANSIONPOINTS ;
 else
     isMappingExpansionPoints = false ;
 end
 
-if ~myisfield( Options, 'IEPtoEdgeDistance') || isempty(Options.IEPtoEdgeDistance)
+if ~myisfield( Options, 'IPtoEdgeDistance') || isempty(Options.IPtoEdgeDistance)
     isMappingHarmonicNeighbourhoods = DEFAULT_ISMAPPINGHARMONICNEIGHBOURHOODS ;
 else
     isMappingHarmonicNeighbourhoods = false ;
@@ -297,7 +297,7 @@ for currentIteration = 1 : Options.numIterations
     disp( [ 'Points remaining to be solved for: ' int2str(numPointsExtendedROI) ] )
 
 
-%% Mapping IEP to Edge
+%% Mapping IP to Edge
 if isMappingHarmonicNeighbourhoods
     %---
     % Determine nearest edgePoint to each internalExpansionPoint
@@ -384,23 +384,23 @@ if isMappingHarmonicNeighbourhoods
         lastPartIEPtoEdgeDistance = lastPartIEPtoEdgeDistance( :, Options.numCPU ) ;
         partIEPtoEdgeDistance     = partIEPtoEdgeDistance( :, 1 : Options.numCPU-1 ) ;
         
-        IEPtoEdgeDistance         = [ partIEPtoEdgeDistance(:)' lastPartIEPtoEdgeDistance' ]' ;
+        IPtoEdgeDistance         = [ partIEPtoEdgeDistance(:)' lastPartIEPtoEdgeDistance' ]' ;
         
         ComputationTime.mappingExpansionCapacity = toc ;
         clear tmp XYZedges partXo partYo partZo 
         
         if Options.isSavingInterimVar
-        save( strcat(Options.name,'_IEPtoEdgeDistance'), 'IEPtoEdgeDistance') ;
+        save( strcat(Options.name,'_IEPtoEdgeDistance'), 'IPtoEdgeDistance') ;
         end
 else
 
-load( Options.IEPtoEdgeDistance ) ;
+load( Options.IPtoEdgeDistance ) ;
 
 end
 
 
 
-%% Mapping EP to IEP        
+%% Mapping EP to IP        
     if isMappingExpansionPoints
         %---
         % Determine nearest expansionPoints for voxels in the extendedROI
@@ -467,11 +467,11 @@ end
 
                     D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIEPs ] )-XYZo   ;
                     
-                    [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IEP to EP XYZ1(k)
+                    [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
                                         
                     lastpartDist(k1)  = IEPtoEPDist ;
                     lastpartInd(k1)   = sub2ind( gridDimensionVector, Xo(idealIEP), Yo(idealIEP), Zo(idealIEP) ) ;                
-                    lastPartExCap(k1) = IEPtoEdgeDistance(idealIEP) ;
+                    lastPartExCap(k1) = IPtoEdgeDistance(idealIEP) ;
                     
                 end
                 
@@ -490,7 +490,7 @@ end
                     [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1) .^0.5 ) ;
                     partDist(k1)               = IEPtoEPDist ;
                     partInd(k1)                = sub2ind( gridDimensionVector, Xo(idealIEP), Yo(idealIEP), Zo(idealIEP) ) ;
-                    partExCap(k1)              = IEPtoEdgeDistance(idealIEP) ;
+                    partExCap(k1)              = IPtoEdgeDistance(idealIEP) ;
                 end
                 
  
@@ -513,18 +513,18 @@ end
         partExpansionCapacity       = partExpansionCapacity( :, 1 : Options.numCPU-1 ) ;
         
         associatedIEPs              = [ partIEPIndices(:)' lastPartIEPIndices' ]' ; % Expansion points (linear indices paired w/points in extendedROI)
-        associatedIEPtoEPDistance   = [ partIEPtoEPDistance(:)' lastPartIEPtoEPDistance' ]' ; % SO WHAT THE NAME IS REDUNDANT W/E
-        associatedIEPtoEdgeDistance = [ partExpansionCapacity(:)' lastPartExpansionCapacity' ]' ;
+        associatedIPtoEPDistance   = [ partIEPtoEPDistance(:)' lastPartIEPtoEPDistance' ]' ; % SO WHAT THE NAME IS REDUNDANT W/E
+        associatedIPtoEdgeDistance = [ partExpansionCapacity(:)' lastPartExpansionCapacity' ]' ;
         
         ComputationTime.mappingIEPs = toc
         
         if Options.isSavingInterimVar
-        save( strcat(Options.name, '_IEPtoEPassociations'), 'associatedIEPs', 'associatedIEPtoEPDistance', 'associatedIEPtoEdgeDistance') ;   
+        save( strcat(Options.name, '_IPtoEPAssociations'), 'associatedIEPs', 'associatedIPtoEPDistance', 'associatedIPtoEdgeDistance') ;   
         end
         
     else
         
-        load( Options.IEPtoEPassociations ) ;
+        load( Options.IPtoEPAssociations ) ;
         
     end
     
@@ -579,7 +579,7 @@ end
             
             disp( ['extrapolating...' num2str(k1/numPointsExtendedROI, 2)] ) ;
             
-            ko = GradientTerms.indexKey( associatedIEPs(k1) ) ; % IEP ko corresponding to external extension point k1
+            ko = GradientTerms.indexKey( associatedIEPs(k1) ) ; % IP ko corresponding to external extension point k1
             
             % the "dx*dx*dy*dy*dz"-type factor:
             tmp =          distanceVector(1, k1)*GradientTerms.directions(:, :, 1) + complementGDirections(:, :, 1) ;
@@ -628,20 +628,20 @@ end
         expansionSurface = reshape(expansionSurface, gridDimensionVector) ;
         
         tmp                            = expansionSurface ;
-        tmp( internalExpansionPoints ) = IEPtoEdgeDistance ;
-        IEPtoEdgeDistance              = tmp ;
+        tmp( internalExpansionPoints ) = IPtoEdgeDistance ;
+        IPtoEdgeDistance              = tmp ;
         
         tmp                            = extendedROI ;
-        tmp( extensionPoints )         = associatedIEPtoEdgeDistance ;
-        associatedIEPtoEdgeDistance    = tmp ;
+        tmp( extensionPoints )         = associatedIPtoEdgeDistance ;
+        associatedIPtoEdgeDistance    = tmp ;
         
         tmp                            = extendedROI ;
         tmp( extensionPoints )         = associatedIEPs ;
         associatedIEPs                 = tmp ;
         
         tmp                            = extendedROI ;
-        tmp( extensionPoints )         = associatedIEPtoEPDistance ;
-        associatedIEPtoEPDistance      = tmp ;
+        tmp( extensionPoints )         = associatedIPtoEPDistance ;
+        associatedIPtoEPDistance      = tmp ;
         
         tmp                            = extendedROI ;
         tmp( extensionPoints )         = distanceVector(1,:) ;
@@ -651,15 +651,15 @@ end
         tmp( extensionPoints )         = distanceVector(3,:) ;
         IEPtoEPDistanceXYZ(:,:,:,3)    = tmp ;
         
-        % if the EP is further from the IEP than the nearest egde, it is
+        % if the EP is further from the IP than the nearest egde, it is
         % outside the harmonic neighbourhood and it will have to be solved
-        % next iteration w/a different IEP
+        % next iteration w/a different IP
         %
         % possible issue w/ coding:
-        % assumption is that the distance vector from EP to nearest IEP won't cross
+        % assumption is that the distance vector from EP to nearest IP won't cross
         % ROI boundaries. This should be OK for the brain but may pose a problem for other geometries.
         
-        expansionCapacity = abs( ceil(associatedIEPtoEPDistance) ) < abs( floor(associatedIEPtoEdgeDistance) ) ;
+        expansionCapacity = abs( ceil(associatedIPtoEPDistance) ) < abs( floor(associatedIPtoEdgeDistance) ) ;
         
     
     
@@ -689,11 +689,11 @@ end
         EdgeOut.reducedBackgroundField  = reducedBackgroundField ;
     end
     
-    EdgeOut.IEPtoEdgeDistance         = IEPtoEdgeDistance ;
-    clear IEPtoEdgeDistance
+    EdgeOut.IPtoEdgeDistance         = IPtoEdgeDistance ;
+    clear IPtoEdgeDistance
     
-    EdgeOut.associatedIEPtoEPDistance = associatedIEPtoEPDistance ; % Euclidean distance
-    clear associatedIEPtoEPDistance 
+    EdgeOut.associatedIPtoEPDistance = associatedIPtoEPDistance ; % Euclidean distance
+    clear associatedIPtoEPDistance 
 
     EdgeOut.IEPtoEPDistanceXYZ        = IEPtoEPDistanceXYZ ; % 4D Array - distance in voxels
     clear IEPtoEPDistanceXYZ
@@ -707,7 +707,6 @@ end
     EdgeOut.expansionCapacity       = expansionCapacity ;
 
     
-    ComputationTime.total           = toc ;
     EdgeOut.ComputationTime         = ComputationTime ;
     
     EdgeOut.Options                 = Options ;
