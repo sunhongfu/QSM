@@ -377,6 +377,7 @@ if isMappingHarmonicNeighbourhoods
                         
                     end
                     lastPartIEPtoEdgeDistance(:, cpu) = lastPartEdgeDist ;
+                end
                 
             else
                 
