@@ -46,7 +46,6 @@ DEFAULT_RADII                           = [6 6 6] ;
 DEFAULT_THRESHOLDPARAMETER              = 0.05 ;
 
 
-
 %% check inputs
 
 if nargin < 2 || isempty(totalPhase) || isempty(mask) 
@@ -78,9 +77,11 @@ end
 
 
 if any( mod( size( totalPhase ), 2 ) == 0)
-    disp('requires data array with odd-dimensions: cropping data')
+    isCroppingData = true ;
     totalPhase = makeodd( totalPhase ) ;
     mask       = makeodd( mask ) ;
+else
+    isCroppingData = false ;
 end
 
 totalPhase = - mask .* totalPhase;
@@ -126,7 +127,9 @@ fTmpLocal( FFTSharpFilter < Options.thresholdParameter )  = 0 ;
 localPhaseTSVD = mask .* ifftc( fTmpLocal) ;
 
 
-localPhase = localPhaseTSVD ;
+if isCroppingData
+localPhase = makeodd(localPhaseTSVD, 'isUndoing') ;
+end
 
 
 

@@ -432,6 +432,3 @@ if sum(strcmp('pdf',lower(bkgrm)))
     nii = make_nii(permute(sus,[2 3 1]),res);
     save_nii(nii,[path_nft '/inversion/sus_pdf_yz.nii']);
 end
-
-
-

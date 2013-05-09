@@ -1,27 +1,33 @@
-function[dataArray] = makeodd(dataArray, isPadding)
+function[dataArray] = makeodd(dataArray, option)
 
 %MAKEODD returns dataArray with odd dimensions
 %   
 %   Syntax
 %
 %   A = MAKEODD(A)
-%   A = MAKEODD(A, isPadding)
+%   A = MAKEODD(A, option)
 %
 %   returns array A with odd dimensions
 %   
-%   Optional
+%   option
 %
-%   isPadding
-%       if false (DEFAULT), even dimensions have a slice shaved off
-%       if true, even dimensions are padded with a slice of zeros
+%       if 'isPadding', even dimensions are padded with a slice of zeros 
+%           (default: even dimensions have a slice shaved off)
 %
+%       if 'isUndoing', odd dimensions are padded with a slice of zeros
+%           (default: make ODD!)
 
-DEFAULT_ISPADDING = false ;
 
 if nargin < 2
-    isPadding = DEFAULT_ISPADDING ;
+    option = 'isShaving' ;
+    isPadding = false ;
 end
 
+if strcmp(option, 'isUndoing')
+    isPadding = true ;
+end
+
+%%
 
 gridDimensionVector = size( dataArray ) ;
 isOdd               = mod( gridDimensionVector, 2 ) ;
@@ -29,24 +35,31 @@ isEven              = double(~isOdd) ;
 
 
 if isPadding
-    
-    dataArray = padarray(dataArray, isEven, 'post') ;
-    
-else
-   
-    oddLimits = gridDimensionVector - isEven ;
-if numel( oddLimits) == 1
-	dataArray = dataArray( 1:oddLimits(1) ) ;
-elseif numel( oddLimits) ==2
-	dataArray = dataArray( 1:oddLimits(1), 1:oddLimits(2) ) ;
-else
-    dataArray = dataArray( 1:oddLimits(1), 1:oddLimits(2), 1:oddLimits(3) ) ;
-    
-end
-
-
-end
         
+        if strcmp(option,'isUndoing')
+            %pad array to even dimensions
+            dataArray = padarray(dataArray, isOdd, 'post') ;
+        else
+            %pad array to odd dimensions
+            dataArray = padarray(dataArray, isEven, 'post') ;
+        end
+    
+        
+else
+        if isEven(1)
+            dataArray = dataArray( 1:end-1, :,:) ;
+        end
+        if isEven(2)
+            dataArray = dataArray( :,1:end-1, :) ;
+        end
+        if isEven(3)
+            dataArray = dataArray( :,:,1:end-1) ;
+        end
+        
+        
+end
+
+end
 
 
 
