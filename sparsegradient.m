@@ -104,12 +104,9 @@ stepDirection = [1 0 0] ;
 
 tmpDirections                = zeros(gradientOrder, 3) ;
 
-disp( 'Count to 1...' )
 n = 0 ;
 tic
 while lastStep > 0
-
-    disp( ['gradients...' num2str(n/numGradientTermsTotal, 2)])
     
     % Venture to top plateau: climbing along 'x'...
     for lastStep = 1 : numFrwdSteps
@@ -231,7 +228,6 @@ while lastStep > 0
 end
 
 GradientTerms.computationTime = toc ;
-disp( '111111111111111111111111111111111111111WINNING1111111111111111111111111111111111111111111' )
 end
 
 

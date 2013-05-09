@@ -112,6 +112,8 @@ DEFAULT_ISCALCULATINGGRADIENTS          = true ;
 DEFAULT_ISPERFORMINGTAYLOREXPANSION     = true ;
 
 DEFAULT_ISWRITINGTODISK                 = true ;
+DEFAULT_ISDISPLAYINGPROGRESS            = false ;
+
 
 DEFAULT_ISDEBUGGING                     = false;
 DEFAULT_ISSAVINGINTERIMVAR              = false ;
@@ -194,6 +196,10 @@ end
 
 if ~myisfield( Options, 'isWritingToDisk') || isempty(Options.isWritingToDisk)
     Options.isWritingToDisk = DEFAULT_ISWRITINGTODISK ;
+end
+
+if ~myisfield( Options, 'isDisplayingProgress') || isempty(Options.isDisplayingProgress)
+    Options.isDisplayingProgress = DEFAULT_ISDISPLAYINGPROGRESS ;
 end
 
     
@@ -353,17 +359,25 @@ if isMappingHarmonicNeighbourhoods
             if cpu == Options.numCPU
                 
                 lastPartEdgeDist = zeros( lastPartIEPs, 1) ;
-                
-                for ko = 1 : lastPartIEPs
+                if Options.isDisplayingProgress
+                    for ko = 1 : lastPartIEPs
+                        
+                        disp( ['mapping... IEPtoEdge ' num2str(ko/lastPartIEPs, 2) ])
+                        
+                        D                    = ( XYZedges - repmat( [ XoCPU(ko); YoCPU(ko); ZoCPU(ko) ], [ 1 numEdgePoints ] ) ) ;
+                        lastPartEdgeDist(ko) = min( dot( D, D, 1 ) .^0.5 ) ;
+                        
+                    end
                     
-                    disp( ['mapping... IEPtoEdge ' num2str(ko/lastPartIEPs, 2) ])
-
-                    D                    = ( XYZedges - repmat( [ XoCPU(ko); YoCPU(ko); ZoCPU(ko) ], [ 1 numEdgePoints ] ) ) ;
-                    lastPartEdgeDist(ko) = min( dot( D, D, 1 ) .^0.5 ) ;
-                    
+                else
+                    for ko = 1 : lastPartIEPs
+                        
+                        D                    = ( XYZedges - repmat( [ XoCPU(ko); YoCPU(ko); ZoCPU(ko) ], [ 1 numEdgePoints ] ) ) ;
+                        lastPartEdgeDist(ko) = min( dot( D, D, 1 ) .^0.5 ) ;
+                        
+                    end
+                    lastPartIEPtoEdgeDistance(:, cpu) = lastPartEdgeDist ;
                 end
-                
-                lastPartIEPtoEdgeDistance(:, cpu) = lastPartEdgeDist ;
                 
             else
                 
@@ -411,8 +425,6 @@ end
         if matlabpool('size') == 0
             matlabpool( Options.numCPU ) ;
         end
-        
-        disp(['Using ' int2str( Options.numCPU ) ' processor(s)'])
         
         partExtendedROI      = floor( numPointsExtendedROI/Options.numCPU ) ; % fraction of the extendedROI assigned to numCPU-1 processors
         lastPartExtendedROI  = numPointsExtendedROI -( Options.numCPU - 1 )*partExtendedROI ; % largest portion, assigned to the last processor
@@ -462,19 +474,35 @@ end
                 lastpartDist  = zeros( lastPartExtendedROI, 1) ;
                 lastPartExCap = zeros( lastPartExtendedROI, 1) ;
                 
-                for k1 = 1 : lastPartExtendedROI
-                    disp(['mapping... EPtoIEP ' num2str(k1/lastPartExtendedROI, 2)])
+                if Options.isDisplayingProgress
+                    for k1 = 1 : lastPartExtendedROI
+                        
+                        disp(['mapping... EPtoIEP ' num2str(k1/lastPartExtendedROI, 2)])
+                        
+                        D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIEPs ] )-XYZo   ;
+                        
+                        [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
+                        
+                        lastpartDist(k1)  = IEPtoEPDist ;
+                        lastpartInd(k1)   = sub2ind( gridDimensionVector, Xo(idealIEP), Yo(idealIEP), Zo(idealIEP) ) ;
+                        lastPartExCap(k1) = IPtoEdgeDistance(idealIEP) ;
+                        
+                    end
+                    
+                else
+                    
+                    for k1 = 1 : lastPartExtendedROI
 
-                    D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIEPs ] )-XYZo   ;
-                    
-                    [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
-                                        
-                    lastpartDist(k1)  = IEPtoEPDist ;
-                    lastpartInd(k1)   = sub2ind( gridDimensionVector, Xo(idealIEP), Yo(idealIEP), Zo(idealIEP) ) ;                
-                    lastPartExCap(k1) = IPtoEdgeDistance(idealIEP) ;
-                    
+                        D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIEPs ] )-XYZo   ;
+                        
+                        [ IEPtoEPDist, idealIEP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
+                        
+                        lastpartDist(k1)  = IEPtoEPDist ;
+                        lastpartInd(k1)   = sub2ind( gridDimensionVector, Xo(idealIEP), Yo(idealIEP), Zo(idealIEP) ) ;
+                        lastPartExCap(k1) = IPtoEdgeDistance(idealIEP) ;
+                        
+                    end
                 end
-                
                 lastPartIEPtoEPDistance(:, cpu)   = lastpartDist ;
                 lastPartIEPIndices(:, cpu)        = lastpartInd ;              
                 lastPartExpansionCapacity(:, cpu) = lastPartExCap ;
@@ -575,27 +603,51 @@ end
         % series terms
         taylorTerms              = zeros( [ numPointsExtendedROI (Options.expansionOrder + 1) ] ) ;
         
-        for k1 = 1 : numPointsExtendedROI
-            
-            disp( ['extrapolating...' num2str(k1/numPointsExtendedROI, 2)] ) ;
-            
-            ko = GradientTerms.indexKey( associatedIEPs(k1) ) ; % IP ko corresponding to external extension point k1
-            
-            % the "dx*dx*dy*dy*dz"-type factor:
-            tmp =          distanceVector(1, k1)*GradientTerms.directions(:, :, 1) + complementGDirections(:, :, 1) ;
-            tmp = tmp .* ( distanceVector(2, k1)*GradientTerms.directions(:, :, 2) + complementGDirections(:, :, 2) ) ;
-            tmp = tmp .* ( distanceVector(3, k1)*GradientTerms.directions(:, :, 3) + complementGDirections(:, :, 3) ) ;
-            tmp = prod(tmp, 1) ./ factorialFactor ;
-            
-            % 0th order Taylor:
-            taylorTerms(k1, 1) = GradientTerms.coefficients(ko, 1) ;
-            
-            % Higher orders
-            for order = 2 : Options.expansionOrder + 1
-                taylorTerms(k1, order) = sum( GradientTerms.coefficients(ko, gradInd(order, 1):gradInd(order, 2)) .* tmp(1, gradInd(order, 1):gradInd(order, 2))) ;
-            end
-            
-        end
+                        if Options.isDisplayingProgress
+        
+        
+                            for k1 = 1 : numPointsExtendedROI
+                                
+                                disp( ['extrapolating...' num2str(k1/numPointsExtendedROI, 2)] ) ;
+                                
+                                ko = GradientTerms.indexKey( associatedIEPs(k1) ) ; % IP ko corresponding to external extension point k1
+                                
+                                % the "dx*dx*dy*dy*dz"-type factor:
+                                tmp =          distanceVector(1, k1)*GradientTerms.directions(:, :, 1) + complementGDirections(:, :, 1) ;
+                                tmp = tmp .* ( distanceVector(2, k1)*GradientTerms.directions(:, :, 2) + complementGDirections(:, :, 2) ) ;
+                                tmp = tmp .* ( distanceVector(3, k1)*GradientTerms.directions(:, :, 3) + complementGDirections(:, :, 3) ) ;
+                                tmp = prod(tmp, 1) ./ factorialFactor ;
+                                
+                                % 0th order Taylor:
+                                taylorTerms(k1, 1) = GradientTerms.coefficients(ko, 1) ;
+                                
+                                % Higher orders
+                                for order = 2 : Options.expansionOrder + 1
+                                    taylorTerms(k1, order) = sum( GradientTerms.coefficients(ko, gradInd(order, 1):gradInd(order, 2)) .* tmp(1, gradInd(order, 1):gradInd(order, 2))) ;
+                                end
+                                
+                            end
+                        else
+                            for k1 = 1 : numPointsExtendedROI
+                                
+                                ko = GradientTerms.indexKey( associatedIEPs(k1) ) ; % IP ko corresponding to external extension point k1
+                                
+                                % the "dx*dx*dy*dy*dz"-type factor:
+                                tmp =          distanceVector(1, k1)*GradientTerms.directions(:, :, 1) + complementGDirections(:, :, 1) ;
+                                tmp = tmp .* ( distanceVector(2, k1)*GradientTerms.directions(:, :, 2) + complementGDirections(:, :, 2) ) ;
+                                tmp = tmp .* ( distanceVector(3, k1)*GradientTerms.directions(:, :, 3) + complementGDirections(:, :, 3) ) ;
+                                tmp = prod(tmp, 1) ./ factorialFactor ;
+                                
+                                % 0th order Taylor:
+                                taylorTerms(k1, 1) = GradientTerms.coefficients(ko, 1) ;
+                                
+                                % Higher orders
+                                for order = 2 : Options.expansionOrder + 1
+                                    taylorTerms(k1, order) = sum( GradientTerms.coefficients(ko, gradInd(order, 1):gradInd(order, 2)) .* tmp(1, gradInd(order, 1):gradInd(order, 2))) ;
+                                end
+                                
+                            end
+                        end
         
         if Options.isSavingInterimVar
             save( strcat(Options.name, '_taylorTerms'), 'taylorTerms' ) ;
