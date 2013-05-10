@@ -78,14 +78,14 @@ save_mat = params.save_mat;
 %% define directories
 if save_mat
     path_mat = [path_out '/matrix'];
-    mkdir(path_mat);
+    [s,mess,messid] = mkdir(path_mat);
 end
 
 path_nft = [path_out '/nifti'];
-mkdir(path_nft);
+[s,mess,messid] = mkdir(path_nft);
 
 TEMP = [path_out '/temp'];
-mkdir(TEMP);
+[s,mess,messid] = mkdir(TEMP);
 
 cd(TEMP);
 
@@ -102,7 +102,7 @@ res = par.res; % resolution in mm/pixel
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/rawdata']);
+    [s,mess,messid] = mkdir([path_mat '/rawdata']);
     save([path_mat '/rawdata/img.mat'],'img','-v7.3');
     save([path_mat '/rawdata/par.mat'],'par','-v7.3');
 end
@@ -121,12 +121,12 @@ end
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/combine']);
+    [s,mess,messid] = mkdir([path_mat '/combine']);
     save([path_mat '/combine/mag_cmb.mat'],'mag_cmb','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/combine']);
+[s,mess,messid] = mkdir([path_nft '/combine']);
 for echo =  1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),res);
     save_nii(nii,[path_nft '/combine/mag_te' num2str(echo) '.nii']);
@@ -145,12 +145,12 @@ mask = double(nii.img);
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/mask']);
+    [s,mess,messid] = mkdir([path_mat '/mask']);
     save([path_mat '/mask/mask.mat'],'mask','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/mask']);
+[s,mess,messid] = mkdir([path_nft '/mask']);
 copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 
@@ -215,12 +215,12 @@ end
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/unwrap']);
+    [s,mess,messid] = mkdir([path_mat '/unwrap']);
     save([path_mat '/unwrap/unph_cmb.mat'],'unph_cmb','-v7.3'); 
 end
 
 % save nifti
-mkdir([path_nft '/unwrap']);
+[s,mess,messid] = mkdir([path_nft '/unwrap']);
 for echo = 1:ne
     nii = make_nii(unph_cmb(:,:,:,echo),res);
     save_nii(nii,[path_nft '/unwrap/unph_te' num2str(echo) '.nii']);
@@ -239,14 +239,14 @@ R(fit_residual >= 5) = 0;
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/fit']);
+    [s,mess,messid] = mkdir([path_mat '/fit']);
     save([path_mat '/fit/tfs.mat'],'tfs','-v7.3');
     save([path_mat '/fit/fit_residual.mat'],'fit_residual','-v7.3');
     save([path_mat '/fit/R.mat'],'R','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/fit']);
+[s,mess,messid] = mkdir([path_nft '/fit']);
 nii = make_nii(tfs,res);
 save_nii(nii,[path_nft '/fit/tfs.nii']);
 nii = make_nii(fit_residual,res);
@@ -262,22 +262,15 @@ if sum(strcmp('sharp',lower(bkgrm)))
     [lfs, mask_ero] = sharp(tfs,mask.*R,par,ker_rad,tsvd);
     mask_final = mask_ero;
 
-    % inversion of susceptibility 
-    disp('--> (9/9) TV susceptibility inversion on SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
-   
     % save matrix
     if save_mat
-        mkdir([path_mat '/rmbkg']);
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
         save([path_mat '/rmbkg/lfs_sharp.mat'],'lfs','-v7.3');
         save([path_mat '/mask/mask_sharp_final.mat'],'mask_final','-v7.3');
- 
-        mkdir([path_mat '/inversion']);
-        save([path_mat '/inversion/sus_sharp.mat'],'sus','-v7.3');
     end
 
     % save nifti
-    mkdir([path_nft '/rmbkg/']);
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
     nii = make_nii(lfs,res);
     save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xy.nii']);
     nii = make_nii(permute(lfs,[1 3 2]),res);
@@ -287,7 +280,20 @@ if sum(strcmp('sharp',lower(bkgrm)))
     nii = make_nii(mask_final,res);
     save_nii(nii,[path_nft '/mask/mask_sharp_final.nii']);
 
-    mkdir([path_nft '/inversion']);
+    
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+   
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_sharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
     nii = make_nii(sus,res);
     save_nii(nii,[path_nft '/inversion/sus_sharp_xy.nii']);
     nii = make_nii(permute(sus,[1 3 2]),res);
@@ -303,22 +309,15 @@ if sum(strcmp('resharp',lower(bkgrm)))
     [lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
     mask_final = mask_ero;
 
-    % inversion of susceptibility 
-    disp('--> (9/9) TV susceptibility inversion on RE-SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
-   
     % save matrix
     if save_mat
-        mkdir([path_mat '/rmbkg']);
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
         save([path_mat '/rmbkg/lfs_resharp.mat'],'lfs','-v7.3');
         save([path_mat '/mask/mask_resharp_final.mat'],'mask_final','-v7.3');
- 
-        mkdir([path_mat '/inversion']);
-        save([path_mat '/inversion/sus_resharp.mat'],'sus','-v7.3');
     end
 
     % save nifti
-    mkdir([path_nft '/rmbkg/']);
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
     nii = make_nii(lfs,res);
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_xy.nii']);
     nii = make_nii(permute(lfs,[1 3 2]),res);
@@ -327,8 +326,21 @@ if sum(strcmp('resharp',lower(bkgrm)))
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_yz.nii']);
     nii = make_nii(mask_final,res);
     save_nii(nii,[path_nft '/mask/mask_resharp_final.nii']);
+end
 
-    mkdir([path_nft '/inversion']);
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on RE-SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+   
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_resharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
     nii = make_nii(sus,res);
     save_nii(nii,[path_nft '/inversion/sus_resharp_xy.nii']);
     nii = make_nii(permute(sus,[1 3 2]),res);
@@ -345,22 +357,15 @@ if sum(strcmp('esharp',lower(bkgrm)))
     lfs = esharp(tfs,mask.*R,Options);
     mask_final = mask.*R;
 
-    % inversion of susceptibility 
-    disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
-
     % save matrix
     if save_mat
-        mkdir([path_mat '/rmbkg']);
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
         save([path_mat '/rmbkg/lfs_esharp.mat'],'lfs','-v7.3');
         save([path_mat '/mask/mask_esharp_final.mat'],'mask_final','-v7.3');
- 
-        mkdir([path_mat '/inversion']);
-        save([path_mat '/inversion/sus_esharp.mat'],'sus','-v7.3');
     end
 
     % save nifti
-    mkdir([path_nft '/rmbkg/']);
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
     nii = make_nii(lfs,res);
     save_nii(nii,[path_nft '/rmbkg/lfs_esharp_xy.nii']);
     nii = make_nii(permute(lfs,[1 3 2]),res);
@@ -370,7 +375,19 @@ if sum(strcmp('esharp',lower(bkgrm)))
     nii = make_nii(mask_final,res);
     save_nii(nii,[path_nft '/mask/mask_esharp_final.nii']);
 
-    mkdir([path_nft '/inversion']);
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_esharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
     nii = make_nii(sus,res);
     save_nii(nii,[path_nft '/inversion/sus_esharp_xy.nii']);
     nii = make_nii(permute(sus,[1 3 2]),res);
@@ -399,22 +416,15 @@ if sum(strcmp('pdf',lower(bkgrm)))
     lfs = lfs.*mask_ero;
     mask_final = mask_ero;
 
-    % inversion of susceptibility 
-    disp('--> (9/9) TV susceptibility inversion on PDF...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
-
     % save matrix
     if save_mat
-        mkdir([path_mat '/rmbkg']);
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
         save([path_mat '/rmbkg/lfs_pdf.mat'],'lfs','-v7.3');
         save([path_mat '/mask/mask_pdf_final.mat'],'mask_final','-v7.3');
- 
-        mkdir([path_mat '/inversion']);
-        save([path_mat '/inversion/sus_pdf.mat'],'sus','-v7.3');
     end
 
     % save nifti
-    mkdir([path_nft '/rmbkg/']);
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
     nii = make_nii(lfs,res);
     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xy.nii']);
     nii = make_nii(permute(lfs,[1 3 2]),res);
@@ -424,7 +434,19 @@ if sum(strcmp('pdf',lower(bkgrm)))
     nii = make_nii(mask_final,res);
     save_nii(nii,[path_nft '/mask/mask_pdf_final.nii']);
 
-    mkdir([path_nft '/inversion']);
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on PDF...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_pdf.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
     nii = make_nii(sus,res);
     save_nii(nii,[path_nft '/inversion/sus_pdf_xy.nii']);
     nii = make_nii(permute(sus,[1 3 2]),res);

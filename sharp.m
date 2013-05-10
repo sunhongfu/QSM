@@ -9,7 +9,6 @@ function [ph_corr, mask_ero] = sharp(ph,mask,par,radius,t)
 %   PH_SHP:   local field after background removal (SHARP)
 %   MASK_ERO: new ROI after erosion
 
-disp('SHARP removing background phase');
 
 % t: TSVD threshold
 
