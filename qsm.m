@@ -328,7 +328,6 @@ if sum(strcmp('resharp',lower(bkgrm)))
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_yz.nii']);
     nii = make_nii(mask_final,res);
     save_nii(nii,[path_nft '/mask/mask_resharp_final.nii']);
-end
 
 
     % inversion of susceptibility 
