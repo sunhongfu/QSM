@@ -5,7 +5,7 @@ function qsm(path_in, path_out, params)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d*.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd
+%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd/QSM
 %   PARAMS     - parameter structure including fields below (!in small case!)
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
 %    .bkgrm    - background field removal method(s)        : {'sharp','resharp','esharp','pdf'}
@@ -21,7 +21,7 @@ if ~ exist('path_in','var') || isempty(path_in)
 end
 
 if ~ exist('path_out','var') || isempty(path_out)
-    path_out = pwd;
+    path_out = [pwd '/QSM'];
 end
 
 if ~ exist('params','var') || isempty(params)
@@ -76,6 +76,8 @@ save_mat = params.save_mat;
 
 
 %% define directories
+[s,mess,messid] = mkdir(path_out);
+
 if save_mat
     path_mat = [path_out '/matrix'];
     [s,mess,messid] = mkdir(path_mat);
