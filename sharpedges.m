@@ -49,6 +49,10 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 %           after the 1st iteration will be solved for again in the 2nd
 %           iteration using different IEPs. 
 %               default: false
+%	
+%	isDisplayingProgress
+%	    progress updates print to screen
+%		default: false
 %       
 %       The following options are more to save time during debugging than anything
 %       else since they essentially require running the code once in the
@@ -349,7 +353,6 @@ if isMappingHarmonicNeighbourhoods
         % Distance Calculations :
         % assign a portion of the IEPs to each available processor
         
-        disp('Progress: ')
         parfor cpu = 1 : Options.numCPU
             
             XoCPU = partXo{cpu} ;
