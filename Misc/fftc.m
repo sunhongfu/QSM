@@ -9,6 +9,6 @@ function [ dataArray ] = fftc( dataArray )
 %
 
 
-dataArray = fftshift( fftn( dataArray ) ) ; 
+dataArray = fftn( ifftshift( dataArray ) ) ; 
 
 end

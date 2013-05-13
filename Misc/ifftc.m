@@ -8,6 +8,6 @@ function [ dataArray ] = ifftc( dataArray )
 %   Returns IFFT of array F after applying the correct ifftshifts
 %
 
-dataArray = ifftn( ifftshift( ( dataArray ) ) ) ; 
+dataArray = fftshift( ifftn( ( dataArray ) ) ) ; 
 
 end
