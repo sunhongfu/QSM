@@ -88,11 +88,11 @@ if min( newGridDimensionVector ) < min( gridDimensionVector )
     for echo = 1 :numEcho
         for rx = 1 : numRx
             
-            fImg =  fftc( fftshift( imgIn(:,:,:, echo, rx) ) )  ;
+            fImg = fftshift( fftc( imgIn(:,:,:, echo, rx) ) ) ;
             
             fImg = fImg(midPoint(1) - offset(1):midPoint(1) + offset(1), midPoint(2) - offset(2) : midPoint(2) + offset(2),midPoint(3) - offset(3) : midPoint(3) + offset(3));
             
-            img  =  ifftshift( ifftc(fImg) ) ;
+            img  = ifftc( ifftshift( fImg ) ) ;
             
             imgOut(:,:,:,echo,rx) = img ;
             
@@ -113,11 +113,11 @@ if max( newGridDimensionVector ) > max( gridDimensionVector )
     for echo = 1 :numEcho
         for rx = 1 : numRx
             
-            fImg =  fftc( fftshift( imgIn(:,:,:, echo, rx) ) )  ;
+            fImg = fftshift( fftc( imgIn(:,:,:, echo, rx) ) ) ;
             
             fImg = padarray( fImg, padSize ) ;
             
-            img  =  ifftshift( ifftc(fImg) ) ;
+            img  = ifftc( ifftshift( fImg ) ) ;
             
             imgOut(:,:,:,echo,rx) = img ;
             
