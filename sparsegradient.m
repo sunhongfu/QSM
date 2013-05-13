@@ -39,7 +39,6 @@ function[GradientTerms] = sparsegradient( dataArray, ROI, gradientOrder, Options
 %
 % R Topfer topfer@ualberta.ca
 
-disp(' ')
 tic
 
 DEFAULT_VOXELSIZE = [1 1 1] ;
