@@ -1,4 +1,4 @@
-function[ localPhase ] = esharp(totalPhase, mask, Options)
+function[ extendedLocalPhase, sharpLocalPhase ] = esharp(totalPhase, mask, Options)
 %ESHARP - extended SHARP
 %
 %   ESHARP returns the local field map over the ROI provided
@@ -12,12 +12,8 @@ function[ localPhase ] = esharp(totalPhase, mask, Options)
 %
 %   Description
 %
-%   B = ESHARP(A,ROI) returns 
-%   
-%   [B, outputName] = ESHARP(A,ROI,reducedROI)
-%       also returns the filename where B was written to disk (done by
-%       default - to not bother writing to disk, set
-%       Options.isWritingToDisk = 'false' )
+%   [eLP       = ESHARP(A,ROI) returns the 'extended local phase'
+%   [eLP, sLP] = ESHARP(A,ROI) also returns 'sharp local phase'
 %   
 %   The following Option-fields are supported
 %
@@ -27,7 +23,6 @@ function[ localPhase ] = esharp(totalPhase, mask, Options)
 %       thresholdParameter
 %           SHARP regularization (TSVD) parameter
 %               default: 0.05
-%
 %
 %       radii
 %           radii of SMV kernel
@@ -105,12 +100,17 @@ sharpFilter( midPoint ) = sharpFilter( midPoint ) + 1 ;
 FFTSharpFilter          = fftc( sharpFilter ) ;
 
 % Deconv.
-tmp                        = fftc( reducedROI .* ifftc( fftc( sharpFilter ) .* fftc( totalPhase) ) ) ./ FFTSharpFilter ;
+tmp                   = fftc( reducedROI .* ifftc( fftc( sharpFilter ) .* fftc( totalPhase) ) ) ./ FFTSharpFilter ;
 tmp( FFTSharpFilter < tmpThresholdParameter ) = 0 ;
 
 localPhaseNoSVD       = reducedROI .* real( ifftc( tmp ) );
 backgroundPhaseNoSVD  = reducedROI .* (totalPhase - localPhaseNoSVD) ;
 
+
+% traditional SHARP
+tmp                   = fftc( reducedROI .* ifftc( fftc( sharpFilter ) .* fftc( totalPhase) ) ) ./ FFTSharpFilter ;
+tmp( FFTSharpFilter < Options.thresholdParameter ) = 0 ;
+sharpLocalPhase       = reducedROI .* real( ifftc( tmp ) ); 
 
 
 %% SHARP EDGES (Extrapolation)
@@ -128,7 +128,7 @@ localPhaseTSVD = mask .* ifftc( fTmpLocal) ;
 
 
 if isCroppingData
-localPhase = makeodd(localPhaseTSVD, 'isUndoing') ;
+extendedLocalPhase = makeodd(localPhaseTSVD, 'isUndoing') ;
 end
 
 
