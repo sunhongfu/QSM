@@ -1,16 +1,19 @@
-function sus = qsm(path_in, path_out, params)
+function qsm(path_in, path_out, params)
 %QSM Quantitative susceptibility mapping.
-%   SUS = QSM(PATH_IN, PATH_OUT, PARAMS) reconstructs susceptibility maps.
+%   QSM(PATH_IN, PATH_OUT, PARAMS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_IN    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d_R2s_01.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd
+%   PATH_IN    - directory of .fid from gemsme3d sequence  : pwd/gemsme3d*.fid
+%   PATH_OUT   - directory to save nifti and/or matrixes   : pwd/QSM
 %   PARAMS     - parameter structure including fields below (!in small case!)
-%    .ker_rad  - radius (mm) of RESHARP convolution kernel : 5
-%    .tik_reg  - Tikhonov regularization parameter         : 0.005
-%    .tv_reg   - Total variation regularization parameter  : 0.001
 %    .save_mat - whether to save matrixes (1) or not (0)   : 1
+%    .bkgrm    - background field removal method(s)        : {'sharp','resharp','esharp','pdf'}
+%    .ker_rad  - radius (mm) of RESHARP convolution kernel : 6
+%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
+%    .tsvd     - truncation of SVD for SHARP
+%    .tv_reg   - Total variation regularization parameter  : 0.0005
+
 
 %% default settings and prompts
 if ~ exist('path_in','var') || isempty(path_in)
@@ -18,59 +21,73 @@ if ~ exist('path_in','var') || isempty(path_in)
 end
 
 if ~ exist('path_out','var') || isempty(path_out)
-    path_out = pwd;
+    path_out = [pwd '/QSM'];
 end
 
 if ~ exist('params','var') || isempty(params)
     params = [];
 end
 
+if ~ isfield(params,'bkgrm')
+    params.bkgrm = {'sharp','resharp','esharp','pdf'};
+end
+
 if ~ isfield(params,'ker_rad')
-    params.ker_rad = 5;
+    params.ker_rad = 6;
 end
 
 if ~ isfield(params,'tik_reg')
-    params.tik_reg = 5e-3;
+    params.tik_reg = 1e-3;
+end
+
+if ~ isfield(params,'tsvd')
+    params.tsvd = 0.05;
 end
 
 if ~ isfield(params,'tv_reg')
-    params.tv_reg = 1e-3;
+    params.tv_reg = 5e-4;
 end
 
 if ~ isfield(params,'save_mat')
     params.save_mat = 1;
 end
 
+bkgrm    = params.bkgrm;
 ker_rad  = params.ker_rad;
 tik_reg  = params.tik_reg;
+tsvd     = params.tsvd;
 tv_reg   = params.tv_reg;
 save_mat = params.save_mat;
 
-fprintf(['\n' ...
-'Please confirm the settings of the following required parameters \n\n' ...
-'--> path_in  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
-'--> path_out -- directory to save nifti and/or matrixes   :  %s \n' ...
-'--> ker_rad  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
-'--> tik_reg  -- Tikhonov regularization parameter         :  %g \n' ...
-'--> tv_reg   -- Total variation regularization parameter  :  %g \n' ...
-'--> save_mat -- whether to save matrixes (1) or not (0)   :  %g \n\n' ...
-'Start in 10 sec, Ctrl-C to terminate!\n\n'], ...
-path_in, path_out, ker_rad, tik_reg, tv_reg, save_mat);
-
-pause(10);
+%fprintf(['\n' ...
+%'Please confirm the settings of the following required parameters \n\n' ...
+%'--> path_in  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
+%'--> path_out -- directory to save nifti and/or matrixes   :  %s \n' ...
+%'--> save_mat -- whether to save matrixes (1) or not (0)   :  %g \n' ...
+%'--> bkgrm    -- background field removal method(s)        :  %s \n' ...
+%'--> ker_rad  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
+%'--> tik_reg  -- Tikhonov regularization parameter         :  %g \n' ...
+%'--> tsvd     -- truncation level of tSVD for SHARP        :  %g \n' ...
+%'--> tv_reg   -- Total variation regularization parameter  :  %g \n' ...
+%'Start in 10 sec, Ctrl-C to terminate!\n\n'], ...
+%path_in, path_out, save_mat, bkgrm, ker_rad, tik_reg, tsvd, tv_reg);
+%
+%pause(10);
 
 
 %% define directories
+[s,mess,messid] = mkdir(path_out);
+
 if save_mat
     path_mat = [path_out '/matrix'];
-    mkdir(path_mat);
+    [s,mess,messid] = mkdir(path_mat);
 end
 
 path_nft = [path_out '/nifti'];
-mkdir(path_nft);
+[s,mess,messid] = mkdir(path_nft);
 
 TEMP = [path_out '/temp'];
-mkdir(TEMP);
+[s,mess,messid] = mkdir(TEMP);
 
 cd(TEMP);
 
@@ -79,16 +96,15 @@ cd(TEMP);
 disp('--> (1/9) reconstruct fid to complex img ...');
 [img,par] = reconfid(path_in);
 
-% keep only the first 5 echoes
-img = img(:,:,:,1:5,:);
-par.ne = 5;
+% keep only the first 4 echoes (last 15.2ms)
+img = img(:,:,:,1:4,:);
+par.ne = 4;
 [np,nv,nv2,ne,~] = size(img);
 res = par.res; % resolution in mm/pixel
 
-
 % save matrix
 if save_mat
-    mkdir([path_mat '/rawdata']);
+    [s,mess,messid] = mkdir([path_mat '/rawdata']);
     save([path_mat '/rawdata/img.mat'],'img','-v7.3');
     save([path_mat '/rawdata/par.mat'],'par','-v7.3');
 end
@@ -101,23 +117,28 @@ for echo = 1:ne
     mag_cmb(:,:,:,echo) = arrayrec(squeeze(img(:,:,:,echo,:)),1/2);
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TO DO: remove coil sense profile (Hammond paper)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % save matrix
 if save_mat
-    mkdir([path_mat '/combine']);
+    [s,mess,messid] = mkdir([path_mat '/combine']);
     save([path_mat '/combine/mag_cmb.mat'],'mag_cmb','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/combine']);
+[s,mess,messid] = mkdir([path_nft '/combine']);
 for echo =  1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),res);
     save_nii(nii,[path_nft '/combine/mag_te' num2str(echo) '.nii']);
 end
 
 
-%% generate mask from SOS combined magnitude of first echo
+%% generate mask from SOS combined magnitude of third echo
 disp('--> (3/9) extract brain volume and generate mask ...');
 setenv('path_nft', path_nft);
+%unix('bet $path_nft/combine/mag_te4.nii BET -f 0.1 -m -R');
 unix('bet $path_nft/combine/mag_te1.nii BET -f 0.5 -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -126,18 +147,21 @@ mask = double(nii.img);
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/mask']);
+    [s,mess,messid] = mkdir([path_mat '/mask']);
     save([path_mat '/mask/mask.mat'],'mask','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/mask']);
+[s,mess,messid] = mkdir([path_nft '/mask']);
 copyfile('BET_mask.nii',[path_nft '/mask/mask.nii']);
 
 
 %% combine phase channels
 disp('--> (4/9) combine rcvrs for phase ...');
+% (1) filter smooth the complex offsets
 ph_cmb = sense(img,par);
+% (2) unwrap the offsets and filter with medfilt3
+%ph_cmb = sense_med(img,par);
 
 % save matrix
 if save_mat
@@ -154,9 +178,8 @@ clear img;
 
 
 %% unwrap phase from each echo
-disp('--> (5/9) unwrap aliasing phase for each TE ...');
+disp('--> (5/9) unwrap aliasing phase for 4 TEs ...');
 
-% (1) PRELUDE:bash script
 bash_command = sprintf(['for ph in $path_nft/combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
@@ -176,24 +199,10 @@ for echo = 1:ne
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
-% (2) LAPLACIAN unwrapping
-% Options.voxelSize = par.res;
-% unph_cmb = lapunwrap(ph_cmb,Options);
 
 % check and correct for 2pi jump between echoes
 disp('--> (6/9) correct for potential 2pi jumps between TEs ...')
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (1) calucate the unph_diff directly
-% unph_diff = unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1);
-% (2) might be better to unwrap the ph_diff
-% ph_diff = angle(exp(1j*(unph_cmb(:,:,:,2) - unph_cmb(:,:,:,1))));
-% nii = make_nii(ph_diff,res);
-% save_nii(nii,'ph_diff.nii');
-% unix('prelude -a BET.nii -p ph_diff.nii -u unph_diff.nii -m BET_mask.nii -n 8');
-% unix('gunzip -f unph_diff.nii.gz');
-% nii = load_nii('unph_diff.nii');
-% unph_diff = double(nii.img);
-% (3) unph_diff is available using sense.m
+
 nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
 
@@ -208,12 +217,12 @@ end
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/unwrap']);
+    [s,mess,messid] = mkdir([path_mat '/unwrap']);
     save([path_mat '/unwrap/unph_cmb.mat'],'unph_cmb','-v7.3'); 
 end
 
 % save nifti
-mkdir([path_nft '/unwrap']);
+[s,mess,messid] = mkdir([path_nft '/unwrap']);
 for echo = 1:ne
     nii = make_nii(unph_cmb(:,:,:,echo),res);
     save_nii(nii,[path_nft '/unwrap/unph_te' num2str(echo) '.nii']);
@@ -228,18 +237,18 @@ disp('--> (7/9) magnitude weighted LS fit of phase to TE ...');
 
 % generate reliability map
 R = ones(size(fit_residual));
-R(fit_residual >= 10) = 0;
+R(fit_residual >= 5) = 0;
 
 % save matrix
 if save_mat
-    mkdir([path_mat '/fit']);
+    [s,mess,messid] = mkdir([path_mat '/fit']);
     save([path_mat '/fit/tfs.mat'],'tfs','-v7.3');
     save([path_mat '/fit/fit_residual.mat'],'fit_residual','-v7.3');
     save([path_mat '/fit/R.mat'],'R','-v7.3');
 end
 
 % save nifti
-mkdir([path_nft '/fit']);
+[s,mess,messid] = mkdir([path_nft '/fit']);
 nii = make_nii(tfs,res);
 save_nii(nii,[path_nft '/fit/tfs.nii']);
 nii = make_nii(fit_residual,res);
@@ -249,46 +258,200 @@ save_nii(nii,[path_nft '/fit/R.nii']);
 
 clear unph_cmb
 
+%% SHARP (tsvd: truncation threthold for TSVD)
+if sum(strcmp('sharp',lower(bkgrm)))
+    disp('--> (8/9) SHARP to remove background field ...');
+    [lfs, mask_ero] = sharp(tfs,mask.*R,par,ker_rad,tsvd);
+    mask_final = mask_ero;
 
-%% RESHARP (tik_reg: Tikhonov regularization parameter)
-disp('--> (8/9) RESHARP to remove background field ...');
-[lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
+        save([path_mat '/rmbkg/lfs_sharp.mat'],'lfs','-v7.3');
+        save([path_mat '/mask/mask_sharp_final.mat'],'mask_final','-v7.3');
+    end
 
-% save matrix
-if save_mat
-    mkdir([path_mat '/rmbkg']);
-    save([path_mat '/rmbkg/lfs.mat'],'lfs','-v7.3'); 
-    save([path_mat '/mask/mask_ero.mat'],'mask_ero','-v7.3'); 
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
+    nii = make_nii(lfs,res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xy.nii']);
+    nii = make_nii(permute(lfs,[1 3 2]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xz.nii']);
+    nii = make_nii(permute(lfs,[2 3 1]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_yz.nii']);
+    nii = make_nii(mask_final,res);
+    save_nii(nii,[path_nft '/mask/mask_sharp_final.nii']);
+
+    
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+   
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_sharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
+    nii = make_nii(sus,res);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_xy.nii']);
+    nii = make_nii(permute(sus,[1 3 2]),res);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_xz.nii']);
+    nii = make_nii(permute(sus,[2 3 1]),res);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_yz.nii']);
 end
 
-% save nifti
-mkdir([path_nft '/rmbkg/']);
-nii = make_nii(lfs,res);
-save_nii(nii,[path_nft '/rmbkg/lfs_xy_' num2str(tik_reg) '.nii']);
-nii = make_nii(permute(lfs,[1 3 2]),res);
-save_nii(nii,[path_nft '/rmbkg/lfs_xz_' num2str(tik_reg) '.nii']);
-nii = make_nii(permute(lfs,[2 3 1]),res);
-save_nii(nii,[path_nft '/rmbkg/lfs_yz_' num2str(tik_reg) '.nii']);
 
-nii = make_nii(mask_ero,res);
-save_nii(nii,[path_nft '/mask/mask_ero.nii']);
+%% RE-SHARP (tik_reg: Tikhonov regularization parameter)
+if sum(strcmp('resharp',lower(bkgrm)))
+    disp('--> (8/9) RE-SHARP to remove background field ...');
+    [lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
+    mask_final = mask_ero;
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
+        save([path_mat '/rmbkg/lfs_resharp.mat'],'lfs','-v7.3');
+        save([path_mat '/mask/mask_resharp_final.mat'],'mask_final','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
+    nii = make_nii(lfs,res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_resharp_xy.nii']);
+    nii = make_nii(permute(lfs,[1 3 2]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_resharp_xz.nii']);
+    nii = make_nii(permute(lfs,[2 3 1]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_resharp_yz.nii']);
+    nii = make_nii(mask_final,res);
+    save_nii(nii,[path_nft '/mask/mask_resharp_final.nii']);
 
 
-%% inversion of RESHARP
-disp('--> (9/9) Total variation susceptibility inversion ...');
-sus = tvdi(lfs, mask_ero, par, tv_reg, mag_cmb(:,:,:,5)); 
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on RE-SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+   
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_resharp.mat'],'sus','-v7.3');
+    end
 
-% save matrix
-if save_mat
-    mkdir([path_mat '/inversion']);
-    save([path_mat '/inversion/sus.mat'],'sus','-v7.3'); 
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
+    nii = make_nii(sus,res);
+    save_nii(nii,[path_nft '/inversion/sus_resharp_xy.nii']);
+    nii = make_nii(permute(sus,[1 3 2]),res);
+    save_nii(nii,[path_nft '/inversion/sus_resharp_xz.nii']);
+    nii = make_nii(permute(sus,[2 3 1]),res);
+    save_nii(nii,[path_nft '/inversion/sus_resharp_yz.nii']);
 end
 
-% save nifti
-mkdir([path_nft '/inversion']);
-nii = make_nii(sus,res);
-save_nii(nii,[path_nft '/inversion/sus_xy_' num2str(tv_reg) '.nii']);
-nii = make_nii(permute(sus,[1 3 2]),res);
-save_nii(nii,[path_nft '/inversion/sus_xz_' num2str(tv_reg) '.nii']);
-nii = make_nii(permute(sus,[2 3 1]),res);
-save_nii(nii,[path_nft '/inversion/sus_yz_' num2str(tv_reg) '.nii']);
+
+%% E-SHARP
+if sum(strcmp('esharp',lower(bkgrm)))
+    disp('--> (8/9) E-SHARP to remove background field ...');
+    Options.voxelSize = res;
+    lfs = esharp(tfs,mask.*R,Options);
+    mask_final = mask.*R;
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
+        save([path_mat '/rmbkg/lfs_esharp.mat'],'lfs','-v7.3');
+        save([path_mat '/mask/mask_esharp_final.mat'],'mask_final','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
+    nii = make_nii(lfs,res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_esharp_xy.nii']);
+    nii = make_nii(permute(lfs,[1 3 2]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_esharp_xz.nii']);
+    nii = make_nii(permute(lfs,[2 3 1]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_esharp_yz.nii']);
+    nii = make_nii(mask_final,res);
+    save_nii(nii,[path_nft '/mask/mask_esharp_final.nii']);
+
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_esharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
+    nii = make_nii(sus,res);
+    save_nii(nii,[path_nft '/inversion/sus_esharp_xy.nii']);
+    nii = make_nii(permute(sus,[1 3 2]),res);
+    save_nii(nii,[path_nft '/inversion/sus_esharp_xz.nii']);
+    nii = make_nii(permute(sus,[2 3 1]),res);
+    save_nii(nii,[path_nft '/inversion/sus_esharp_yz.nii']);
+end
+
+
+%% PDF
+if sum(strcmp('pdf',lower(bkgrm)))
+    disp('--> (8/9) PDF to remove background field ...');
+    lfs = pdf(tfs,mask.*R,par,mag_cmb(:,:,:,4));
+    % erode the edge
+    rx = round(ker_rad/res(1));
+    ry = round(ker_rad/res(2));
+    rz = round(ker_rad/res(3));
+    [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
+    h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+    ker = h/sum(h(:));
+    csh = [rx,ry,rz];
+    imsize = size(mask);
+    mask_tmp = circshift(real(ifftn(fftn(mask.*R).*fftn(ker,imsize))),-csh);
+    mask_ero = zeros(imsize);
+    mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 5 voxels error tolerance
+    lfs = lfs.*mask_ero;
+    mask_final = mask_ero;
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/rmbkg']);
+        save([path_mat '/rmbkg/lfs_pdf.mat'],'lfs','-v7.3');
+        save([path_mat '/mask/mask_pdf_final.mat'],'mask_final','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/rmbkg/']);
+    nii = make_nii(lfs,res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xy.nii']);
+    nii = make_nii(permute(lfs,[1 3 2]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xz.nii']);
+    nii = make_nii(permute(lfs,[2 3 1]),res);
+    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_yz.nii']);
+    nii = make_nii(mask_final,res);
+    save_nii(nii,[path_nft '/mask/mask_pdf_final.nii']);
+
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on PDF...');
+    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+
+    % save matrix
+    if save_mat
+        [s,mess,messid] = mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_pdf.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    [s,mess,messid] = mkdir([path_nft '/inversion']);
+    nii = make_nii(sus,res);
+    save_nii(nii,[path_nft '/inversion/sus_pdf_xy.nii']);
+    nii = make_nii(permute(sus,[1 3 2]),res);
+    save_nii(nii,[path_nft '/inversion/sus_pdf_xz.nii']);
+    nii = make_nii(permute(sus,[2 3 1]),res);
+    save_nii(nii,[path_nft '/inversion/sus_pdf_yz.nii']);
+end

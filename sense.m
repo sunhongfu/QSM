@@ -34,7 +34,7 @@ offsets = offsets./abs(offsets);
 
 
 for chan = 1:nrcvrs
-    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(5./res/2)*2+1); % 5mm size kernel
+    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./res/2)*2+1); 
     offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
 end
 
