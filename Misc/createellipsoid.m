@@ -37,11 +37,11 @@ if length(gridDimensionVector) == 1
 end
 
 if length(radii) == 1
-    radii = radii * [ 1 1 1 ];
+    radii = radii * [ 1 1 1 ] ;
 end
 
 if length(offset) == 1
-    offset = offset * [ 1 1 1 ];
+    offset = offset * [ 1 1 1 ] ;
 end
 
 

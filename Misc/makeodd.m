@@ -1,4 +1,4 @@
-function[dataArray] = makeodd(dataArray, option)
+function[dataArray] = makeodd(dataArray, option, finalGridDimensionVector)
 
 %MAKEODD returns dataArray with odd dimensions
 %   
@@ -6,8 +6,9 @@ function[dataArray] = makeodd(dataArray, option)
 %
 %   A = MAKEODD(A)
 %   A = MAKEODD(A, option)
+%   A = MAKEODD(A, option, gridDimensionVector) ;
 %
-%   returns array A with odd dimensions
+%   returns array A with odd dimensions.
 %   
 %   option
 %
@@ -16,7 +17,12 @@ function[dataArray] = makeodd(dataArray, option)
 %
 %       if 'isUndoing', odd dimensions are padded with a slice of zeros
 %           (default: make ODD!)
-
+%
+%       gridDimensionVector
+%           specifies final array size
+%           (default: minimum change from original size such that 'option'
+%           is satisfied)
+%
 
 if nargin < 2
     option = 'isShaving' ;
@@ -27,35 +33,36 @@ if strcmp(option, 'isUndoing')
     isPadding = true ;
 end
 
+
 %%
 
 gridDimensionVector = size( dataArray ) ;
+
 isOdd               = mod( gridDimensionVector, 2 ) ;
 isEven              = double(~isOdd) ;
 
+%%
 
-if isPadding
-        
-        if strcmp(option,'isUndoing')
-            %pad array to even dimensions
-            dataArray = padarray(dataArray, isOdd, 'post') ;
-        else
-            %pad array to odd dimensions
-            dataArray = padarray(dataArray, isEven, 'post') ;
-        end
-    
-        
+if nargin == 3
+    numSlices           = abs( gridDimensionVector - finalGridDimensionVector ) ;
 else
-        if isEven(1)
-            dataArray = dataArray( 1:end-1, :,:) ;
-        end
-        if isEven(2)
-            dataArray = dataArray( :,1:end-1, :) ;
-        end
-        if isEven(3)
-            dataArray = dataArray( :,:,1:end-1) ;
-        end
-        
+    
+    switch option
+        case 'isShaving'
+            numSlices = isEven ;
+        case 'isUndoing'
+            numSlices = isOdd ;
+    end
+end
+    
+    
+if isPadding
+    
+    dataArray = padarray(dataArray, numSlices, 'post') ;
+     
+else
+    
+    dataArray = dataArray( 1:end-numSlices(1), 1:end-numSlices(2),1:end-numSlices(3)) ;
         
 end
 

@@ -36,7 +36,7 @@ if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
 end
 
 % forloop to unwrap input phase in more than 3D formats
-[np, nv, nv2, ne, nrcvrs] = size(rawPhase);
+[np, nv, nv2, numEcho, numRx] = size(rawPhase);
 unwrappedPhase = zeros(size(rawPhase));
 
 GDV   = [np,nv,nv2];
@@ -45,7 +45,7 @@ tmp   = zeros( 2*GDV );
 k2    = sum( makekspace( 2*GDV, Options ).^2, 4) ;
 k2    = fftshift( k2 ) ;
 
-for i = 1:ne*nrcvrs
+for i = 1:numEcho*numRx
     %% initialize
     phase = squeeze(rawPhase(:,:,:,i)) ;
     
