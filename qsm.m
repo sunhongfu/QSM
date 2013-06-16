@@ -261,7 +261,7 @@ clear unph_cmb
 %% SHARP (tsvd: truncation threthold for TSVD)
 if sum(strcmp('sharp',lower(bkgrm)))
     disp('--> (8/9) SHARP to remove background field ...');
-    [lfs, mask_ero] = sharp(tfs,mask.*R,par,ker_rad,tsvd);
+    [lfs, mask_ero] = sharp(tfs,mask.*R,sus,ker_rad,tsvd);
     mask_final = mask_ero;
 
     % save matrix
@@ -286,7 +286,7 @@ if sum(strcmp('sharp',lower(bkgrm)))
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
    
     % save matrix
     if save_mat
@@ -308,7 +308,7 @@ end
 %% RE-SHARP (tik_reg: Tikhonov regularization parameter)
 if sum(strcmp('resharp',lower(bkgrm)))
     disp('--> (8/9) RE-SHARP to remove background field ...');
-    [lfs, mask_ero] = resharp(tfs,mask.*R,par,ker_rad,tik_reg);
+    [lfs, mask_ero] = resharp(tfs,mask.*R,res,ker_rad,tik_reg);
     mask_final = mask_ero;
 
     % save matrix
@@ -332,7 +332,7 @@ if sum(strcmp('resharp',lower(bkgrm)))
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on RE-SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
    
     % save matrix
     if save_mat
@@ -379,7 +379,7 @@ if sum(strcmp('esharp',lower(bkgrm)))
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
 
     % save matrix
     if save_mat
@@ -401,7 +401,7 @@ end
 %% PDF
 if sum(strcmp('pdf',lower(bkgrm)))
     disp('--> (8/9) PDF to remove background field ...');
-    lfs = pdf(tfs,mask.*R,par,mag_cmb(:,:,:,4));
+    lfs = pdf(tfs,mask.*R,res,mag_cmb(:,:,:,4));
     % erode the edge
     rx = round(ker_rad/res(1));
     ry = round(ker_rad/res(2));
@@ -438,7 +438,7 @@ if sum(strcmp('pdf',lower(bkgrm)))
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on PDF...');
-    sus = tvdi(lfs, mask_final, par, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
 
     % save matrix
     if save_mat

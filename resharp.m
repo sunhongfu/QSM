@@ -1,18 +1,16 @@
-function [lfs, mask_ero] = resharp(tfs,mask,par,ker_rad,tik_reg)
+function [lfs, mask_ero] = resharp(tfs,mask,res,ker_rad,tik_reg)
 %RESHARP Background field removal using RESHARP method.
 %   [LSF,MASK_ERO] = RESHARP(TSF,MASK,PAR,TIK_REG)
 %
 %   TFS         : input total field shift
 %   MASK        : binary mask defining the ROI
-%   PAR         : parameter sets of the sequence
+%   RES         : resolution of the images (vector)
 %   KER_RAD     : radius of convolution kernel size (mm)
 %   TIK_REG     : Tikhonov regularization parameter
 %   LFS         : local field shift after background removal
 %   MASK_ERO    : eroded mask after convolution
 
 imsize = size(tfs);
-% resolution pix/mm
-res = [par.lro/(par.np/2), par.lpe/par.nv, par.lpe2/par.nv2]*10; 
 
 % make spherical/ellipsoidal convolution kernel
 rx = round(ker_rad/res(1));
@@ -28,7 +26,7 @@ csh = [rx,ry,rz];
 % erode the mask
 mask_tmp = circshift(real(ifftn(fftn(mask).*fftn(ker,imsize))),-csh);
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 6-1=5 error points tolerent
+mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 5 points error tolerance
 
 
 % prepare convolution kernel: delta-ker

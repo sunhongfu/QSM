@@ -1,10 +1,10 @@
-function sus = tvdi(lfs, mask, par, TVWeight, magWeight)
+function sus = tvdi(lfs, mask, res, TVWeight, magWeight)
 %TVDI Total variation dipole inversion.
 %   SUS = tvdi(LFS,MASK,PAR,TV_REG)
 %
 %   LFS    : local field shift (field perturbation map)
 %   MASK   : binary mask defining ROI
-%   PAR    : parameter set for the sequence
+%   RES    : resolution of the images
 %   TV_REG : Total variation regularization paramter
 %   SUS    : susceptibility distribution after dipole inversion
 
@@ -19,16 +19,21 @@ W1 = W1/sum(W1(:))*sum(mask(:));
 % % ph = gamma*dB*TE
 % % dB/B = ph/(gamma*TE*B0)
 % % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-lfs = lfs/(2.675e8*4.7)*1e6; % unit ppm
+%lfs = lfs/(2.675e8*4.7)*1e6; % unit ppm
 
 % set the DC point of field in k-space to 0
-lfs = lfs-mean(lfs(:));
+lfs = lfs.*mask;
+lfs = lfs-sum(lfs(:))/sum(mask(:));
+lfs = lfs.*mask;
+mean(lfs(:))
 
 %%%%%%%%%%%%%%%%%%%%% needs scaling with FOV %%%%%%%%%%%%%%%%%%%%%%%
 % create K-space filter kernel D
-FOVx = par.lro;
-FOVy = par.lpe;
-FOVz = par.lpe2;
+
+FOV = res.*[np,nv,ns];
+FOVx = FOV(1);
+FOVy = FOV(2);
+FOVz = FOV(3);
 
 x = -np/2:np/2-1;
 y = -nv/2:nv/2-1;
