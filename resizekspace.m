@@ -69,28 +69,27 @@ end
 gridDimensionVector = gridDimensionVector(1:3) ;
 
 
-if size(resizeFactor <= 3 )
-    newGridDimensionVector = round(gridDimensionVector .* resizeFactor) ;
-end
+newGridDimensionVector = round(gridDimensionVector .* resizeFactor) ;
 
 imgOut = zeros( [newGridDimensionVector numEcho numRx] ) ;
 
-if min( newGridDimensionVector ) < min( gridDimensionVector )
+
+if max( gridDimensionVector - newGridDimensionVector ) > 0
 
     disp('cropping k-space...')
     
     % even-dimension array...
-    midPoint   = gridDimensionVector/2 +1 ;
+    midPoint   = gridDimensionVector/2 ;
     
-    offset = round(midPoint .* resizeFactor)
-    
+    offset      = midPoint - round(midPoint .* resizeFactor) + 1 ;
+    offset(2,:) = midPoint + round(midPoint .* resizeFactor) ;
     
     for echo = 1 :numEcho
         for rx = 1 : numRx
             
             fImg = fftshift( fftc( imgIn(:,:,:, echo, rx) ) ) ;
             
-            fImg = fImg(midPoint(1) - offset(1):midPoint(1) + offset(1), midPoint(2) - offset(2) : midPoint(2) + offset(2),midPoint(3) - offset(3) : midPoint(3) + offset(3));
+            fImg = fImg(offset(1,1):offset(2,1), offset(1,2) : offset(2,2),offset(1,3) : offset(2,3));
             
             img  = ifftc( ifftshift( fImg ) ) ;
             
@@ -101,7 +100,7 @@ if min( newGridDimensionVector ) < min( gridDimensionVector )
     
 end
 
-if max( newGridDimensionVector ) > max( gridDimensionVector )
+if min( gridDimensionVector - newGridDimensionVector ) < 0
     disp('zero-padding in k-space...')
     
     if isCroppingKSpace

@@ -6,5 +6,5 @@ function mat = dicoms2mat(path_in)
 lists = dir(path_in);
 
 for i = 3:numel(lists)
-    mat(:,:,i-2) = dicomread([path_in '/' lists(i).name]);
+    mat(:,:,i-2) = double( dicomread([path_in '/' lists(i).name]) );
 end
