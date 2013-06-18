@@ -13,7 +13,6 @@ TE  = par.te + (0:par.ne-1)*par.esp;
 TE1 = TE(1);
 TE2 = TE(2);
 
-
 img_diff = img(:,:,:,2,:)./img(:,:,:,1,:);
 ph_diff = img_diff./abs(img_diff);
 ph_diff_cmb = sum(abs(img(:,:,:,1,:)).*ph_diff,5);

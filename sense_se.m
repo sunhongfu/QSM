@@ -10,7 +10,7 @@ function img_cmb = sense_se(img,reso,cref,radi)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % reso = [0.5,0.752,2]; % (SWI 4.7T)
-% cref = 3; % (3rd channel for 4.7T)
+% cref = 3; % (3rd channel as reference coil for 4.7T)
 % radi = 3; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -19,7 +19,7 @@ function img_cmb = sense_se(img,reso,cref,radi)
 mag_sos =  sum(abs(img).^2,4);
 nii = make_nii(mag_sos,reso);
 save_nii(nii,'mag_sos.nii');
-% threshold relatively small to keep as much brain as possible  
+% BET threshold relatively small to keep as much brain as possible  
 ! bet mag_sos.nii BET_sos -f 0.01 -m -R;  
 ! gunzip -f BET_sos.nii.gz BET_sos_mask.nii.gz;
 nii = load_nii('BET_sos_mask.nii');

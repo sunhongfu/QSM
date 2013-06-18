@@ -13,19 +13,11 @@ function sus = tvdi(lfs, mask, res, TVWeight, magWeight)
 
 W1 = mask.*magWeight; % weights for data consistancy term
 W1 = W1/sum(W1(:))*sum(mask(:));
-% W1 = ones([np nv ns]);
-
-% % normalize lfs
-% % ph = gamma*dB*TE
-% % dB/B = ph/(gamma*TE*B0)
-% % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-%lfs = lfs/(2.675e8*4.7)*1e6; % unit ppm
 
 % set the DC point of field in k-space to 0
 lfs = lfs.*mask;
 lfs = lfs-sum(lfs(:))/sum(mask(:));
 lfs = lfs.*mask;
-mean(lfs(:))
 
 %%%%%%%%%%%%%%%%%%%%% needs scaling with FOV %%%%%%%%%%%%%%%%%%%%%%%
 % create K-space filter kernel D

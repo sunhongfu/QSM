@@ -34,11 +34,7 @@ dker = -ker;
 dker(rx+1,ry+1,rz+1) = 1-ker(rx+1,ry+1,rz+1);
 DKER = fftn(dker,imsize); % dker in Fourier domain
 
-% adding weights
-%Weight = Weight.*mask_ero;
-%% normalize the weight
-%W = Weight/sum(Weight(:))*sum(mask_ero(:));
-%
+
 % RESHARP with Tikhonov regularization   
 %   argmin ||MSfCFx - MSfCFy||2 + lambda||x||2 
 %   x:local field, y:total field
@@ -56,7 +52,6 @@ lfs = real(reshape(m,imsize)).*mask_ero;
 
 
     function y = Afun(x)
-%        y = H'*(H*x) + tik_reg*W(:).*x;
         y = H'*(H*x) + tik_reg*x;
         y = y(:);
     end
