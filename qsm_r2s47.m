@@ -35,8 +35,7 @@ if ~ exist('params','var') || isempty(params)
 end
 
 if ~ isfield(params,'bkgrm')
-%     params.bkgrm = {'sharp','resharp','esharp','pdf'};
-    params.bkgrm = {'resharp','pdf'};
+    params.bkgrm = {'sharp','resharp','pdf'};
 end
 
 if ~ isfield(params,'ker_rad')
@@ -62,24 +61,9 @@ end
 bkgrm    = params.bkgrm;
 ker_rad  = params.ker_rad;
 tik_reg  = params.tik_reg;
-%tsvd     = params.tsvd;
+tsvd     = params.tsvd;
 tv_reg   = params.tv_reg;
 save_mat = params.save_mat;
-
-%fprintf(['\n' ...
-%'Please confirm the settings of the following required parameters \n\n' ...
-%'--> path_in  -- directory of gemsme3d_R2s_01.fid rawdata  :  %s \n' ...
-%'--> path_out -- directory to save nifti and/or matrixes   :  %s \n' ...
-%'--> save_mat -- whether to save matrixes (1) or not (0)   :  %g \n' ...
-%'--> bkgrm    -- background field removal method(s)        :  %s \n' ...
-%'--> ker_rad  -- radius (mm) of RESHARP convolution kernel :  %g \n' ...
-%'--> tik_reg  -- Tikhonov regularization parameter         :  %g \n' ...
-%'--> tsvd     -- truncation level of tSVD for SHARP        :  %g \n' ...
-%'--> tv_reg   -- Total variation regularization parameter  :  %g \n' ...
-%'Start in 10 sec, Ctrl-C to terminate!\n\n'], ...
-%path_in, path_out, save_mat, bkgrm, ker_rad, tik_reg, tsvd, tv_reg);
-%
-%pause(10);
 
 
 %% define directories
@@ -115,7 +99,7 @@ end
 img = img(:,:,:,1:4,:);
 par.ne = 4;
 [np,nv,nv2,ne,~] = size(img);
-res = par.res; % resolution in mm/pixel
+voxelSize = par.res; % resolution in mm/pixel
 
 
 %% combine magnitude channels using marc's 'arrayrec.m'
@@ -138,7 +122,7 @@ end
 % save nifti
 mkdir([path_nft '/combine']);
 for echo =  1:ne
-    nii = make_nii(mag_cmb(:,:,:,echo),res);
+    nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,[path_nft '/combine/mag_te' num2str(echo) '.nii']);
 end
 
@@ -178,7 +162,7 @@ end
 
 % save nifti
 for echo =  1:ne
-    nii = make_nii(ph_cmb(:,:,:,echo),res);
+    nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,[path_nft '/combine/ph_te' num2str(echo) '.nii']);
 end
 
@@ -232,7 +216,7 @@ end
 % save nifti
 mkdir([path_nft '/unwrap']);
 for echo = 1:ne
-    nii = make_nii(unph_cmb(:,:,:,echo),res);
+    nii = make_nii(unph_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,[path_nft '/unwrap/unph_te' num2str(echo) '.nii']);
 end
 
@@ -263,66 +247,67 @@ end
 
 % save nifti
 mkdir([path_nft '/fit']);
-nii = make_nii(tfs,res);
+nii = make_nii(tfs,voxelSize);
 save_nii(nii,[path_nft '/fit/tfs.nii']);
-nii = make_nii(fit_residual,res);
+nii = make_nii(fit_residual,voxelSize);
 save_nii(nii,[path_nft '/fit/fit_residual.nii']);
-nii = make_nii(R,res);
+nii = make_nii(R,voxelSize);
 save_nii(nii,[path_nft '/fit/R.nii']);
 
 clear unph_cmb
 
+
 %% SHARP (tsvd: truncation threthold for TSVD)
-% if sum(strcmpi('sharp',bkgrm))
-%     disp('--> (8/9) SHARP to remove background field ...');
-%     [lfs, mask_ero] = sharp(tfs,mask.*R,res,ker_rad,tsvd);
-%     mask_final = mask_ero;
-% 
-%     % save matrix
-%     if save_mat
-%         mkdir([path_mat '/rmbkg']);
-%         save([path_mat '/rmbkg/lfs_sharp.mat'],'lfs','-v7.3');
-%         save([path_mat '/mask/mask_sharp_final.mat'],'mask_final','-v7.3');
-%     end
-% 
-%     % save nifti
-%     mkdir([path_nft '/rmbkg/']);
-%     nii = make_nii(lfs,res);
-%     save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xy.nii']);
-%     nii = make_nii(permute(lfs,[1 3 2]),res);
-%     save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xz.nii']);
-%     nii = make_nii(permute(lfs,[2 3 1]),res);
-%     save_nii(nii,[path_nft '/rmbkg/lfs_sharp_yz.nii']);
-%     nii = make_nii(mask_final,res);
-%     save_nii(nii,[path_nft '/mask/mask_sharp_final.nii']);
-% 
-%     
-% 
-%     % inversion of susceptibility 
-%     disp('--> (9/9) TV susceptibility inversion on SHARP...');
-%     sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
-%    
-%     % save matrix
-%     if save_mat
-%         mkdir([path_mat '/inversion']);
-%         save([path_mat '/inversion/sus_sharp.mat'],'sus','-v7.3');
-%     end
-% 
-%     % save nifti
-%     mkdir([path_nft '/inversion']);
-%     nii = make_nii(sus,res);
-%     save_nii(nii,[path_nft '/inversion/sus_sharp_xy.nii']);
-%     nii = make_nii(permute(sus,[1 3 2]),res);
-%     save_nii(nii,[path_nft '/inversion/sus_sharp_xz.nii']);
-%     nii = make_nii(permute(sus,[2 3 1]),res);
-%     save_nii(nii,[path_nft '/inversion/sus_sharp_yz.nii']);
-% end
+if sum(strcmpi('sharp',bkgrm))
+    disp('--> (8/9) SHARP to remove background field ...');
+    [lfs, mask_ero] = sharp(tfs,mask.*R,voxelSize,ker_rad,tsvd);
+    mask_final = mask_ero;
+
+    % save matrix
+    if save_mat
+        mkdir([path_mat '/rmbkg']);
+        save([path_mat '/rmbkg/lfs_sharp.mat'],'lfs','-v7.3');
+        save([path_mat '/mask/mask_sharp_final.mat'],'mask_final','-v7.3');
+    end
+
+    % save nifti
+    mkdir([path_nft '/rmbkg/']);
+    nii = make_nii(lfs,voxelSize);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xy.nii']);
+    nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_xz.nii']);
+    nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
+    save_nii(nii,[path_nft '/rmbkg/lfs_sharp_yz.nii']);
+    nii = make_nii(mask_final,voxelSize);
+    save_nii(nii,[path_nft '/mask/mask_sharp_final.nii']);
+
+    
+
+    % inversion of susceptibility 
+    disp('--> (9/9) TV susceptibility inversion on SHARP...');
+    sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
+   
+    % save matrix
+    if save_mat
+        mkdir([path_mat '/inversion']);
+        save([path_mat '/inversion/sus_sharp.mat'],'sus','-v7.3');
+    end
+
+    % save nifti
+    mkdir([path_nft '/inversion']);
+    nii = make_nii(sus,voxelSize);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_xy.nii']);
+    nii = make_nii(permute(sus,[1 3 2]),voxelSize);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_xz.nii']);
+    nii = make_nii(permute(sus,[2 3 1]),voxelSize);
+    save_nii(nii,[path_nft '/inversion/sus_sharp_yz.nii']);
+end
 
 
 %% RE-SHARP (tik_reg: Tikhonov regularization parameter)
 if sum(strcmpi('resharp',bkgrm))
     disp('--> (8/9) RE-SHARP to remove background field ...');
-    [lfs, mask_ero] = resharp(tfs,mask.*R,res,ker_rad,tik_reg);
+    [lfs, mask_ero] = resharp(tfs,mask.*R,voxelSize,ker_rad,tik_reg);
     mask_final = mask_ero;
 
     % save matrix
@@ -334,19 +319,19 @@ if sum(strcmpi('resharp',bkgrm))
 
     % save nifti
     mkdir([path_nft '/rmbkg/']);
-    nii = make_nii(lfs,res);
+    nii = make_nii(lfs,voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_xy.nii']);
-    nii = make_nii(permute(lfs,[1 3 2]),res);
+    nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_xz.nii']);
-    nii = make_nii(permute(lfs,[2 3 1]),res);
+    nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_resharp_yz.nii']);
-    nii = make_nii(mask_final,res);
+    nii = make_nii(mask_final,voxelSize);
     save_nii(nii,[path_nft '/mask/mask_resharp_final.nii']);
 
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on RE-SHARP...');
-    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
    
     % save matrix
     if save_mat
@@ -356,11 +341,11 @@ if sum(strcmpi('resharp',bkgrm))
 
     % save nifti
     mkdir([path_nft '/inversion']);
-    nii = make_nii(sus,res);
+    nii = make_nii(sus,voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_resharp_xy.nii']);
-    nii = make_nii(permute(sus,[1 3 2]),res);
+    nii = make_nii(permute(sus,[1 3 2]),voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_resharp_xz.nii']);
-    nii = make_nii(permute(sus,[2 3 1]),res);
+    nii = make_nii(permute(sus,[2 3 1]),voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_resharp_yz.nii']);
 end
 
@@ -368,7 +353,7 @@ end
 %% E-SHARP
 % if sum(strcmpi('esharp',bkgrm))
 %     disp('--> (8/9) E-SHARP to remove background field ...');
-%     Options.voxelSize = res;
+%     Options.voxelSize = voxelSize;
 %     lfs = esharp(tfs,mask.*R,Options);
 %     mask_final = mask.*R;
 % 
@@ -381,19 +366,19 @@ end
 % 
 %     % save nifti
 %     mkdir([path_nft '/rmbkg/']);
-%     nii = make_nii(lfs,res);
+%     nii = make_nii(lfs,voxelSize);
 %     save_nii(nii,[path_nft '/rmbkg/lfs_esharp_xy.nii']);
-%     nii = make_nii(permute(lfs,[1 3 2]),res);
+%     nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
 %     save_nii(nii,[path_nft '/rmbkg/lfs_esharp_xz.nii']);
-%     nii = make_nii(permute(lfs,[2 3 1]),res);
+%     nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
 %     save_nii(nii,[path_nft '/rmbkg/lfs_esharp_yz.nii']);
-%     nii = make_nii(mask_final,res);
+%     nii = make_nii(mask_final,voxelSize);
 %     save_nii(nii,[path_nft '/mask/mask_esharp_final.nii']);
 % 
 % 
 %     % inversion of susceptibility 
 %     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-%     sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
+%     sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
 % 
 %     % save matrix
 %     if save_mat
@@ -403,11 +388,11 @@ end
 % 
 %     % save nifti
 %     mkdir([path_nft '/inversion']);
-%     nii = make_nii(sus,res);
+%     nii = make_nii(sus,voxelSize);
 %     save_nii(nii,[path_nft '/inversion/sus_esharp_xy.nii']);
-%     nii = make_nii(permute(sus,[1 3 2]),res);
+%     nii = make_nii(permute(sus,[1 3 2]),voxelSize);
 %     save_nii(nii,[path_nft '/inversion/sus_esharp_xz.nii']);
-%     nii = make_nii(permute(sus,[2 3 1]),res);
+%     nii = make_nii(permute(sus,[2 3 1]),voxelSize);
 %     save_nii(nii,[path_nft '/inversion/sus_esharp_yz.nii']);
 % end
 
@@ -415,7 +400,7 @@ end
 %% PDF
 if sum(strcmpi('pdf',bkgrm))
     disp('--> (8/9) PDF to remove background field ...');
-    lfs = pdf(tfs,mask.*R,res,ker_rad,mag_cmb(:,:,:,4));
+    [lfs,mask_ero] = pdf(tfs,mask.*R,voxelSize,ker_rad,mag_cmb(:,:,:,4));
 
     % save matrix
     if save_mat
@@ -426,19 +411,19 @@ if sum(strcmpi('pdf',bkgrm))
 
     % save nifti
     mkdir([path_nft '/rmbkg/']);
-    nii = make_nii(lfs,res);
+    nii = make_nii(lfs,voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xy.nii']);
-    nii = make_nii(permute(lfs,[1 3 2]),res);
+    nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xz.nii']);
-    nii = make_nii(permute(lfs,[2 3 1]),res);
+    nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_yz.nii']);
-    nii = make_nii(mask_final,res);
+    nii = make_nii(mask_final,voxelSize);
     save_nii(nii,[path_nft '/mask/mask_pdf_final.nii']);
 
 
     % inversion of susceptibility 
     disp('--> (9/9) TV susceptibility inversion on PDF...');
-    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
+    sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
 
     % save matrix
     if save_mat
@@ -448,10 +433,10 @@ if sum(strcmpi('pdf',bkgrm))
 
     % save nifti
     mkdir([path_nft '/inversion']);
-    nii = make_nii(sus,res);
+    nii = make_nii(sus,voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_pdf_xy.nii']);
-    nii = make_nii(permute(sus,[1 3 2]),res);
+    nii = make_nii(permute(sus,[1 3 2]),voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_pdf_xz.nii']);
-    nii = make_nii(permute(sus,[2 3 1]),res);
+    nii = make_nii(permute(sus,[2 3 1]),voxelSize);
     save_nii(nii,[path_nft '/inversion/sus_pdf_yz.nii']);
 end

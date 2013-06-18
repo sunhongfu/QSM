@@ -1,11 +1,11 @@
-function [lfs,mask_ero] = pdf(tfs,mask,res,ker_rad,weight)
+function [lfs,mask_ero] = pdf(tfs,mask,voxelSize,ker_rad,weight)
 
 [np,nv,ns] = size(tfs);
 
 
 %%%%%%%%%%%%%%%%%%%%% needs scaling with FOV %%%%%%%%%%%%%%%%%%%%%%%
 % create K-space filter kernel D
-FOV = res.*[np,nv,ns];
+FOV = voxelSize.*[np,nv,ns];
 FOVx = FOV(1);
 FOVy = FOV(2);
 FOVz = FOV(3);
@@ -38,9 +38,9 @@ end
 
 
 % erode the edge
-rx = round(ker_rad/res(1));
-ry = round(ker_rad/res(2));
-rz = round(ker_rad/res(3));
+rx = round(ker_rad/voxelSize(1));
+ry = round(ker_rad/voxelSize(2));
+rz = round(ker_rad/voxelSize(3));
 [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
 h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
 ker = h/sum(h(:));
