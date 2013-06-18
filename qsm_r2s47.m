@@ -413,59 +413,59 @@ end
 
 
 %% PDF
-if sum(strcmpi('pdf',bkgrm))
-    disp('--> (8/9) PDF to remove background field ...');
-    lfs = pdf(tfs,mask.*R,res,mag_cmb(:,:,:,4));
-    % erode the edge
-    rx = round(ker_rad/res(1));
-    ry = round(ker_rad/res(2));
-    rz = round(ker_rad/res(3));
-    [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-    h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
-    ker = h/sum(h(:));
-    csh = [rx,ry,rz];
-    imsize = size(mask);
-    mask_tmp = circshift(real(ifftn(fftn(mask.*R).*fftn(ker,imsize))),-csh);
-    mask_ero = zeros(imsize);
-    mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 5 voxels error tolerance
-    lfs = lfs.*mask_ero;
-    mask_final = mask_ero;
-
-    % save matrix
-    if save_mat
-        mkdir([path_mat '/rmbkg']);
-        save([path_mat '/rmbkg/lfs_pdf.mat'],'lfs','-v7.3');
-        save([path_mat '/mask/mask_pdf_final.mat'],'mask_final','-v7.3');
-    end
-
-    % save nifti
-    mkdir([path_nft '/rmbkg/']);
-    nii = make_nii(lfs,res);
-    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xy.nii']);
-    nii = make_nii(permute(lfs,[1 3 2]),res);
-    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xz.nii']);
-    nii = make_nii(permute(lfs,[2 3 1]),res);
-    save_nii(nii,[path_nft '/rmbkg/lfs_pdf_yz.nii']);
-    nii = make_nii(mask_final,res);
-    save_nii(nii,[path_nft '/mask/mask_pdf_final.nii']);
-
-
-    % inversion of susceptibility 
-    disp('--> (9/9) TV susceptibility inversion on PDF...');
-    sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
-
-    % save matrix
-    if save_mat
-        mkdir([path_mat '/inversion']);
-        save([path_mat '/inversion/sus_pdf.mat'],'sus','-v7.3');
-    end
-
-    % save nifti
-    mkdir([path_nft '/inversion']);
-    nii = make_nii(sus,res);
-    save_nii(nii,[path_nft '/inversion/sus_pdf_xy.nii']);
-    nii = make_nii(permute(sus,[1 3 2]),res);
-    save_nii(nii,[path_nft '/inversion/sus_pdf_xz.nii']);
-    nii = make_nii(permute(sus,[2 3 1]),res);
-    save_nii(nii,[path_nft '/inversion/sus_pdf_yz.nii']);
-end
+% if sum(strcmpi('pdf',bkgrm))
+%     disp('--> (8/9) PDF to remove background field ...');
+%     lfs = pdf(tfs,mask.*R,res,mag_cmb(:,:,:,4));
+%     % erode the edge
+%     rx = round(ker_rad/res(1));
+%     ry = round(ker_rad/res(2));
+%     rz = round(ker_rad/res(3));
+%     [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
+%     h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+%     ker = h/sum(h(:));
+%     csh = [rx,ry,rz];
+%     imsize = size(mask);
+%     mask_tmp = circshift(real(ifftn(fftn(mask.*R).*fftn(ker,imsize))),-csh);
+%     mask_ero = zeros(imsize);
+%     mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 5 voxels error tolerance
+%     lfs = lfs.*mask_ero;
+%     mask_final = mask_ero;
+% 
+%     % save matrix
+%     if save_mat
+%         mkdir([path_mat '/rmbkg']);
+%         save([path_mat '/rmbkg/lfs_pdf.mat'],'lfs','-v7.3');
+%         save([path_mat '/mask/mask_pdf_final.mat'],'mask_final','-v7.3');
+%     end
+% 
+%     % save nifti
+%     mkdir([path_nft '/rmbkg/']);
+%     nii = make_nii(lfs,res);
+%     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xy.nii']);
+%     nii = make_nii(permute(lfs,[1 3 2]),res);
+%     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_xz.nii']);
+%     nii = make_nii(permute(lfs,[2 3 1]),res);
+%     save_nii(nii,[path_nft '/rmbkg/lfs_pdf_yz.nii']);
+%     nii = make_nii(mask_final,res);
+%     save_nii(nii,[path_nft '/mask/mask_pdf_final.nii']);
+% 
+% 
+%     % inversion of susceptibility 
+%     disp('--> (9/9) TV susceptibility inversion on PDF...');
+%     sus = tvdi(lfs, mask_final, res, tv_reg, mag_cmb(:,:,:,4)); 
+% 
+%     % save matrix
+%     if save_mat
+%         mkdir([path_mat '/inversion']);
+%         save([path_mat '/inversion/sus_pdf.mat'],'sus','-v7.3');
+%     end
+% 
+%     % save nifti
+%     mkdir([path_nft '/inversion']);
+%     nii = make_nii(sus,res);
+%     save_nii(nii,[path_nft '/inversion/sus_pdf_xy.nii']);
+%     nii = make_nii(permute(sus,[1 3 2]),res);
+%     save_nii(nii,[path_nft '/inversion/sus_pdf_xz.nii']);
+%     nii = make_nii(permute(sus,[2 3 1]),res);
+%     save_nii(nii,[path_nft '/inversion/sus_pdf_yz.nii']);
+% end
