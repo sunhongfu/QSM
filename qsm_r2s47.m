@@ -130,7 +130,7 @@ end
 %% generate mask from SOS combined magnitude of the last echo
 disp('--> (3/9) extract brain volume and generate mask ...');
 setenv('path_nft', path_nft);
-unix('bet $path_nft/combine/mag_te4.nii BET -f 0.1 -m -R');
+unix('bet $path_nft/combine/mag_te4.nii BET -f 0.3 -m -R');
 %unix('bet $path_nft/combine/mag_te1.nii BET -f 0.5 -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');

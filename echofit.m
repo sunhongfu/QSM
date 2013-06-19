@@ -30,7 +30,7 @@ lfs = sum(mag.*ph.*TE,1)./(sum(mag.*TE.*TE)+eps);
 lfs = reshape(lfs,[np nv ns]);
 
 lfs_dup = permute(repmat(lfs(:),[1 ne]),[2 1]);
-res = -reshape(sum((ph - lfs_dup.*TE).*mag.*(ph - lfs_dup.*TE),1)./sum(mag,1)*ne,[np nv ns]);% % normalize lfs ("/sum*ne")
+res = reshape(sum((ph - lfs_dup.*TE).*mag.*(ph - lfs_dup.*TE),1)./sum(mag,1)*ne,[np nv ns]);% % normalize lfs ("/sum*ne")
 res(isnan(res)) = 0;
 res(isinf(res)) = 0;
 
