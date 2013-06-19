@@ -8,7 +8,7 @@ function qsm_r2s47(path_in, path_out, params)
 %   PATH_OUT   - directory to save nifti and/or matrixes   : gemsme3d*.fid/QSM
 %   PARAMS     - parameter structure including fields below (!in small case!)
 %    .save_mat - whether to save matrixes (1) or not (0)   : 0
-%    .bkgrm    - background field removal method(s)        : {'resharp','pdf'}
+%    .bkgrm    - background field removal method(s)        : 'resharp'
 %    .ker_rad  - radius (mm) of RESHARP convolution kernel : 6
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
 %    .tsvd     - truncation of SVD for SHARP
@@ -35,7 +35,7 @@ if ~ exist('params','var') || isempty(params)
 end
 
 if ~ isfield(params,'bkgrm')
-    params.bkgrm = {'sharp','resharp','pdf'};
+    params.bkgrm = 'resharp';
 end
 
 if ~ isfield(params,'ker_rad')
