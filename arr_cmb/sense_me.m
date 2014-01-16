@@ -1,4 +1,4 @@
-function ph_cmb = sense(img,par)
+function ph_cmb = sense_me(img,par)
 %SENSE combination (for phase).
 %   PH_CMB = SENSE(IMG,PAR) combines phase from multiple receivers
 %
@@ -28,7 +28,7 @@ nii = load_nii('unph_diff.nii');
 unph_diff_cmb = double(nii.img);
 
 unph_te1_cmb = unph_diff_cmb*TE1/(TE2-TE1);
-offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,4]);
+offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
 offsets = offsets./abs(offsets);
 
 

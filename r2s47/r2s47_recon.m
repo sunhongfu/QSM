@@ -1,6 +1,6 @@
-function [img,par] = reconfid(PATH_IN)
-%RECONFID Reconstruct fid file.
-%   [IMG,PAR] = reconfid(PATH_IN)
+function [img,par] = r2s47_recon(PATH_IN)
+%R2S47_RECON Reconstruct fid file.
+%   [IMG,PAR] = r2s47_recon(PATH_IN)
 %
 %   PATH_IN : directory contains .fid file
 %   IMG     : raw complex images

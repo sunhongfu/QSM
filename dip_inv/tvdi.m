@@ -1,4 +1,4 @@
-function sus = tvdi(lfs, mask, res, TVWeight, magWeight)
+function sus = tvdi(lfs, mask, res, TVWeight, magWeight, Itnlim)
 %TVDI Total variation dipole inversion.
 %   SUS = tvdi(LFS,MASK,PAR,TV_REG)
 %
@@ -7,7 +7,11 @@ function sus = tvdi(lfs, mask, res, TVWeight, magWeight)
 %   RES    : resolution of the images
 %   TV_REG : Total variation regularization paramter
 %   SUS    : susceptibility distribution after dipole inversion
+%   ITNLIM : interation numbers of nlcg
 
+if ~ exist('Itnlim','var') || isempty(Itnlim)
+    Itnlim = 200;
+end
 
 [np,nv,ns] = size(lfs);
 
@@ -44,7 +48,7 @@ param.TV = cls_tv;
 param.TVWeight = TVWeight;     % TV penalty 
 param.mask = mask;
 
-param.Itnlim = 200;
+param.Itnlim = Itnlim;
 param.gradToll = 0;     % step size tolerance stopping criterea
 param.l1Smooth = eps; %1e-15; 	% smoothing parameter of L1 norm
 param.pNorm = 1;            % type of norm to use (i.e. L1 L2 etc)
