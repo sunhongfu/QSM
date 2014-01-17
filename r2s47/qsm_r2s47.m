@@ -16,7 +16,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
 %    .echo_t   - keep only the first 'echo_t' echoes       : 5
 %    .fit_t    - truncation level on fitting residual      : 5
-
+%    .sav_all  - save all the variables for debug (~ 0)    : 0
 
 %% default settings
 if ~ exist('path_in','var') || isempty(path_in)
@@ -76,6 +76,10 @@ if ~ isfield(options,'fit_t')
     options.fit_t = 5;
 end
 
+if ~ isfield(options,'sav_all')
+    options.sav_all = 0;
+end
+
 bet_thr = options.bet_thr;
 bkgrm   = options.bkgrm;
 smv_rad = options.smv_rad;
@@ -85,7 +89,7 @@ tv_reg  = options.tv_reg;
 tvdi_n  = options.tvdi_n;
 echo_t  = options.echo_t;
 fit_t   = options.fit_t;
-
+sav_all = options.sav_all;
 
 %% define directories
 path_qsm = [path_out '/QSM_R2s_v200'];
@@ -309,11 +313,17 @@ end
 % end
 
 
+%% save all variables for debugging purpose
+if sav_all
+    clear nii;
+    save('all.mat','-v7.3');
+end
+
+% save parameters used in the recon
+save('parameters.mat','options','-v7.3')
 
 
 %% clean up
 unix('rm *.nii*');
-clear nii
-save('all.mat','-v7.3');
 cd(init_dir);
 

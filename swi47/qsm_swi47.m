@@ -14,6 +14,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.4
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
+%    .sav_all  - save all the variables for debug          : 0
 
 
 %% default settings
@@ -65,6 +66,10 @@ if ~ isfield(options,'tvdi_n')
     options.tvdi_n = 200;
 end
 
+if ~ isfield(options,'sav_all')
+    options.sav_all = 0;
+end
+
 ref_coi = options.ref_coi;
 eig_rad = options.eig_rad;
 bet_thr = options.bet_thr;
@@ -72,6 +77,7 @@ smv_rad = options.smv_rad;
 tik_reg = options.tik_reg;
 tv_reg  = options.tv_reg;
 tvdi_n  = options.tvdi_n;
+sav_all = options.sav_all;
 
 
 %% define directories
@@ -167,9 +173,17 @@ nii = make_nii(sus_resharp,vox);
 save_nii(nii,'RESHARP/sus_resharp.nii');
 
 
+%% save all variables for debugging purpose
+if sav_all
+    clear nii;
+    save('all.mat','-v7.3');
+end
+
+% save parameters used in the recon
+save('parameters.mat','options','-v7.3')
+
+
 %% clean up
-clear nii;
-save('all.mat','-v7.3');
 unix('rm *.nii*');
 cd(init_dir);
 
