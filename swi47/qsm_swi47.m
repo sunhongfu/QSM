@@ -167,7 +167,7 @@ save_nii(nii,'RESHARP/lfs_resharp.nii');
 
 %% susceptibility inversion
 disp('--> TV susceptibility inversion ...');
-sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),tvdi_n);
+sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),[],tvdi_n);
 
 nii = make_nii(sus_resharp,vox);
 save_nii(nii,'RESHARP/sus_resharp.nii');
