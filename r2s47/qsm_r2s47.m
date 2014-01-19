@@ -137,9 +137,8 @@ end
 
 %% generate mask from combined magnitude of the first echo
 disp('--> extract brain volume and generate mask ...');
-setenv('path_qsm', path_qsm);
 setenv('bet_thr',num2str(bet_thr));
-unix('bet $path_qsm/combine/mag_te1.nii BET -f ${bet_thr} -m -R');
+unix('bet combine/mag_te1.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -162,7 +161,7 @@ clear img;
 %% unwrap phase from each echo
 disp('--> unwrap aliasing phase for all TEs ...');
 
-bash_command = sprintf(['for ph in $path_qsm/combine/ph*\n' ...
+bash_command = sprintf(['for ph in combine/ph*\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
 '	dir=`dirname $ph`;\n' ...
