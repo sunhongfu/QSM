@@ -225,7 +225,7 @@ if sum(strcmpi('pdf',bkgrm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on PDF...');
-    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), tvdi_n); 
+    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), [], tvdi_n); 
 
     % save nifti
     nii = make_nii(sus_pdf,voxelSize);
@@ -245,7 +245,7 @@ if sum(strcmpi('sharp',bkgrm))
     
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on SHARP...');
-    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t),tvdi_n); 
+    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), [], tvdi_n); 
    
     % save nifti
     nii = make_nii(sus_sharp,voxelSize);
@@ -267,7 +267,7 @@ if sum(strcmpi('resharp',bkgrm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
-    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), tvdi_n); 
+    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), [], tvdi_n); 
    
 
     % save nifti
