@@ -12,7 +12,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .bet_thr  - threshold for BET brain mask              : 0.4
+%    .bet_thr  - threshold for BET brain mask              : 0.3
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
 %    .sav_all  - save all the variables for debug          : 0
 
@@ -47,7 +47,7 @@ if ~ isfield(options,'eig_rad')
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.4;
+    options.bet_thr = 0.3;
 end
 
 if ~ isfield(options,'smv_rad')
@@ -167,7 +167,7 @@ save_nii(nii,'RESHARP/lfs_resharp.nii');
 
 %% susceptibility inversion
 disp('--> TV susceptibility inversion ...');
-sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),tvdi_n);
+sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),[],tvdi_n);
 
 nii = make_nii(sus_resharp,vox);
 save_nii(nii,'RESHARP/sus_resharp.nii');
