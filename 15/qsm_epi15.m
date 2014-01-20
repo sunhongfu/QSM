@@ -8,8 +8,8 @@ function qsm_epi15(meas_in, path_out, options)
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
 %   OPTIONS    - parameter structure including fields below
 %    .ph_corr  - N/2 deghosting phase correction method    : 3
-%    .ref_coi  - reference coil to use for phase combine   : 3
-%    .eig_rad  - radius (mm) of eig decomp kernel          : 4
+%    .ref_coi  - reference coil to use for phase combine   : 8
+%    .eig_rad  - radius (mm) of eig decomp kernel          : 5
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
@@ -60,11 +60,11 @@ if ~ isfield(options,'ph_corr')
 end
 
 if ~ isfield(options,'ref_coi')
-    options.ref_coi = 3;
+    options.ref_coi = 8;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -115,21 +115,22 @@ disp(['Start recon of ' filename]);
 disp('--> reconstruct to complex img ...');
 [img,params] = epi15_recon([pathstr,filesep,filename],ph_corr);
 
+
 % size and resolution
 [Nro,Npe,Ns,~] = size(img);
 FOV = params.protocol_header.sSliceArray.asSlice{1};
-vox = [FOV.dReadoutFOV/Nro, FOV.dPhaseFOV/Npe,  FOV.dThickness];
+voxelSize = [FOV.dReadoutFOV/Nro, FOV.dPhaseFOV/Npe,  FOV.dThickness];
 
 
-% % combine coils
-cref = 8; % reference coil
-radi = 5; % kernel size
+% combine RF coils
+disp('--> combine RF rcvrs ...');
+img_cmb = sense_se(img,voxelSize,ref_coi,eig_rad);
+mkdir('combine');
+nii = make_nii(abs(img_cmb),voxelSize);
+save_nii(nii,'combine/mag_cmb.nii');
+nii = make_nii(angle(img_cmb),voxelSize);
+save_nii(nii,'combine/ph_cmb.nii');
 
-img_cmb = sense_se(img,vox,cref,radi);
-nii = make_nii(abs(img_cmb),vox);
-save_nii(nii,'mag.nii');
-nii = make_nii(angle(img_cmb),vox);
-save_nii(nii,'ph.nii');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,69 +142,66 @@ save_nii(nii,'ph.nii');
 %     img_cmb(:,:,i) = coilCombinePar(img(:,:,i,:));
 % end
 % matlabpool close
-% nii = make_nii(abs(img_cmb),vox);
+% nii = make_nii(abs(img_cmb),voxelSize);
 % save_nii(nii,'mag.nii');
-% nii = make_nii(angle(img_cmb),vox);
+% nii = make_nii(angle(img_cmb),voxelSize);
 % save_nii(nii,'ph.nii');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-! bet mag.nii BET -f 0.4 -m -R;
-! gunzip -f BET.nii.gz;
-! gunzip -f BET_mask.nii.gz;
+% generate brain mask
+disp('--> extract brain volume and generate mask ...');
+setenv('bet_thr',num2str(bet_thr));
+unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
+unix('gunzip -f BET.nii.gz');
+unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
-img_cmb = img_cmb.*mask;
 
-! prelude -a mag.nii -p ph.nii -u unph.nii -m BET_mask.nii -n 8;
-! gunzip -f unph.nii.gz;
+
+% unwrap combined phase with PRELUDE
+disp('--> unwrap aliasing phase ...');
+unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+unix('gunzip -f unph.nii.gz');
 nii = load_nii('unph.nii');
 unph = double(nii.img);
 
 
 % background field removal
-ker_rad = 5; % convolution kernel radius size (mm)
-tik_reg = 1e-3; % tikhonov regularization
-
-% % (1) PDF
-% theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
-% [lfs,mask_ero] = pdf(tfs,mask,vox,ker_rad,abs(img_cmb),theta);
-% nii = make_nii(lfs,vox);
-% save_nii(nii,'lfs_pdf.nii');
-
-% (2) RESHARP
-[lph,mask_ero] = resharp(unph,mask,vox,ker_rad,tik_reg);
-nii = make_nii(mask_ero,vox);
-save_nii(nii,'mask_ero.nii');
-nii = make_nii(lph,vox);
-save_nii(nii,'lph.nii');
-
+disp('--> RESHARP to remove background field ...');
+mkdir('RESHARP');
+[lph_resharp,mask_resharp] = resharp(unph,mask,voxelSize,smv_rad,tik_reg);
 
 % normalize to ppm unit
 TE = params.protocol_header.alTE{1}/1e6;
 B_0 = params.protocol_header.m_flMagneticFieldStrength;
 gamma = 2.675222e8;
-lfs = lph/(gamma*TE*B_0)*1e6; % unit ppm
-nii = make_nii(lfs,vox);
-save_nii(nii,'lfs.nii');
+lfs_resharp = lph_resharp/(gamma*TE*B_0)*1e6; % unit ppm
+
+nii = make_nii(lfs_resharp,voxelSize);
+save_nii(nii,'RESHARP/lfs_resharp.nii');
 
 
 % susceptibility inversion
+disp('--> TV susceptibility inversion ...');
 % account for oblique slicing (head tilted)
 theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
+sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),theta,tvdi_n);
 
-tv_reg = 5e-4; % total variation regularization
-
-sus = tvdi(lfs,mask_ero,vox,tv_reg,abs(img_cmb),theta);
-% sus_final = sus.*mask_ero;
-% nii = make_nii(sus_final,vox);
-nii = make_nii(sus,vox);
-save_nii(nii,'sus.nii');
+nii = make_nii(sus_resharp,voxelSize);
+save_nii(nii,'RESHARP/sus_resharp.nii');
 
 
-% debugging purpose
-% save all the variables in all.mat
-save all.mat;
+% save all variables for debugging purpose
+if sav_all
+    clear nii;
+    save('all.mat','-v7.3');
+end
+
+% save parameters used in the recon
+save('parameters.mat','options','-v7.3')
 
 
+%% clean up
+unix('rm *.nii*');
 cd(init_dir);
