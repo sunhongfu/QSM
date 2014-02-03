@@ -117,7 +117,7 @@ disp('--> reconstruct to complex img ...');
 
 
 % size and resolution
-[Nro,Npe,Ns,~] = size(img);
+[Nro,Npe,~,~] = size(img);
 FOV = params.protocol_header.sSliceArray.asSlice{1};
 voxelSize = [FOV.dReadoutFOV/Nro, FOV.dPhaseFOV/Npe,  FOV.dThickness];
 

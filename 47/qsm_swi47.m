@@ -133,9 +133,8 @@ save_nii(nii,'combine/ph_cmb.nii');
 
 %% generate brain mask
 disp('--> extract brain volume and generate mask ...');
-setenv('path_qsm', path_qsm);
 setenv('bet_thr',num2str(bet_thr));
-unix('bet $path_qsm/combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
+unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -144,7 +143,7 @@ mask = double(nii.img);
 
 %% unwrap combined phase with PRELUDE
 disp('--> unwrap aliasing phase ...');
-unix('prelude -a $path_qsm/combine/mag_cmb.nii -p $path_qsm/combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
 unix('gunzip -f unph.nii.gz');
 nii = load_nii('unph.nii');
 unph = double(nii.img);

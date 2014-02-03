@@ -52,7 +52,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coi')
-    options.ref_coi = 3;
+    options.ref_coi = 4;
 end
 
 if ~ isfield(options,'eig_rad')
