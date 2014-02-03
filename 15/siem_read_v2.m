@@ -34,8 +34,10 @@ if fid > 0
     
     ll = length(FILENAMEfull);
     filename = FILENAMEfull;
-    tempname = FILENAME(1:end-8);        
-    tempname2 = strcat(tempname,'meas.asc');
+%     tempname = FILENAME(1:end-8);
+        tempname = FILENAME(1:end-4);        
+%     tempname2 = strcat(tempname,'meas.asc');
+        tempname2 = strcat(tempname,'.asc');
     %tempname2 = strcat(tempname,'MrProt.asc');
     rawfilename=FILENAMEfull;
     asciifilename =[PATHNAME tempname2];
