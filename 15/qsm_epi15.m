@@ -104,7 +104,7 @@ sav_all = options.sav_all;
 
 % define directories
 [~,name] = fileparts(filename);
-path_qsm = [path_out, filesep, name '_QSM_EPI15_v200'];
+path_qsm = [path_out, filesep, strrep(name,' ','_') '_QSM_EPI15_v200'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
