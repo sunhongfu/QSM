@@ -276,10 +276,10 @@ Nro = size(k,2);
 Npe = size(k,1);
 fw = 0.125;
 
-        x = hann(round(fw*Nro/2)*2);
-        x1 = [x(1:length(x)/2); ones([Nro-length(x),1]); x(length(x)/2+1:end)];
-        y = hann(round(fw*Npe/2)*2);
-        y1 = [y(1:length(y)/2); ones([Npe-length(y),1]); y(length(y)/2+1:end)];
+x = hann(round(fw*Nro/2)*2);
+x1 = [x(1:length(x)/2); ones([Nro-length(x),1]); x(length(x)/2+1:end)];
+y = hann(round(fw*Npe/2)*2);
+y1 = [y(1:length(y)/2); ones([Npe-length(y),1]); y(length(y)/2+1:end)];
         
 [X,Y] = meshgrid(x1,y1);
 Z = X.*Y;
