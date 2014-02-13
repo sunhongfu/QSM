@@ -202,6 +202,6 @@ end
 save('parameters.mat','options','-v7.3')
 
 
-%% clean up
+% clean up
 unix('rm *.nii*');
 cd(init_dir);
