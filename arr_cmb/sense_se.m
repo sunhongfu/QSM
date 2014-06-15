@@ -1,12 +1,12 @@
 function img_cmb_all = sense_se(img,vox,cref,radi)
 
-% sense_se: SENSE combination for Single Echo 
+% sense_se: SENSE combination
 % Walsh paper to estimate coil sensitivities
 
-% img: raw complex 4D images, 3D+receivers (+echoes)
-% vox: resolution of the images (vector)
+% img: raw complex 4D or 5D images, 3D + receivers (+ echoes)
+% vox: resolution of the images (vector), voxel size
 % cref: coil referece (coil number)
-% radi: radius of the kernel (default: 3)
+% radi: radius of the kernel (e.g. 3mm)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % vox = [0.5,0.752,2]; % (SWI 4.7T)
@@ -14,7 +14,7 @@ function img_cmb_all = sense_se(img,vox,cref,radi)
 % radi = 3; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% image size: readout, phase encoding, slice encoding, receivers
+% image size: readout, phase encoding, slice encoding, receivers, echoes
 [np,nv,nv2,nrcvrs,ne] = size(img);
 img_orig = img;
 img = img(:,:,:,:,1);

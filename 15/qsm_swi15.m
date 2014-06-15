@@ -5,7 +5,7 @@ function qsm_swi15(meas_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   MEAS_IN    - filename or directory of meas file(.out)  : *.out
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_SWI_vxxx
+%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_*
 %   OPTIONS    - parameter structure including fields below
 %    .ref_coi  - reference coil to use for phase combine   : 3
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 4
@@ -80,7 +80,7 @@ if ~ isfield(options,'tvdi_n')
 end
 
 if ~ isfield(options,'sav_all')
-    options.sav_all = 0;
+    options.sav_all = 1;
 end
 
 ref_coi = options.ref_coi;
@@ -95,7 +95,7 @@ sav_all = options.sav_all;
 
 % define directories
 [~,name] = fileparts(filename);
-path_qsm = [path_out, filesep, name '_QSM_SWI15_v200'];
+path_qsm = [path_out, filesep, 'lap_QSM_' name];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -150,36 +150,86 @@ mask = double(nii.img);
 
 
 % unwrap combined phase with PRELUDE
-disp('--> unwrap aliasing phase ...');
-unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
-unix('gunzip -f unph.nii.gz');
-nii = load_nii('unph.nii');
-unph = double(nii.img);
+%disp('--> unwrap aliasing phase ...');
+%unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+%unix('gunzip -f unph.nii.gz');
+%nii = load_nii('unph.nii');
+%unph = double(nii.img);
 
+% unwrap with Laplacian based method
+unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
+nii = make_nii(unph, voxelSize);
+save_nii(nii,'unph_lap.nii');
+
+% unph = unwrapPhase(abs(img_cmb), angle(img_cmb),size(img_cmb));
+% nii = make_nii(unph, voxelSize);
+% save_nii(nii,'unph.nii');
 
 % background field removal
-disp('--> RESHARP to remove background field ...');
-mkdir('RESHARP');
-[lph_resharp,mask_resharp] = resharp(unph,mask,voxelSize,smv_rad,tik_reg);
+%disp('--> RESHARP to remove background field ...');
+%mkdir('RESHARP');
+%[lph_resharp,mask_resharp] = resharp(unph,mask,voxelSize,smv_rad,tik_reg);
+
+%% LBV
+% lph_lbv = LBV(iFreq,Mask,matrix_size,voxel_size,tol,peel,depth,N1,N2,N3)
+lph_lbv = LBV(unph,mask,size(unph),voxelSize,0.01,2); % strip 2 layers
 
 % normalize to ppm unit
 TE = params.protocol_header.alTE{1}/1e6;
 B_0 = params.protocol_header.m_flMagneticFieldStrength;
 gamma = 2.675222e8;
-lfs_resharp = lph_resharp/(gamma*TE*B_0)*1e6; % unit ppm
 
-nii = make_nii(lfs_resharp,voxelSize);
-save_nii(nii,'RESHARP/lfs_resharp.nii');
+%lfs_resharp = lph_resharp/(gamma*TE*B_0)*1e6; % unit ppm
+%nii = make_nii(lfs_resharp,voxelSize);
+%save_nii(nii,'RESHARP/lfs_resharp.nii');
 
+lfs_lbv = lph_lbv/(gamma*TE*B_0)*1e6; % unit ppm
+mkdir('LBV');
+nii = make_nii(lfs_lbv,voxelSize);
+save_nii(nii,'LBV/lfs_lbv.nii');
 
 % susceptibility inversion
 disp('--> TV susceptibility inversion ...');
 % account for oblique slicing (head tilted)
-theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
-sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),theta,tvdi_n);
+% theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
+sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
+if ~ isfield(sNormal,'dSag')
+    sNormal.dSag = 0;
+end
+if ischar(sNormal.dSag)
+    sNormal.dSag = 0;
+end
+if ~ isfield(sNormal,'dCor')
+    sNormal.dCor = 0;
+end
+if ischar(sNormal.dCor)
+    sNormal.dCor = 0;
+end
+if ~ isfield(sNormal,'dTra')
+    sNormal.dTra = 0;
+end
+if ischar(sNormal.dTra)
+    sNormal.dTra = 0;
+end
+nor_vec = [sNormal.dSag, sNormal.dCor, sNormal.dTra];
 
-nii = make_nii(sus_resharp,voxelSize);
-save_nii(nii,'RESHARP/sus_resharp.nii');
+%sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),nor_vec,tvdi_n);
+%nii = make_nii(sus_resharp,voxelSize);
+%save_nii(nii,'RESHARP/sus_resharp.nii');
+
+
+% read in eroded mask from LBV
+listing = dir('mask*.bin');
+filename = listing.name;
+fid = fopen(filename);
+mask_lbv = fread(fid,'int');
+mask_lbv = reshape(mask_lbv,size(mask));
+fclose all;
+
+sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,abs(img_cmb),nor_vec,tvdi_n);
+nii = make_nii(sus_lbv,voxelSize);
+save_nii(nii,'LBV/sus_lbv_FROMnormal.nii');
+
 
 
 % save all variables for debugging purpose
@@ -193,5 +243,5 @@ save('parameters.mat','options','-v7.3')
 
 
 %% clean up
-unix('rm *.nii*');
+% unix('rm *.nii*');
 cd(init_dir);

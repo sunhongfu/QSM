@@ -1,4 +1,4 @@
-function sus = tvdi(lfs, mask, vox, tv_reg, weights,theta, Itnlim)
+function sus = tvdi(lfs, mask, vox, tv_reg, weights, nor_vec, Itnlim)
 %TVDI Total variation dipole inversion.
 
 % Method is similar to Appendix in the following paper
@@ -14,11 +14,11 @@ function sus = tvdi(lfs, mask, vox, tv_reg, weights,theta, Itnlim)
 %   VOX    : voxel size, e.g. [1 1 1] for isotropic resolution
 %   TV_REG : Total Variation regularization paramter, e.g. 5e-4
 %   WEIGHTS: weights for the data consistancy term
-%   THETA  : angle to axial plane, 0 by default for axial slices
+%   NOR_VEC: normal vector of the imaging plane
 %   ITNLIM : interation numbers of nlcg
 
-if ~ exist('theta','var') || isempty(theta)
-    theta = 0;
+if ~ exist('nor_vec','var') || isempty(nor_vec)
+    nor_vec = [0, 0, 1]; % PURE axial slices
 end
 
 if ~ exist('Itnlim','var') || isempty(Itnlim)
@@ -27,7 +27,7 @@ end
 
 [Nx,Ny,Nz] = size(lfs);
 
-% weights for data consistancy term (normalize)
+% weights for data consistancy term (normalized)
 W = mask.*weights;
 W = W/sum(W(:))*sum(mask(:));
 
@@ -38,6 +38,7 @@ lfs = lfs-sum(lfs(:))/sum(mask(:));
 lfs = lfs.*mask;
 
 % create K-space filter kernel D
+%%%%% make this a seperate function in the future
 FOV = vox.*[Nx,Ny,Nz];
 FOVx = FOV(1);
 FOVy = FOV(2);
@@ -56,43 +57,81 @@ D(floor(Nx/2+1),floor(Ny/2+1),floor(Nz/2+1)) = 0;
 % rotate the kernel to match the angle of acqisition
 % the following is just an example of how to rotate
 % it has to be adjusted to rotate accordingly
-if abs(theta) >= 0.01
-    disp('rotate dipole kernel along first dimension axis');
-    [X,Y,Z] = ndgrid(x,y,z);
-    rotM = [1,0,0; 0,cos(theta),-sin(theta); 0,sin(theta),cos(theta)];
 
-    afterR = rotM*[X(:)' ; Y(:)' ; Z(:)'];
-    finalM = afterR + repmat([Nx/2+1;Ny/2+1;Nz/2+1],[1 Nx*Ny*Nz]);
-    Index = finalM;
+% theta = -acos(nor_vec(3));
 
-    IndexX = Index(1,:);
-    IndexY = Index(2,:);
-    IndexZ = Index(3,:);
+% if abs(theta) >= 0.01
+%     disp('rotate dipole kernel along first dimension axis');
+%     [X,Y,Z] = ndgrid(x,y,z);
+%     rotM = [1,0,0; 0,cos(theta),-sin(theta); 0,sin(theta),cos(theta)];
 
-    IndexX(IndexX<=1) = 1;
-    IndexY(IndexY<=1) = 1;
-    IndexZ(IndexZ<=1) = 1;
+%     afterR = rotM*[X(:)' ; Y(:)' ; Z(:)'];
+%     finalM = afterR + repmat([Nx/2+1;Ny/2+1;Nz/2+1],[1 Nx*Ny*Nz]);
+%     Index = finalM;
 
-    IndexX(IndexX>Nx) = Nx;
-    IndexY(IndexY>Ny) = Ny;
-    IndexZ(IndexZ>Nz) = Nz;
+%     IndexX = Index(1,:);
+%     IndexY = Index(2,:);
+%     IndexZ = Index(3,:);
 
-    % bilinear interpolation
-    D_r = zeros(size(D));
-    for i = 1:length(IndexX)
-        ix = IndexX(i);
-        iy = IndexY(i);
-        iz = IndexZ(i);
-        d = iz - floor(iz);
-        d1 = iy - floor(iy);
-        D_r(i) = D(ix,floor(iy),floor(iz))*(1-d)*(1-d1) + D(ix,floor(iy),ceil(iz))*d*(1-d1)...
-            + D(ix,ceil(iy),floor(iz))*d1*(1-d) + D(ix,ceil(iy),ceil(iz))*d*d1;
-    end
+%     IndexX(IndexX<=1) = 1;
+%     IndexY(IndexY<=1) = 1;
+%     IndexZ(IndexZ<=1) = 1;
 
-    D = D_r;
+%     IndexX(IndexX>Nx) = Nx;
+%     IndexY(IndexY>Ny) = Ny;
+%     IndexZ(IndexZ>Nz) = Nz;
+
+%     % bilinear interpolation
+%     D_r = zeros(size(D));
+%     for i = 1:length(IndexX)
+%         ix = IndexX(i);
+%         iy = IndexY(i);
+%         iz = IndexZ(i);
+%         d = iz - floor(iz);
+%         d1 = iy - floor(iy);
+%         D_r(i) = D(ix,floor(iy),floor(iz))*(1-d)*(1-d1) + D(ix,floor(iy),ceil(iz))*d*(1-d1)...
+%             + D(ix,ceil(iy),floor(iz))*d1*(1-d) + D(ix,ceil(iy),ceil(iz))*d*d1;
+%     end
+
+%     D = D_r;
+% end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% rotate the kernel
+if ~ isequal(nor_vec,[0 0 1])
+    R = rotationmatrix([0 0 1], nor_vec); % Rotation Matrix, from [0 0 1] to nor_vec
+   % R = rotationmatrix(nor_vec,[0 0 1]);
+	[X,Y,Z] = ndgrid(x,y,z);
+	afterR = R*[X(:)' ; Y(:)' ; Z(:)']; % rotate about the 0 origin
+	finalM = afterR + repmat([Nx/2+1;Ny/2+1;Nz/2+1],[1 Nx*Ny*Nz]); % translation
+	Index = finalM;
+
+	% new Index corresponding to old one
+	IndexX = Index(1,:);
+	IndexY = Index(2,:);
+	IndexZ = Index(3,:);
+
+	IndexX(IndexX<=1) = 1;
+	IndexY(IndexY<=1) = 1;
+	IndexZ(IndexZ<=1) = 1;
+
+	IndexX(IndexX>Nx) = Nx;
+	IndexY(IndexY>Ny) = Ny;
+	IndexZ(IndexZ>Nz) = Nz;
+
+
+	% D kernel after rotation
+	D_r = interpn(D,IndexX,IndexY,IndexZ,'cubic');
+	D_r = reshape(D_r,size(D));
+
+	D = D_r;
+	nii = make_nii(D,vox);
+	save_nii(nii,'D.nii');
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 D = fftshift(D);
 
@@ -133,4 +172,14 @@ sus = real(sus).*mask;
 % don't mask it, instead, use the following:
 % sus = real(sus);
 
+end
+
+
+% Rodrigues' rotation formula
+function R = rotationmatrix(u,v)
+    uvangle=acos(dot(u,v)); %calculate the angle between u and v
+    k=cross(u,v); %calculate the cross product between u and v
+    k=k./norm(k);
+    kx=[0 -k(1,3) k(1,2);k(1,3) 0 -k(1,1);-k(1,2) k(1,1) 0]; %the cross product in matrix form
+    R=eye(3,3)+(kx.*sin(uvangle))+((1-cos(uvangle))*kx^2); %Calculate the rotation matrix with Rodrigues' rotation formula
 end
