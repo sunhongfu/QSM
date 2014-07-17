@@ -17,8 +17,9 @@ if Pars.nv2>1 % If data is 3D, follow method to remove unwanted data points
         % 3D 4 RCVR data is ordered differently than 2D, so requires
         % different matrix reshaping. 
         cpxdata=reshape(cpxdata,[],Pars.nv2*Pars.RCVRS_);
-        cpxdata=cpxdata(8:end,:);
-        
+        % cpxdata=cpxdata(8:end,:);
+        cpxdata=cpxdata(15:end,:);  %%% HONGFU added
+
         %In 3D data, 4 RCVRS 
         cpxdata1=cpxdata(:,1:4:end); % RCVR 1
         cpxdata2=cpxdata(:,2:4:end); % RCVR 2
@@ -84,7 +85,8 @@ else  %If data is 2D
     
     if strcmp(Pars.seqfil,'ge3d')  % Amir's 2D sequence
         if ebytes==4  % Should this only be for 1 RCVR???
-            cpxdata=cpxdata(1:end-7,:);
+            % cpxdata=cpxdata(1:end-7,:);
+            cpxdata=cpxdata(8:end,:);  %%% HONGFU'S fix
         end
 
         if Pars.RCVRS_==1
@@ -151,7 +153,7 @@ else  %If data is 2D
         cpxdata=rot90(cpxdata);  %GIVING MEMORY ERRORS!!!
         cpxdata=complex(cpxdata(:,1),cpxdata(:,2));
         
-        cpxdata=cpxdata(1:end-7,:);
+        % cpxdata=cpxdata(1:end-7,:);   %%% HONGFU commented out
         f1=cpxdata(:,1); 
 
         clear cpxdata
