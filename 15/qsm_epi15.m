@@ -15,7 +15,7 @@ function qsm_epi15(meas_in, path_out, options)
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.4
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
-%    .sav_all  - save all the variables for debug          : 0
+%    .sav_all  - save all the variables for debug          : 1
 
 if ~ exist('meas_in','var') || isempty(meas_in)
     listing = dir([pwd '/*.out']);
@@ -68,7 +68,7 @@ if ~ isfield(options,'eig_rad')
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.4;
+    options.bet_thr = 0.3;
 end
 
 if ~ isfield(options,'smv_rad')
@@ -166,6 +166,11 @@ unix('gunzip -f unph.nii.gz');
 nii = load_nii('unph.nii');
 unph = double(nii.img);
 
+% unwrap with Laplacian based method
+% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
+% nii = make_nii(unph, voxelSize);
+% save_nii(nii,'unph_lap.nii');
+
 
 % background field removal
 disp('--> RESHARP to remove background field ...');
@@ -185,23 +190,44 @@ save_nii(nii,'RESHARP/lfs_resharp.nii');
 % susceptibility inversion
 disp('--> TV susceptibility inversion ...');
 % account for oblique slicing (head tilted)
-theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
-sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),theta,tvdi_n);
+% theta = -acos(params.protocol_header.sSliceArray.asSlice{1}.sNormal.dTra);
+sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
+if ~ isfield(sNormal,'dSag')
+    sNormal.dSag = 0;
+end
+if ischar(sNormal.dSag)
+    sNormal.dSag = 0;
+end
+if ~ isfield(sNormal,'dCor')
+    sNormal.dCor = 0;
+end
+if ischar(sNormal.dCor)
+    sNormal.dCor = 0;
+end
+if ~ isfield(sNormal,'dTra')
+    sNormal.dTra = 0;
+end
+if ischar(sNormal.dTra)
+    sNormal.dTra = 0;
+end
+nor_vec = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
 
+% sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),theta,tvdi_n);
+[sus_resharp,residual] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),nor_vec,tvdi_n);
 nii = make_nii(sus_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp.nii');
 
 
 % save all variables for debugging purpose
-if sav_all
+% if sav_all
     clear nii;
     save('all.mat','-v7.3');
-end
+% end
 
 % save parameters used in the recon
 save('parameters.mat','options','-v7.3')
 
 
 % clean up
-unix('rm *.nii*');
+% unix('rm *.nii*');
 cd(init_dir);
