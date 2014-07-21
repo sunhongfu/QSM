@@ -25,34 +25,21 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 %       voxelSize
 %               default: [1 1 1] (isotropic)
 %
-%       aspectRatio
-%               default: determined by voxelSize 
-%
 %       name
 %           (of .mat where variables are saved)
 %               default: 'sharpEdgesResults'
-%
-%       numIterations
-%           convergence is examined after the first iteration: points for
-%           which the series didn't intially converge will be re-evaluated
-%           at iteration 2 after incorporating the points for which the
-%           solver did converge
-%               default: 1
 %
 %       numCPU
 %           specifies number of processing units used for parallel
 %           computation.
 %               default: matlabpool ~ whatever is available
 %
-%       isUsingConvergenceCriterion 
-%           points for which the series does not appear to be converging
-%           after the 1st iteration will be solved for again in the 2nd
-%           iteration using different IPs. 
-%               default: false
-%              
 %       isDisplayingProgress
 %           incremental progress printed to screen
 %           default: false
+%
+%
+%
 %   
 %       The following options are more to save time during debugging than anything
 %       else since they essentially require running the code once in the
@@ -95,25 +82,14 @@ function[ EdgeOut ] = sharpedges(dataArray, ROI, reducedROI, Options)
 % R Topfer 2012     topfer@ualberta.ca
 %
 
-% TODO
-% Easy final step:
-% Examine points outside 'harmonic neighbourhood'
-% Rather than perform 2nd iteration, simply assign them the bkgr field of
-% the nearest valid point (i.e. 0th order expansion)
-%
-% Even/Odd dimensions compatibility
-
 
 %% constants
 
 DEFAULT_NAME                            = 'sharpEdgesResults' ;
 DEFAULT_EXPANSIONORDER                  = 2 ;
-DEFAULT_NUMITERATIONS                   = 1 ;
 DEFAULT_NUMCPU                          = parcluster ;
 DEFAULT_NUMCPU                          = DEFAULT_NUMCPU.NumWorkers ;
 DEFAULT_VOXELSIZE                       = [1 1 1] ;
-
-DEFAULT_ISUSINGCONVERGENCECRITERION     = false ;
 
 DEFAULT_ISMAPPINGEXPANSIONPOINTS        = true ;
 DEFAULT_ISMAPPINGHARMONICNEIGHBOURHOODS = true ;
@@ -151,10 +127,6 @@ if  ~myisfield( Options, 'offset' ) || isempty(Options.offset)
 %     Options.offset = Options.expansionOrder + 2 ; % How 'far back' from the edge of the eroded mask the expansion points are
 end
 
-if  ~myisfield( Options, 'numIterations' ) || isempty(Options.numIterations)
-    Options.numIterations = DEFAULT_NUMITERATIONS ;
-end
-
 if  ~myisfield( Options, 'numCPU' ) || isempty(Options.numCPU)
     Options.numCPU = DEFAULT_NUMCPU ;
 end
@@ -162,14 +134,6 @@ end
 if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
     disp('Options.voxelSize not assigned. Assuming isotropic [1 1 1].');
     Options.voxelSize = DEFAULT_VOXELSIZE ;
-end
-
-if ~myisfield( Options, 'aspectRatio' ) || isempty(Options.aspectRatio)
-    Options.aspectRatio = round( Options.voxelSize / min( Options.voxelSize ) ) ;
-end
-
-if ~myisfield( Options, 'isUsingConvergenceCriterion') || isempty(Options.isUsingConvergenceCriterion)
-    Options.isUsingConvergenceCriterion = DEFAULT_ISUSINGCONVERGENCECRITERION ;
 end
 
 if  ~myisfield( Options, 'IPtoEPAssociations' ) || isempty(Options.IPtoEPAssociations)
@@ -269,13 +233,9 @@ gradInd(Options.expansionOrder + 2, :) = [] ;
 numGradientTermsTotal = gradInd(Options.expansionOrder + 1, 2) ;
     
 
-
-%% Iterative stuff
-for currentIteration = 1 : Options.numIterations
     
-    % Reset
+    % Initialize
     GradientTerms           = [] ;
-    convergenceSurface      = [] ;
     expansionCapacity       = [] ;
     extendedBackgroundField = [] ;
     
@@ -328,7 +288,7 @@ if isMappingHarmonicNeighbourhoods
         matlabpool( Options.numCPU ) ;
     end
     
-    tic
+    
     
     XYZedges = [ Options.voxelSize(1)*X1edge'; Options.voxelSize(2)*Y1edge'; Options.voxelSize(3)*Z1edge' ]; %
     
@@ -376,7 +336,6 @@ if isMappingHarmonicNeighbourhoods
                     for ko = 1 : lastPartIPs
                         
                         disp( ['mapping... IPtoEdge ' num2str(ko/lastPartIPs, 2) ])
-                        
                         D                    = ( XYZedges - repmat( [ XoCPU(ko); YoCPU(ko); ZoCPU(ko) ], [ 1 numEdgePoints ] ) ) ;
                         lastPartEdgeDist(ko) = min( dot( D, D, 1 ) .^0.5 ) ;
                         
@@ -384,7 +343,6 @@ if isMappingHarmonicNeighbourhoods
                     
                 else
                     for ko = 1 : lastPartIPs
-                        
                         D                    = ( XYZedges - repmat( [ XoCPU(ko); YoCPU(ko); ZoCPU(ko) ], [ 1 numEdgePoints ] ) ) ;
                         lastPartEdgeDist(ko) = min( dot( D, D, 1 ) .^0.5 ) ;
                         
@@ -413,7 +371,7 @@ if isMappingHarmonicNeighbourhoods
         
         IPtoEdgeDistance         = [ partIPtoEdgeDistance(:)' lastPartIPtoEdgeDistance' ]' ;
         
-        ComputationTime.mappingExpansionCapacity = toc ;
+
         clear tmp XYZedges partXo partYo partZo 
         
         if Options.isSavingInterimVar
@@ -432,7 +390,7 @@ end
         %---
         % Determine nearest expansionPoints for voxels in the extendedROI
         
-        tic
+        
         
         if matlabpool('size') == 0
             matlabpool( Options.numCPU ) ;
@@ -494,9 +452,7 @@ end
                     for k1 = 1 : lastPartExtendedROI
                         
                         disp(['mapping... EPtoIP ' num2str(k1/lastPartExtendedROI, 2)])
-                        
                         D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIPs ] )-XYZo   ;
-                        
                         [ IPtoEPDist, idealIP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
                         
                         lastpartDist(k1)  = IPtoEPDist ;
@@ -510,7 +466,6 @@ end
                     for k1 = 1 : lastPartExtendedROI
 
                         D        = repmat( [ X1CPU(k1); Y1CPU(k1); Z1CPU(k1) ], [ 1 numIPs ] )-XYZo   ;
-                        
                         [ IPtoEPDist, idealIP ]  = min( dot( D, D, 1 ) .^0.5 ) ;% Determines the nearest IP to EP XYZ1(k)
                         
                         lastpartDist(k1)  = IPtoEPDist ;
@@ -560,8 +515,6 @@ end
         associatedIPtoEPDistance   = [ partIPtoEPDistance(:)' lastPartIPtoEPDistance' ]' ; % SO WHAT THE NAME IS REDUNDANT W/E
         associatedIPtoEdgeDistance = [ partExpansionCapacity(:)' lastPartExpansionCapacity' ]' ;
         
-        ComputationTime.mappingIPs = toc ;
-        
         if Options.isSavingInterimVar
         save( strcat(Options.name, '_IPtoEPAssociations'), 'associatedIPs', 'associatedIPtoEPDistance', 'associatedIPtoEdgeDistance') ;   
         end
@@ -573,20 +526,18 @@ end
     end
     
 
-    
+
 
 %% gradient calculations
 if isCalculatingGradients
     disp('Calculating gradients...')
-    tic    
         
     GradientTerms = sparsegradient( reducedBackgroundField, expansionSurface, Options.expansionOrder );
-    
-    ComputationTime.gradients = toc ;
         
     if Options.isSavingInterimVar 
         save( strcat(Options.name,'_GradientTerms'), 'GradientTerms' )
     end
+    
     
 else
     load( Options.GradientTerms ) ;
@@ -605,7 +556,6 @@ end
         %---
         % Estimate extendedBackgroundField...
         disp('Performing Taylor expansion...')
-        tic
         
         % Housekeeping/rearrangement...
         GradientTerms.directions = permute( GradientTerms.directions, [ 1 3 2 ] ) ;
@@ -675,7 +625,7 @@ end
     
     % combine individual series terms
     taylorSeries = cumsum( taylorTerms, 2) ;
-    ComputationTime.taylor = toc ;
+
     
     % reshape
     extendedBackgroundField = zeros( [ gridDimensionVector Options.expansionOrder + 1] );
@@ -719,27 +669,6 @@ end
         tmp( extensionPoints )         = distanceVector(3,:) ;
         IPtoEPDistanceXYZ(:,:,:,3)    = tmp ;
         
-        % if the EP is further from the IP than the nearest egde, it is
-        % outside the harmonic neighbourhood and it will have to be solved
-        % next iteration w/a different IP
-        %
-        % possible issue w/ coding:
-        % assumption is that the distance vector from EP to nearest IP won't cross
-        % ROI boundaries. This should be OK for the brain but may pose a problem for other geometries.
-        
-        expansionCapacity = abs( ceil(associatedIPtoEPDistance) ) < abs( floor(associatedIPtoEdgeDistance) ) ;
-        
-    
-    
-    %% Assess convergence
-    diffPenultimateOrder = abs( extendedBackgroundField(:,:,:, Options.expansionOrder - 1) - extendedBackgroundField(:,:,:, Options.expansionOrder ) );
-    diffHighestOrder     = abs( extendedBackgroundField(:,:,:, Options.expansionOrder) - extendedBackgroundField(:,:,:, Options.expansionOrder + 1) );
-    
-    convergenceSurface   =  diffPenultimateOrder > diffHighestOrder;
-    
-    clear diffHighestOrder diffPenultimateOrder
-    
-    
     %% Output
     
     EdgeOut.extendedBackgroundField = extendedBackgroundField ;
@@ -771,40 +700,12 @@ end
     
     EdgeOut.ROI                     = ROI ;
     EdgeOut.reducedROI              = reducedROI ;
-    EdgeOut.convergenceSurface      = convergenceSurface ;
     EdgeOut.expansionCapacity       = expansionCapacity ;
-
-    
-    EdgeOut.ComputationTime         = ComputationTime ;
-    
     EdgeOut.Options                 = Options ;
     
     if Options.isWritingToDisk
     disp('Saving to disk...')
     save( Options.name, 'EdgeOut', '-v7.3')
     end
-    
-    if currentIteration < Options.numIterations
-        clear EdgeOut
-    end
-        
-    %% Update
-    isMappingExpansionPoints        = true ;
-    isMappingHarmonicNeighbourhoods = true ;
-    isCalculatingGradients          = true ;
-    isPerformingTaylorExpansion     = true ;
-    
-    if Options.isUsingConvergenceCriterion
-        reducedROI         = reducedROI + convergenceSurface .* expansionCapacity ;
-    else
-        reducedROI         = reducedROI + expansionCapacity ;
-    end
-    
-    reducedBackgroundField = reducedBackgroundField + reducedROI .* extendedBackgroundField ;
-    
-    previousIPs           = previousIPs + expansionSurface ;
-        
-end
-
 
 end

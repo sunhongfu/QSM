@@ -12,19 +12,19 @@ function[ extendedLocalPhase, sharpLocalPhase ] = esharp(totalPhase, mask, Optio
 %
 %   Description
 %
-%   [eLP       = ESHARP(A,ROI) returns the 'extended local phase'
+%   [eLP     ] = ESHARP(A,ROI) returns the 'extended local phase'
 %   [eLP, sLP] = ESHARP(A,ROI) also returns 'sharp local phase'
 %
 %   The following Option-fields are supported
 %
-%       voxelSize
+%       .voxelSize
 %               default: [1 1 1] (isotropic)
 %
-%       thresholdParameter
-%           SHARP regularization (TSVD) parameter
+%       .thresholdParameter
+%           SHARP regularization (``TSVD'') parameter
 %               default: 0.05
 %
-%       radii
+%       .radii
 %           radii of SMV kernel
 %               default: [6 6 6]./voxelSize
 %
@@ -150,7 +150,8 @@ for echo = 1 : numEcho
         
     EdgeOut  = sharpedges( backgroundPhaseBeforeSVD, maskTE, reducedROI, Options) ;
     
-    extendedBackgroundPhase = EdgeOut.reducedBackgroundField + EdgeOut.extendedBackgroundField(:,:,:, EdgeOut.Options.expansionOrder + 1 ) ;
+    extendedBackgroundPhase = EdgeOut.reducedBackgroundField + ...
+                                EdgeOut.extendedBackgroundField(:,:,:, EdgeOut.Options.expansionOrder + 1 ) ;
     
     tmpLocal       = totalPhaseTE - extendedBackgroundPhase ;
     fTmpLocal      = fftc( tmpLocal ) ;
