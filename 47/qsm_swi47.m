@@ -10,7 +10,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .ref_coi  - reference coil to use for phase combine   : 3
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 3
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
-%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
+%    .tik_reg  - Tikhonov regularization for resharp       : 0.001
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.3
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
@@ -169,22 +169,21 @@ nii = make_nii(unph, vox);
 save_nii(nii,'unph_lap.nii');
 
 
-%% background field removal
-disp('--> RESHARP to remove background field ...');
-mkdir('RESHARP');
-[lph_resharp,mask_resharp] = resharp(unph,mask,vox,smv_rad,tik_reg);
-
-nii = make_nii(lph_resharp,vox);
-save_nii(nii,'RESHARP/lph_resharp.nii');
-
 % normalize to echo time and field strength
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-lfs_resharp = -lph_resharp/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
+tfs = -unph/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
+
+
+
+% (1) resharp 
+disp('--> resharp to remove background field ...');
+mkdir('resharp');
+[lfs_resharp,mask_resharp] = resharp(tfs,mask,vox,smv_rad,tik_reg);
 
 nii = make_nii(lfs_resharp,vox);
-save_nii(nii,'RESHARP/lfs_resharp.nii');
+save_nii(nii,'resharp/lfs_resharp.nii');
 
 
 %% susceptibility inversion
@@ -192,10 +191,42 @@ disp('--> TV susceptibility inversion ...');
 sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
 
 nii = make_nii(sus_resharp,vox);
-save_nii(nii,'RESHARP/sus_resharp.nii');
+save_nii(nii,'resharp/sus_resharp.nii');
 
 nii = make_nii(sus_resharp.*mask_resharp,vox);
-save_nii(nii,'RESHARP/sus_resharp_clean.nii');
+save_nii(nii,'resharp/sus_resharp_clean.nii');
+
+
+
+% (2) lbv
+disp('--> lbv to remove background field ...');
+lfs_lbv = lbv(tfs,mask,size(unph),vox,0.01,2); % strip 2 layers
+mkdir('lbv');
+nii = make_nii(lfs_lbv,vox);
+save_nii(nii,'lbv/lfs_lbv.nii');
+% % Don't use lbv's mask*.bin, not accurate
+% % read in eroded mask from lbv
+% listing = dir('mask*.bin');
+% filename = listing.name;
+% fid = fopen(filename);
+% mask_lbv = fread(fid,'int');
+% mask_lbv = reshape(mask_lbv,size(mask));
+% fclose all;
+mask_lbv = ones(size(mask));
+mask_lbv(lfs_lbv==0) = 0;
+
+
+%% susceptibility inversion
+disp('--> TV susceptibility inversion ...');
+sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+
+nii = make_nii(sus_lbv,vox);
+save_nii(nii,'lbv/sus_lbv.nii');
+
+nii = make_nii(sus_lbv.*mask_lbv,vox);
+save_nii(nii,'lbv/sus_lbv_clean.nii');
+
+
 
 %% save all variables for debugging purpose
 if sav_all
