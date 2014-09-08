@@ -46,8 +46,8 @@ while(k <= params.Itnlim)
     k = k + 1;
     
     % outputs for debugging purpose
-    fprintf('%d , obj: %f, res: %f, tv: %f, LS: %d, toll: %f\n',...
-            k, f1, RES, TVterm, lsiter, abs((f1-f)/f1));
+%    fprintf('%d , obj: %f, res: %f, tv: %f, LS: %d, toll: %f\n',...
+%            k, f1, RES, TVterm, lsiter, abs((f1-f)/f1));
     
     if (abs((f1-f)/f1) <= gradToll); break; end 
     

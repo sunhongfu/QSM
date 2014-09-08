@@ -81,7 +81,7 @@ sav_all = options.sav_all;
 
 
 %% define directories
-path_qsm = [path_out '/QSM_SWI_v200'];
+path_qsm = [path_out '/QSM_SWI_v200_jul21'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -200,10 +200,10 @@ save_nii(nii,'resharp/sus_resharp_clean.nii');
 
 % (2) lbv
 disp('--> lbv to remove background field ...');
-lfs_lbv = lbv(tfs,mask,size(unph),vox,0.01,2); % strip 2 layers
+lfs_lbv = LBV(tfs,mask,size(tfs),vox,0.01,2); % strip 2 layers
 mkdir('lbv');
 nii = make_nii(lfs_lbv,vox);
-save_nii(nii,'lbv/lfs_lbv.nii');
+save_nii(nii,'LBV/lfs_lbv.nii');
 % % Don't use lbv's mask*.bin, not accurate
 % % read in eroded mask from lbv
 % listing = dir('mask*.bin');

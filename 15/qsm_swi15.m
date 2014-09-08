@@ -144,12 +144,12 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% unwrap combined phase with PRELUDE
-%disp('--> unwrap aliasing phase ...');
-%unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
-%unix('gunzip -f unph.nii.gz');
-%nii = load_nii('unph.nii');
-%unph = double(nii.img);
+% % unwrap combined phase with PRELUDE
+% disp('--> unwrap aliasing phase ...');
+% unix('prelude -s -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+% unix('gunzip -f unph.nii.gz');
+% nii = load_nii('unph.nii');
+% unph = double(nii.img);
 
 
 % unwrap with Laplacian based method
@@ -216,7 +216,7 @@ end
 z_prjs = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
 
 % (1) RESHARP
-[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),nor_vec,tvdi_n);
 nii = make_nii(sus_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp.nii');
 nii=make_nii(sus_resharp.*mask_resharp,voxelSize);
