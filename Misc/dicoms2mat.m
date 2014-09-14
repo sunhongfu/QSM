@@ -5,6 +5,6 @@ function mat = dicoms2mat(path_in)
 
 lists = dir( [ path_in '*.dcm']);
 
-for i = 3:numel(lists)
+for i = 1:numel(lists)
     mat(:,:,i-2) = double( dicomread([path_in '/' lists(i).name]) );
 end
