@@ -76,7 +76,6 @@ newGridDimensionVector = round(gridDimensionVector .* resizeFactor) ;
 
 imgOut = zeros( [newGridDimensionVector numEcho numRx] ) ;
 
-
 if max( gridDimensionVector - newGridDimensionVector ) > 0
 
     disp('cropping k-space...')
@@ -95,7 +94,7 @@ if max( gridDimensionVector - newGridDimensionVector ) > 0
             fImg = fImg(offset(1,1):offset(2,1), offset(1,2) : offset(2,2),offset(1,3) : offset(2,3));
             
             img  = ifftc( ifftshift( fImg ) ) ;
-            
+
             imgOut(:,:,:,echo,rx) = img ;
             
         end
@@ -121,8 +120,10 @@ if min( gridDimensionVector - newGridDimensionVector ) < 0
             
             fImg = padarray( fImg, padSize ) ;
             
+
             img  = ifftc( ifftshift( fImg ) ) ;
             
+
             imgOut(:,:,:,echo,rx) = prod(resizeFactor)*img ;
             
         end

@@ -1,4 +1,4 @@
-function[] = nii(dataArray, name, Options)
+function img = nii(img, Options)
 %NII 
 %
 %   NII
@@ -7,13 +7,16 @@ function[] = nii(dataArray, name, Options)
 %   Syntax
 %
 %   NII(A)
-%   NII(A,name)
-%   NII(A,name,Options)
+%   NII(A,Options)
 %   .......................
 %
 %   Description
 %   
-%   
+%   NII calls the make_nii() and save_nii() functions of the NifTI toolbox.
+%   However the toolbox seems to reverse read/phase-encode (column/row) order
+%   compared with that of the original image (DICOM). NII then first swaps 
+%   the rows & columns such that there is no apparent rotation after writing to
+%   file with save_nii().
 %
 %   .......................
 %   
@@ -22,76 +25,62 @@ function[] = nii(dataArray, name, Options)
 %   A 
 %       data array being saved as nifti
 %
-%   name
-%       file name base (e.g. 'BigSmiley' results in file 'BigSmiley.nii')
-%
 %   Options
 %       object with possible fields:
 %           .voxelSize
 %               (default: [1 1 1])
 %      
-%           .isReorienting
-%               (true [default]||false)
-%               if true, array is flipped to have longest dimension (e.g. read) 
-%               along the vertical
-%   
-%           .mediaSaveFldr
-%               (default: .)
-%               
+%           .filename
+%               (without or without .nii extension)
+%               (default: './tmp.nii')
+%  
+%  TODO DOCUMENTATION         
 
+DEFAULT_VOXELSIZE = [1 1 1] ;
+DEFAULT_FILENAME  = './tmp.nii' ;
 
-DEFAULT_MEDIASAVEFLDR = './' ;
-DEFAULT_ISREORIENTING = true ;
-DEFAULT_NAME          = 'tmp' ;
-DEFAULT_VOXELSIZE     = [1 1 1] ;
-
-
-if nargin < 1 || isempty(dataArray) 
+if nargin < 1 || isempty(img) 
     error('Function requires at least 1 input argument (2d or 3d array).')
 end
 
-if nargin < 2 || isempty(name)
-    name = DEFAULT_NAME ;
-end
-
-if nargin < 3 || isempty(Options)
+if nargin < 2 || isempty(Options)
     Options.dummy = [] ;
 end
 
-if  ~myisfield( Options, 'mediaSaveFldr' ) || isempty(Options.mediaSaveFldr)
-    Options.mediaSaveFldr = DEFAULT_MEDIASAVEFLDR ;
+isConverting2Nii = true ;
+
+
+tmp = whos('img') ;
+
+if strcmp( tmp.class, 'char' )
+    isConverting2Nii = false ; % a nifti image is to be loaded and returned as a matlab array
 end
 
-if  ~myisfield( Options, 'isReorienting' ) || isempty(Options.isReorienting)
-    Options.isReorienting = DEFAULT_ISREORIENTING ;
-end
-
-if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
-    Options.voxelSize = DEFAULT_VOXELSIZE ;
-end
-
-
-
-
-gridDimensionVector  = size( dataArray ) ;
-
-if numel( gridDimensionVector ) < 4
-    dataArray(:,:,:,1) = dataArray ;
-end
-
-if Options.isReorienting
-    [tmp, readDimension] = max( gridDimensionVector ) ;
-    
-    if readDimension == 1
-        dataArray = permute( dataArray, [2 readDimension 3 4] ) ;
-        dataArray = flipdim(dataArray, 1) ;
+if isConverting2Nii
+    if  ~myisfield( Options, 'filename' ) || isempty(Options.filename)
+        Options.filename = DEFAULT_FILENAME ;
+    else
+        if( ~strcmp( Options.filename(end-3:end), '.nii') )
+            Options.filename = [Options.filename '.nii' ] ;
+        end
     end
-end
 
+    if  ~myisfield( Options, 'voxelSize' ) || isempty(Options.voxelSize)
+        Options.voxelSize = DEFAULT_VOXELSIZE ;
+    end
 
+    % flip rows & columns for make_nii
+    img = permute( img, [2 1 3] ) ;
 
+    save_nii( make_nii(img, Options.voxelSize), Options.filename) ;
 
+else
 
-save_nii( make_nii(dataArray, Options.voxelSize), [ Options.mediaSaveFldr name '.nii']) ;
+    img = load_nii( img ) ;
+    img = double( img.img ) ;
+
+    % flip rows & columns for load_nii
+    img = permute( img, [2 1 3] ) ;
+
 
 end

@@ -1,11 +1,9 @@
 function [lfs, mask_ero] = resharp(tfs,mask,vox,ker_rad,tik_reg)
 %RESHARP Background field removal
-
 % Method is described in the following paper:
 % Sun, H. and Wilman, A. H. (2013), 
 % Background field removal using spherical mean value filtering and Tikhonov regularization. 
 % Magn Reson Med. doi: 10.1002/mrm.24765
-
 %   [LSF,MASK_ERO] = RESHARP(TFS,MASK,VOX,TIK_REG)
 %
 %   LFS         : local field shift after background removal
