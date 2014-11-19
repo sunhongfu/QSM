@@ -16,7 +16,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
 %    .echo_t   - keep only the first 'echo_t' echoes       : 5
 %    .fit_t    - truncation level on fitting residual      : 5
-%    .sav_all  - save all the variables for debug (~ 0)    : 0
+%    .sav_all  - save all the variables for debug (~ 0)    : 1
 
 %% default settings
 if ~ exist('path_in','var') || isempty(path_in)
@@ -44,8 +44,8 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'bkgrm')
-    % options.bkgrm = {'pdf','sharp','resharp'};
-    options.bkgrm = 'resharp';
+    options.bkgrm = {'resharp','lbv'};
+    % options.bkgrm = 'resharp';
 end
 
 if ~ isfield(options,'smv_rad')
@@ -77,7 +77,7 @@ if ~ isfield(options,'fit_t')
 end
 
 if ~ isfield(options,'sav_all')
-    options.sav_all = 0;
+    options.sav_all = 1;
 end
 
 bet_thr = options.bet_thr;
@@ -92,7 +92,7 @@ fit_t   = options.fit_t;
 sav_all = options.sav_all;
 
 %% define directories
-path_qsm = [path_out '/QSM_R2s_v200'];
+path_qsm = [path_out '/QSM_R2s_v200_midnight'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -204,13 +204,20 @@ z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)];
 
 %%%%%%%%%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% combine magnitude channels using marc's 'arrayrec.m'
-disp('--> combine rcvrs for magnitude ...');
-mag_cmb = zeros(nv,np,nv2,ne);
-for echo = 1:ne
-    mag_cmb(:,:,:,echo) = arrayrec(squeeze(img(:,:,:,echo,:)),1/2);
-end
+% %% combine magnitude channels using marc's 'arrayrec.m'
+% disp('--> combine rcvrs for magnitude ...');
+% mag_cmb = zeros(nv,np,nv2,ne);
+% for echo = 1:ne
+%     mag_cmb(:,:,:,echo) = arrayrec(squeeze(img(:,:,:,echo,:)),1/2);
+% end
 
+%% combine using eig
+if par.nrcvrs > 1
+    % combine using eig method
+    mag_cmb = abs( sense_se(permute(img,[1 2 3 5 4]),voxelSize,3,3) );
+else
+    mag_cmb = abs(img);
+end
 
 % save nifti for unwrapping usage
 mkdir('combine');
@@ -279,6 +286,7 @@ for echo = 2:ne
     njump = round(meandiff/(2*pi));
     disp(['    ' num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
     unph_cmb(:,:,:,echo) = unph_cmb(:,:,:,echo) - njump*2*pi;
+    unph_cmb(:,:,:,echo) = unph_cmb(:,:,:,echo).*mask;
 end
 
 
@@ -292,9 +300,17 @@ disp('--> magnitude weighted LS fit of phase to TE ...');
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
 tfs = -tfs/(2.675e8*4.7)*1e6; % unit ppm
 
+
 % generate reliability map
-R = ones(size(fit_residual));
-R(fit_residual >= fit_t) = 0;
+fit_residual_blur = smooth3(fit_residual,'box',round(6./par.res/2)*2+1); 
+nii = make_nii(fit_residual_blur,voxelSize);
+save_nii(nii,'fit_residual_blur.nii');
+
+R = ones(size(fit_residual_blur));
+R(fit_residual_blur >= 10) = 0;
+
+% R = ones(size(fit_residual));
+% R(fit_residual >= fit_t) = 0;
 
 
 %% PDF
@@ -360,6 +376,29 @@ if sum(strcmpi('resharp',bkgrm))
 
 end
 
+
+%% LBV
+if sum(strcmpi('lbv',bkgrm))
+    disp('--> LBV to remove background field ...');
+    lfs_lbv = LBV(tfs,mask.*R,size(tfs),voxelSize,0.01,2); % strip 2 layers
+    mask_lbv = ones(size(mask));
+    mask_lbv(lfs_lbv==0) = 0;
+
+    % save nifti
+    mkdir('lbv');
+    nii = make_nii(lfs_lbv,voxelSize);
+    save_nii(nii,'lbv/lfs_lbv.nii');
+
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on lbv...');
+    sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,mag_cmb(:,:,:,echo_t),z_prjs,tvdi_n);   
+
+    % save nifti
+    nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
+    save_nii(nii,'lbv/sus_lbv.nii');
+
+end
 
 %% E-SHARP
 % if sum(strcmpi('esharp',bkgrm))
