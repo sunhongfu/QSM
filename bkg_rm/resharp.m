@@ -21,8 +21,8 @@ imsize = size(tfs);
 rx = round(ker_rad/vox(1));
 ry = round(ker_rad/vox(2));
 rz = round(ker_rad/vox(3));
-rz = ceil(ker_rad/vox(3));
-% [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
+% rz = ceil(ker_rad/vox(3));
+[X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
 h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
 ker = h/sum(h(:));
 
@@ -34,7 +34,7 @@ cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
 mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
 mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % NO error points tolerance
+mask_ero(mask_tmp > 1-6/sum(h(:))) = 1; % 5 error points tolerance
 
 
 % prepare convolution kernel: delta-ker

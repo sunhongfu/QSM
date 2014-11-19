@@ -17,7 +17,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .sav_all  - save all the variables for debug          : 1
 
 
-%% default settings
+%%% default settings
 if ~ exist('path_in','var') || isempty(path_in)
     path_in = pwd;
 end
@@ -55,7 +55,7 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-3;
+    options.tik_reg = 5e-4;
 end
 
 if ~ isfield(options,'tv_reg')
@@ -80,23 +80,37 @@ tvdi_n  = options.tvdi_n;
 sav_all = options.sav_all;
 
 
-%% define directories
-path_qsm = [path_out '/QSM_SWI_v200_jul21'];
+
+%%% define directories
+path_qsm = [path_out '/QSM_SWI_v200'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
 
-%% generate raw img
+%%% generate raw img
 disp('--> reconstruct fid to complex img ...');
 [img,Pars] = swi47_recon(path_fid);
 
 
-%% interpolate to iso-resoluation in plane
-k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img,1),2),[],1),[],2),1),2);
-pad = round((Pars.np/2 * Pars.lpe / Pars.lro - Pars.nv)/2);
-k = padarray(k,[0 pad]);
-img = fftshift(fftshift(fft(fft(fftshift(fftshift(k,1),2),[],1),[],2),1),2);
+%%% interpolate to iso-resoluation in plane
+% k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img,1),2),[],1),[],2),1),2);
+% pad = round((Pars.np/2 * Pars.lpe / Pars.lro - Pars.nv)/2);
+% k = padarray(k,[0 pad]);
+% img = fftshift(fftshift(fft(fft(fftshift(fftshift(k,1),2),[],1),[],2),1),2);
+
+k = fft(fft(img,[],1),[],2);
+pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
+imsize = size(k);
+if mod(imsize(2),2) % if size of k is odd
+    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), [0 pad-round(pad/2)], 'post'),2);
+else % size of k is even
+    k_s = fftshift(k,2);
+    k_s(:,1,:) = k_s(:,1,:)/2;
+    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), [0 pad-round(pad/2)], 'post'),2);
+end
+img = ifft(ifft(k_pad,[],1),[],2);
+
 
 % scanner frame
 img = permute(img, [2 1 3 4]);
@@ -113,9 +127,9 @@ z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)]
 
 
 if Pars.RCVRS_ == 4
-    %% combine RF coils
+    % combine RF coils
     disp('--> combine RF rcvrs ...');
-    img_cmb = sense_se(img,vox,ref_coi,eig_rad);
+    img_cmb = coils_cmb(img,vox,[],ref_coi,eig_rad);
 else  % single channel  
     img_cmb = img;
 end
@@ -145,7 +159,7 @@ save_nii(nii,'combine/ph_cmb.nii');
 clear img;
 
 
-%% generate brain mask
+%%% generate brain mask
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
@@ -186,7 +200,7 @@ nii = make_nii(lfs_resharp,vox);
 save_nii(nii,'resharp/lfs_resharp.nii');
 
 
-%% susceptibility inversion
+%%% susceptibility inversion
 disp('--> TV susceptibility inversion ...');
 sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
 
@@ -216,7 +230,7 @@ mask_lbv = ones(size(mask));
 mask_lbv(lfs_lbv==0) = 0;
 
 
-%% susceptibility inversion
+%%% susceptibility inversion
 disp('--> TV susceptibility inversion ...');
 sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
 
@@ -228,7 +242,7 @@ save_nii(nii,'lbv/sus_lbv_clean.nii');
 
 
 
-%% save all variables for debugging purpose
+%%% save all variables for debugging purpose
 if sav_all
     clear nii;
     save('all.mat','-v7.3');
@@ -238,7 +252,7 @@ end
 save('parameters.mat','options','-v7.3')
 
 
-%% clean up
+%%% clean up
 % unix('rm *.nii*');
 cd(init_dir);
 

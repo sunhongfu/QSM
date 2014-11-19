@@ -53,7 +53,7 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-3;
+    options.tik_reg = 5e-4;
 end
 
 if ~ isfield(options,'tsvd')
@@ -73,7 +73,7 @@ if ~ isfield(options,'echo_t')
 end
 
 if ~ isfield(options,'fit_t')
-    options.fit_t = 5;
+    options.fit_t = 10;
 end
 
 if ~ isfield(options,'sav_all')
@@ -108,6 +108,7 @@ disp('--> reconstruct fid to complex img ...');
 % img_orig = img;
 img = img(:,:,:,1:echo_t,:);
 par.ne = echo_t;
+TE = par.te + (0:par.ne-1)*par.esp;
 %%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -115,9 +116,11 @@ par.ne = echo_t;
 img = permute(img,[2 1 3 4 5]); %PE,RO,SL,NE,RX
 img = flipdim(img,1);
 img = flipdim(img,2);
-par.res = [par.res(2), par.res(1), par.res(3)];
+par.vox = [par.vox(2), par.vox(1), par.vox(3)];
 [nv,np,nv2,ne,~] = size(img);
-voxelSize = par.res; % resolution in mm/pixel
+voxelSize = par.vox; % resolution in mm/pixel
+
+
 
 phi = par.phi/180*pi;
 psi = par.psi/180*pi;
@@ -127,20 +130,23 @@ z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)];
 
 
 %%%%%%%%%%%%%%%%%% new %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% if par.nrcvrs > 1
-%     % combine using eig method
-%     img_cmb = sense_se(permute(img,[1 2 3 5 4]),voxelSize,3,3);
-% else
-%     img_cmb = img;
-% end
+if par.nrcvrs > 1
+    % combine using eig method
+    img_cmb = coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,TE,3,3);
+else
+    img_cmb = img;
+end
 
-% mkdir('combine');
-% for echo = 1:size(img_cmb,4)
-%     nii = make_nii(abs(img_cmb(:,:,:,echo)),voxelSize);
-%     save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
-%     nii = make_nii(angle(img_cmb(:,:,:,echo)),voxelSize);
-%     save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
-% end
+mag_cmb = abs(img_cmb);
+ph_cmb = angle(img_cmb);
+
+mkdir('combine');
+for echo = 1:size(img_cmb,4)
+    nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
+    save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
+    nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
+    save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
+end
 
 
 % %% generate mask from combined magnitude of the first echo
@@ -211,6 +217,7 @@ z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)];
 %     mag_cmb(:,:,:,echo) = arrayrec(squeeze(img(:,:,:,echo,:)),1/2);
 % end
 
+
 %% combine using eig
 if par.nrcvrs > 1
     % combine using eig method
@@ -219,33 +226,45 @@ else
     mag_cmb = abs(img);
 end
 
-% save nifti for unwrapping usage
-mkdir('combine');
-for echo =  1:ne
-    nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
-    save_nii(nii,['combine/mag_te' num2str(echo) '.nii']);
-end
+
+
+% % save nifti for unwrapping usage
+% mkdir('combine');
+% for echo =  1:ne
+%     nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
+%     save_nii(nii,['combine/mag_te' num2str(echo) '.nii']);
+% end
+
+
+% % save nifti for unwrapping usage
+% mkdir('combine');
+% for echo =  1:ne
+%     nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
+%     save_nii(nii,['combine/mag_te' num2str(echo) '.nii']);
+% end
 
 
 %% generate mask from combined magnitude of the first echo
-disp('--> extract brain volume and generate mask ...');
-setenv('bet_thr',num2str(bet_thr));
-unix('bet combine/mag_te1.nii BET -f ${bet_thr} -m -R');
-unix('gunzip -f BET.nii.gz');
-unix('gunzip -f BET_mask.nii.gz');
+if ~ exist('BET_mask.nii','file')
+    disp('--> extract brain volume and generate mask ...');
+    setenv('bet_thr',num2str(bet_thr));
+    unix('bet combine/mag_te1.nii BET -f ${bet_thr} -m -R');
+    unix('gunzip -f BET.nii.gz');
+    unix('gunzip -f BET_mask.nii.gz');
+end
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-%% combine phase channels
-disp('--> combine rcvrs for phase ...');
-ph_cmb = sense_me(img,par);
+% %% combine phase channels
+% disp('--> combine rcvrs for phase ...');
+% ph_cmb = sense_me(img,par);
 
-% save nifti for unwrapping usage
-for echo =  1:ne
-    nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
-    save_nii(nii,['combine/ph_te' num2str(echo) '.nii']);
-end
+% % save nifti for unwrapping usage
+% for echo =  1:ne
+%     nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
+%     save_nii(nii,['combine/ph_te' num2str(echo) '.nii']);
+% end
 
 clear img;
 
@@ -268,7 +287,7 @@ unix(bash_command);
 
 unph_cmb = zeros(nv,np,nv2,ne);
 for echo = 1:ne
-    nii = load_nii(['unph_te' num2str(echo) '.nii']);
+    nii = load_nii(['unph_cmb' num2str(echo) '.nii']);
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
@@ -276,8 +295,11 @@ end
 % check and correct for 2pi jump between echoes
 disp('--> correct for potential 2pi jumps between TEs ...')
 
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
+nii = load_nii('unph1.nii');
+unph1 = double(nii.img);
+nii = load_nii('unph2.nii');
+unph2 = double(nii.img);
+unph_diff = unph2 - unph1;
 
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
@@ -292,7 +314,7 @@ end
 
 %% fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
-[tfs, fit_residual] = echofit(unph_cmb,mag_cmb,par); 
+[tfs, fit_residual] = echofit(unph_cmb,mag_cmb,TE); 
 
 % normalize to main field
 % ph = gamma*dB*TE

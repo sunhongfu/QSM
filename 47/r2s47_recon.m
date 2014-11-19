@@ -25,7 +25,7 @@ ppe2   = par.ppe2;
 %   Update par
 par.pss = -lpe2/2-lpe2/nv2/2:lpe2/nv2:lpe2/2;
 par.pss = par.pss + ppe2;
-par.res = [par.lro/(par.np/2), par.lpe/par.nv, par.lpe2/par.nv2]*10;
+par.vox = [par.lro/(par.np/2), par.lpe/par.nv, par.lpe2/par.nv2]*10;
 
 %   Read data and DC correct
 k = readfid(PATH_IN,par,1,0,0);

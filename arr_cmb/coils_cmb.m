@@ -1,4 +1,4 @@
-function img_cmb_all = sense_se(img,vox,te,cref,radi)
+function img_cmb_all = coils_cmb(img,vox,te,cref,radi)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
@@ -54,9 +54,11 @@ RS = reshape(permute(RS,[4 5 1 2 3]),nrcvrs,nrcvrs,np*nv,nv2);
 
 sen = zeros(nrcvrs,np*nv,nv2);
 matlabpool open
+% parpool
 parfor sl = 1:nv2
     sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
 end
+% delete(gcp('nocreate'))
 matlabpool close
 sen = reshape(permute(sen,[2,3,1]),[np,nv,nv2,nrcvrs]);
 
@@ -100,8 +102,6 @@ if echo > 1
     unix('bet mag1.nii BET -f ${bet_thr} -m -R');
     unix('gunzip -f BET.nii.gz');
     unix('gunzip -f BET_mask.nii.gz');
-    nii = load_nii('BET_mask.nii');
-    mask = double(nii.img);
 
     bash_command = sprintf(['prelude -a mag1.nii -p wrph1.nii -u unph1.nii -m BET_mask -n 8&\n' ...
                             'prelude -a mag2.nii -p wrph2.nii -u unph2.nii -m BET_mask -n 8&\n' ...
