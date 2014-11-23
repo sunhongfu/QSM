@@ -63,7 +63,7 @@ for i = 1:numEcho*numRx
     phase = tmp; 
     clear tmp
 
-    phase = fftn(cos(phase).*ifftn(k2.*fftn(sin(phase)))-sin(phase).*ifftn(k2.*fftn(cos(phase))))./k2;
+    phase = fftn(cos(phase).*ifftn(k2.*fftn(sin(phase)))-sin(phase).*ifftn(k2.*fftn(cos(phase))))./(k2+eps);
     
     phase( abs(phase) == Inf ) = 0;
     

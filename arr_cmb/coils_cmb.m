@@ -1,4 +1,4 @@
-function img_cmb_all = coils_cmb(img,vox,te,cref,radi)
+function img_cmb_all = coils_cmb(img,vox,cref,radi,te,off_corr)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
@@ -13,11 +13,14 @@ function img_cmb_all = coils_cmb(img,vox,te,cref,radi)
 % for example:
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
 % te = [3, 7, 11, 15, 19]; % echo times, only the first two are required!
-%   if single-echo data, 'te' will not be used, just replace 'te' with ~ or [] as input
+%   if single-echo data, 'te' will not be used, just replace 'te' with [] as input
 % cref = 3; % (3rd channel as reference coil)
 % radi = 3; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+if ~ exist('off_corr','var') || isempty(off_corr)
+    off_corr = 0;
+end
 
 % image size: readout, phase encoding, slice encoding, receivers, echoes
 [np,nv,nv2,nrcvrs,ne] = size(img);
@@ -54,11 +57,9 @@ RS = reshape(permute(RS,[4 5 1 2 3]),nrcvrs,nrcvrs,np*nv,nv2);
 
 sen = zeros(nrcvrs,np*nv,nv2);
 matlabpool open
-% parpool
 parfor sl = 1:nv2
     sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
 end
-% delete(gcp('nocreate'))
 matlabpool close
 sen = reshape(permute(sen,[2,3,1]),[np,nv,nv2,nrcvrs]);
 
@@ -83,7 +84,7 @@ end
 
 
 %% if multi-echo then correct for phase-offset
-if echo > 1
+if (echo > 1) && off_corr
     nii = make_nii(abs(img_cmb_all(:,:,:,1)),vox);
     save_nii(nii,'mag1.nii');
     nii = make_nii(abs(img_cmb_all(:,:,:,2)),vox);

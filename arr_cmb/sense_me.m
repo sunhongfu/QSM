@@ -1,23 +1,22 @@
-function ph_cmb = sense_me(img,par)
+function ph_cmb = sense_me(img,te,vox)
 %SENSE combination (for phase).
 %   PH_CMB = SENSE(IMG,PAR) combines phase from multiple receivers
 %
-%   IMG:    raw complex images from multiple receivers, [np nv nv2 ne nrcvrs]
-%   PAR:    parameters of the sequence
+%   IMG:    raw complex images from multiple receivers, 5D: [3D_image, echoes, receivers/coils]
+%   TE :    echo times
+%   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
 %   PH_CMB: phase after combination
 
 
 [~,~,~,ne,nrcvrs] = size(img);
-res = par.res;
-TE  = par.te + (0:par.ne-1)*par.esp;
-TE1 = TE(1);
-TE2 = TE(2);
+TE1 = te(1);
+TE2 = te(2);
 
 img_diff = img(:,:,:,2,:)./img(:,:,:,1,:);
 ph_diff = img_diff./abs(img_diff);
 ph_diff_cmb = sum(abs(img(:,:,:,1,:)).*ph_diff,5);
 
-nii = make_nii(angle(ph_diff_cmb),res);
+nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
 % perform unwrapping
@@ -33,7 +32,7 @@ offsets = offsets./abs(offsets);
 
 
 for chan = 1:nrcvrs
-    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./res/2)*2+1); 
+    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./vox/2)*2+1); 
     offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
 end
 

@@ -9,8 +9,8 @@ function qsm_swi47(path_in, path_out, options)
 %   OPTIONS    - parameter structure including fields below
 %    .ref_coi  - reference coil to use for phase combine   : 3
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 3
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
-%    .tik_reg  - Tikhonov regularization for resharp       : 0.001
+%    .smv_rad  - radius (mm) of SMV convolution kernel     : 4
+%    .tik_reg  - Tikhonov regularization for resharp       : 0.0005
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.3
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
@@ -47,11 +47,11 @@ if ~ isfield(options,'eig_rad')
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.4;
+    options.bet_thr = 0.3;
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 6;
+    options.smv_rad = 4;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -82,7 +82,7 @@ sav_all = options.sav_all;
 
 
 %%% define directories
-path_qsm = [path_out '/QSM_SWI_v200'];
+path_qsm = [path_out '/QSM_SWI_v300'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -119,17 +119,23 @@ img = flipdim(flipdim(img,2),3);
 vox = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 % field directions
-phi = Pars.phi/180*pi;
-psi = Pars.psi/180*pi;
-theta = -Pars.theta/180*pi;
-z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)] 
+%% intrinsic euler angles 
+% z-x-z convention, psi first, then theta, lastly phi
+% psi and theta are left-handed, while gamma is right-handed!
+alpha = - Pars.psi/180*pi;
+beta = - Pars.theta/180*pi;
+gamma =  Pars.phi/180*pi;
+z_prjs = [sin(beta)*sin(gamma), sin(beta)*cos(gamma), cos(beta)]
+if ~ isequal(z_prjs,[0 0 1])
+    disp('This is angled slicing');
+    pwd
+end
 
-
-
+% combine receivers
 if Pars.RCVRS_ == 4
     % combine RF coils
     disp('--> combine RF rcvrs ...');
-    img_cmb = coils_cmb(img,vox,[],ref_coi,eig_rad);
+    img_cmb = coils_cmb(img,vox,ref_coi,eig_rad);
 else  % single channel  
     img_cmb = img;
 end
@@ -154,8 +160,6 @@ save_nii(nii,'combine/mag_cmb.nii');
 nii = make_nii(angle(img_cmb),vox);
 save_nii(nii,'combine/ph_cmb.nii');
 
-
-
 clear img;
 
 
@@ -168,6 +172,30 @@ unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
+if options.ero
+    % erode the brain 2mm 
+    imsize = size(mask);
+    % make spherical/ellipsoidal convolution kernel (ker)
+    rx = round(2/vox(1));
+    ry = round(2/vox(2));
+    rz = round(2/vox(3));
+    % rz = ceil(ker_rad/vox(3));
+    [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
+    h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+    ker = h/sum(h(:));
+    % circularshift, linear conv to Fourier multiplication
+    csh = [rx,ry,rz]; % circularshift
+    % erode the mask by convolving with the kernel
+    cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
+    mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
+    mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
+    mask_ero = zeros(imsize);
+    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1;
+    mask = mask_ero;
+    unix('mv BET_mask.nii BET_mask_backup.nii');
+    nii = make_nii(mask,vox);
+    save_nii(nii,'BET_mask.nii');
+end
 
 % %% unwrap combined phase with PRELUDE
 % disp('--> unwrap aliasing phase ...');
@@ -177,17 +205,29 @@ mask = double(nii.img);
 % unph = double(nii.img);
 
 
-% unwrap with Laplacian based method
-unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), vox);
+% % unwrap with Laplacian based method (TianLiu's)
+% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), vox);
+% nii = make_nii(unph, vox);
+% save_nii(nii,'unph_lap.nii');
+
+
+% Ryan Topfer's Laplacian unwrapping
+Options.voxelSize = vox;
+unph = lapunwrap(angle(img_cmb), Options);
 nii = make_nii(unph, vox);
 save_nii(nii,'unph_lap.nii');
+
 
 
 % normalize to echo time and field strength
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
+% tfs = -unph_poly/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
 tfs = -unph/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
+nii = make_nii(tfs,vox);
+save_nii(nii,'tfs.nii');
+
 
 
 
@@ -217,22 +257,20 @@ disp('--> lbv to remove background field ...');
 lfs_lbv = LBV(tfs,mask,size(tfs),vox,0.01,2); % strip 2 layers
 mkdir('lbv');
 nii = make_nii(lfs_lbv,vox);
-save_nii(nii,'LBV/lfs_lbv.nii');
-% % Don't use lbv's mask*.bin, not accurate
-% % read in eroded mask from lbv
-% listing = dir('mask*.bin');
-% filename = listing.name;
-% fid = fopen(filename);
-% mask_lbv = fread(fid,'int');
-% mask_lbv = reshape(mask_lbv,size(mask));
-% fclose all;
+save_nii(nii,'lbv/lfs_lbv.nii');
 mask_lbv = ones(size(mask));
 mask_lbv(lfs_lbv==0) = 0;
+
+% 3D 2nd order polyfit to remove phase-offset
+lfs_lbv_poly= poly3d(lfs_lbv,mask_lbv);
+nii = make_nii(lfs_lbv_poly,vox);
+save_nii(nii,'lbv/lfs_lbv_poly.nii');
 
 
 %%% susceptibility inversion
 disp('--> TV susceptibility inversion ...');
-sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+% sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+sus_lbv = tvdi(lfs_lbv_poly,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
 
 nii = make_nii(sus_lbv,vox);
 save_nii(nii,'lbv/sus_lbv.nii');
