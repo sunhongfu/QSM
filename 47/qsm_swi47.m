@@ -114,7 +114,8 @@ img = ifft(ifft(k_pad,[],1),[],2);
 
 % scanner frame
 img = permute(img, [2 1 3 4]);
-img = flipdim(flipdim(img,2),3);
+% img = flipdim(flipdim(img,2),3); % old Amir SWI
+img = flipdim(img,1); % new msloop sequence
 [nv,np,ns,~] = size(img); % phase, readout, slice, receivers
 vox = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 

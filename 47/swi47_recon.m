@@ -57,16 +57,32 @@ R = iPars.nput('Stop program now to decide what to do (press CTRL C) ')
 end
 fclose(fid);
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% old Amir SWI
+% % Reshape raw scanner output to 3D matrix
+% IM3D=reshapemat(cpxdata,Pars,1,ebytes);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% new msloop
 % Reshape raw scanner output to 3D matrix
-IM3D=reshapemat(cpxdata,Pars,1,ebytes);
+cpxdata=reshape(cpxdata,[],nblocks);
+cpxdata=cpxdata(28/ebytes+1:end,:);
+cpxdata=reshape(cpxdata,2,[]);
+cpxdata=complex(cpxdata(1,:),cpxdata(2,:));
+cpxdata=reshape(cpxdata,Pars.np/2,Pars.NS,4,Pars.nv);
+cpxdata=single(cpxdata);
+IM3D.RCVR1=squeeze(cpxdata(:,:,1,:));
+IM3D.RCVR2=squeeze(cpxdata(:,:,2,:));
+IM3D.RCVR3=squeeze(cpxdata(:,:,3,:));
+IM3D.RCVR4=squeeze(cpxdata(:,:,4,:));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 IM3D_RCVR1=IM3D.RCVR1;
 if Pars.RCVRS_==4  % 4 RCVRS
-IM3D_RCVR2=IM3D.RCVR2;
-IM3D_RCVR3=IM3D.RCVR3;
-IM3D_RCVR4=IM3D.RCVR4;
+    IM3D_RCVR2=IM3D.RCVR2;
+    IM3D_RCVR3=IM3D.RCVR3;
+    IM3D_RCVR4=IM3D.RCVR4;
 end
-clear cpxdata IM3D 
+clear IM3D cpxdata
 
 
 % REMOVE DC SHIFTS/ARTIFACTS
