@@ -14,16 +14,16 @@ function img_cmb_all = coils_cmb(img,vox,cref,radi,te,off_corr)
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
 % te = [3, 7, 11, 15, 19]; % echo times, only the first two are required!
 %   if single-echo data, 'te' will not be used, just replace 'te' with [] as input
-% cref = 3; % (3rd channel as reference coil)
-% radi = 3; % (mm)
+% cref = 1; % (1st channel as reference coil)
+% radi = 4; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if ~ exist('cref','var') || isempty(cref)
-    cref = 3;
+    cref = 1;
 end
 
 if ~ exist('radi','var') || isempty(radi)
-    radi = 3;
+    radi = 4;
 end
 
 if ~ exist('te','var') || isempty(te)
