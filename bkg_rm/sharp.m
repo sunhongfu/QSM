@@ -40,7 +40,7 @@ DKER = fftn(dker,imsize); % dker in Fourier domain
 
 % SHARP
 % convolute the total field (ext + int) with d_kernel
-ph_tmp = circshift(ifftn(fftn(tfs).*D_ker),-csh);
+ph_tmp = circshift(ifftn(fftn(tfs).*DKER),-csh);
 % erode the result (abandon brain edges)
 ph_tmp = ph_tmp.*mask_ero;
 % deconvolution
