@@ -44,8 +44,8 @@ ph_tmp = circshift(ifftn(fftn(tfs).*DKER),-csh);
 % erode the result (abandon brain edges)
 ph_tmp = ph_tmp.*mask_ero;
 % deconvolution
-ph_int = fftn(ph_tmp)./D_ker;
-ph_int(abs(D_ker)<tsvd) = 0;
+ph_int = fftn(ph_tmp)./DKER;
+ph_int(abs(DKER)<tsvd) = 0;
 ph_tmp = circshift(ifftn(ph_int),csh);
 lfs = real(ph_tmp).*mask_ero;
 
