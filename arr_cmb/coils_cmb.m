@@ -18,9 +18,22 @@ function img_cmb_all = coils_cmb(img,vox,cref,radi,te,off_corr)
 % radi = 3; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+if ~ exist('cref','var') || isempty(cref)
+    cref = 3;
+end
+
+if ~ exist('radi','var') || isempty(radi)
+    radi = 3;
+end
+
+if ~ exist('te','var') || isempty(te)
+    te = [];
+end
+
 if ~ exist('off_corr','var') || isempty(off_corr)
     off_corr = 0;
 end
+
 
 % image size: readout, phase encoding, slice encoding, receivers, echoes
 [np,nv,nv2,nrcvrs,ne] = size(img);
