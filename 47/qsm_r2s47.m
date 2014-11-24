@@ -40,6 +40,14 @@ if ~ exist('options','var') || isempty(options)
     options = [];
 end
 
+if ~ isfield(options,'ref_coil')
+    options.ref_coil = 3;
+end
+
+if ~ isfield(options,'eig_rad')
+    options.eig_rad = 4;
+end
+
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.5;
 end
@@ -88,7 +96,8 @@ if ~ isfield(options,'save_all')
 end
 
 
-
+ref_coil = options.ref_coil;
+eig_rad  = options.eig_rad;
 bet_thr  = options.bet_thr;
 bkg_rm   = options.bkg_rm;
 smv_rad  = options.smv_rad;
@@ -141,7 +150,7 @@ end
 
 % combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
-    mag_cmb = abs(coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,3));
+    mag_cmb = abs(coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad));
     % at 4.7T, seems the 3rd coil has the best SNR?
 else
     mag_cmb = abs(img);

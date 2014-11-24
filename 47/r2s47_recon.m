@@ -77,5 +77,6 @@ for i=1:ne*rcvrs*ad
     end
     
     %   Take inplane transform
-    img(:,:,:,i) = fftshift(fftshift(fft(fft(fftshift(fftshift(img(:,:,:,i),1),2),[],1),[],2),1),2);
+    img(:,:,:,i) = fftshift(fftshift(fft(fft(fftshift(fftshift( ...
+        img(:,:,:,i),1),2),[],1),[],2),1),2);
 end
