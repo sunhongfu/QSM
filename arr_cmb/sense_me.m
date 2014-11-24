@@ -1,4 +1,4 @@
-function ph_cmb = sense_me(img,te,vox)
+function ph_cmb = sense_me(img,vox,te)
 %SENSE combination (for phase).
 %   PH_CMB = SENSE(IMG,PAR) combines phase from multiple receivers
 %
