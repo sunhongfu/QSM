@@ -97,7 +97,7 @@ end
 
 
 %% if multi-echo then correct for phase-offset
-if (echo > 1) && off_corr
+if (ne > 1) && off_corr
     nii = make_nii(abs(img_cmb_all(:,:,:,1)),vox);
     save_nii(nii,'mag1.nii');
     nii = make_nii(abs(img_cmb_all(:,:,:,2)),vox);
@@ -128,7 +128,7 @@ if (echo > 1) && off_corr
     unph2 = double(nii.img);
 
     offset = (te(1)*unph2 - te(2)*unph1)/(te(1)-te(2));
-    img_cmb_all = img_cmb_all./exp(1j.*repmat(offset,[1,1,1,echo]));
+    img_cmb_all = img_cmb_all./exp(1j.*repmat(offset,[1,1,1,ne]));
 end
 
 end
