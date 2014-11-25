@@ -1,7 +1,11 @@
-function [img,Pars] = swi47_recon(path_in)
+function [img,Pars] = swi47_recon(path_in,swi_ver)
 
 if ~ exist('path_in','var') || isempty(path_in)
     path_in = [pwd '/ge3d__01.fid'];
+end
+
+if ~ exist('swi_ver','var') || isempty(swi_ver)
+    swi_ver = 'amir';
 end
 
 file=[path_in,'/fid'];
@@ -59,21 +63,27 @@ fclose(fid);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% old Amir SWI
-% % Reshape raw scanner output to 3D matrix
-% IM3D=reshapemat(cpxdata,Pars,1,ebytes);
+if strcmpi(swi_ver,'amir')
+    % Reshape raw scanner output to 3D matrix
+    IM3D=reshapemat(cpxdata,Pars,1,ebytes);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% new msloop
-% Reshape raw scanner output to 3D matrix
-cpxdata=reshape(cpxdata,[],nblocks);
-cpxdata=cpxdata(28/ebytes+1:end,:);
-cpxdata=reshape(cpxdata,2,[]);
-cpxdata=complex(cpxdata(1,:),cpxdata(2,:));
-cpxdata=reshape(cpxdata,Pars.np/2,Pars.NS,4,Pars.nv);
-cpxdata=single(cpxdata);
-IM3D.RCVR1=squeeze(cpxdata(:,:,1,:));
-IM3D.RCVR2=squeeze(cpxdata(:,:,2,:));
-IM3D.RCVR3=squeeze(cpxdata(:,:,3,:));
-IM3D.RCVR4=squeeze(cpxdata(:,:,4,:));
+elseif strcmpi(swi_ver,'hongfu')
+    %%% new msloop
+    % Reshape raw scanner output to 3D matrix
+    cpxdata=reshape(cpxdata,[],nblocks);
+    cpxdata=cpxdata(28/ebytes+1:end,:);
+    cpxdata=reshape(cpxdata,2,[]);
+    cpxdata=rot90(cpxdata);
+    cpxdata=complex(cpxdata(:,1),cpxdata(:,2));
+    cpxdata=reshape(cpxdata,Pars.np/2,Pars.NS,4,Pars.nv);
+    cpxdata=single(cpxdata);
+    IM3D.RCVR1=squeeze(cpxdata(:,:,1,:));
+    IM3D.RCVR2=squeeze(cpxdata(:,:,2,:));
+    IM3D.RCVR3=squeeze(cpxdata(:,:,3,:));
+    IM3D.RCVR4=squeeze(cpxdata(:,:,4,:));
+else
+    error('what is this sequence? amir or hongfu?')
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 IM3D_RCVR1=IM3D.RCVR1;
