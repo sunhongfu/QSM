@@ -26,8 +26,10 @@ end
 
 if exist([path_in '/fid'],'file')
     path_fid = path_in;
+    path_fid = cd(cd(path_fid));
 elseif exist([path_in '/gemsme3d_R2s_01.fid/fid'],'file')
     path_fid = [path_in, '/gemsme3d_R2s_01.fid'];
+    path_fid = cd(cd(path_fid));
 else
     error('cannot find .fid file');
 end
@@ -129,7 +131,7 @@ disp('--> reconstruct fid to complex img ...');
 img = permute(img,[2 1 3 4 5]); 
 img = flipdim(img,1);
 img = flipdim(img,2);
-[nv,np,nv2,ne,~] = size(img);
+[nv,np,nv2,ne,~] = size(img)
 voxelSize = [par.lpe/par.nv, par.lro/(par.np/2), par.lpe2/par.nv2]*10;
 % resolution in mm/pixel
 te = par.te + (0:ne-1)*par.esp;
@@ -150,7 +152,8 @@ end
 
 % combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
-    mag_cmb = abs(coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad));
+    img_cmb = coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
+    mag_cmb = abs(img_cmb);
     % at 4.7T, seems the 3rd coil has the best SNR?
 else
     mag_cmb = abs(img);
@@ -174,13 +177,20 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% combine phase using double-echo method
-if par.nrcvrs > 1
-    ph_cmb = sense_me(img,voxelSize,te);
+if ne > 1
+    % combine phase using double-echo method
+    if par.nrcvrs > 1
+        ph_cmb = sense_me(img,voxelSize,te);
+    else
+        ph_cmb = angle(img);
+    end
 else
-    ph_cmb = angle(img);
+    if par.nrcvrs > 1
+        ph_cmb = angle(img_cmb);
+    else
+        ph_cmb = angle(img);
+    end
 end
-
 
 % save niftis after coil combination
 mkdir('combine');
