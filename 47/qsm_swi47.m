@@ -7,14 +7,14 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_IN    - directory of .fid from ge3d sequence      : ge3d__01.fid
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_SWI_vxxx
 %   OPTIONS    - parameter structure including fields below
-%    .ref_coi  - reference coil to use for phase combine   : 3
+%    .ref_coil  - reference coil to use for phase combine   : 3
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 3
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg  - Tikhonov regularization for resharp       : 0.0005
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.3
 %    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
-%    .sav_all  - save all the variables for debug          : 1
+%    .save_all  - save all the variables for debug          : 1
 
 
 %%% default settings
@@ -38,51 +38,77 @@ if ~ exist('options','var') || isempty(options)
     options = [];
 end
 
-if ~ isfield(options,'ref_coi')
-    options.ref_coi = 3;
+if ~ isfield(options,'ref_coil')
+    options.ref_coil = 3;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 3;
+    options.eig_rad = 4;
 end
 
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.3;
 end
 
+if ~ isfield(options,'r_mask')
+    options.r_mask = 1;
+end
+
+if ~ isfield(options,'r_thr')
+    options.r_thr = 0.2;
+end
+
+if ~ isfield(options,'bkg_rm')
+    % options.bkg_rm = {'resharp','lbv'};
+    % options.bkg_rm = 'resharp';
+    options.bkg_rm = {'pdf','sharp','resharp','lbv'};
+end
+
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 4;
+    options.smv_rad = 6;
 end
 
 if ~ isfield(options,'tik_reg')
     options.tik_reg = 5e-4;
 end
 
+if ~ isfield(options,'t_svd')
+    options.t_svd = 0.05;
+end
+
 if ~ isfield(options,'tv_reg')
     options.tv_reg = 5e-4;
 end
 
-if ~ isfield(options,'tvdi_n')
-    options.tvdi_n = 200;
+if ~ isfield(options,'inv_num')
+    options.inv_num = 200;
 end
 
-if ~ isfield(options,'sav_all')
-    options.sav_all = 1;
+if ~ isfield(options,'save_all')
+    options.save_all = 1;
 end
 
-ref_coi = options.ref_coi;
-eig_rad = options.eig_rad;
-bet_thr = options.bet_thr;
-smv_rad = options.smv_rad;
-tik_reg = options.tik_reg;
-tv_reg  = options.tv_reg;
-tvdi_n  = options.tvdi_n;
-sav_all = options.sav_all;
+if ~ isfield(options,'swi_ver')
+    options.swi_ver = 'amir';
+end
 
+ref_coil = options.ref_coil;
+eig_rad  = options.eig_rad;
+bet_thr  = options.bet_thr;
+r_mask   = options.r_mask;
+r_thr    = options.r_thr;
+bkg_rm   = options.bkg_rm;
+smv_rad  = options.smv_rad;
+tik_reg  = options.tik_reg;
+t_svd    = options.t_svd;
+tv_reg   = options.tv_reg;
+inv_num  = options.inv_num;
+save_all = options.save_all;
+swi_ver  = options.swi_ver;
 
 
 %%% define directories
-path_qsm = [path_out '/QSM_SWI_v300'];
+path_qsm = [path_out '/QSM_SWI_v500'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -90,7 +116,7 @@ cd(path_qsm);
 
 %%% generate raw img
 disp('--> reconstruct fid to complex img ...');
-[img,Pars] = swi47_recon(path_fid);
+[img,Pars] = swi47_recon(path_fid,swi_ver);
 
 
 %%% interpolate to iso-resoluation in plane
@@ -103,21 +129,22 @@ k = fft(fft(img,[],1),[],2);
 pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
 imsize = size(k);
 if mod(imsize(2),2) % if size of k is odd
-    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), [0 pad-round(pad/2)], 'post'),2);
+    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
+        [0 pad-round(pad/2)], 'post'),2);
 else % size of k is even
     k_s = fftshift(k,2);
     k_s(:,1,:) = k_s(:,1,:)/2;
-    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), [0 pad-round(pad/2)], 'post'),2);
+    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
+        [0 pad-round(pad/2)], 'post'),2);
 end
 img = ifft(ifft(k_pad,[],1),[],2);
 
 
 % scanner frame
 img = permute(img, [2 1 3 4]);
-% img = flipdim(flipdim(img,2),3); % old Amir SWI
-img = flipdim(img,1); % new msloop sequence
+img = flipdim(flipdim(img,2),3);
 [nv,np,ns,~] = size(img); % phase, readout, slice, receivers
-vox = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
+voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 % field directions
 %% intrinsic euler angles 
@@ -133,17 +160,17 @@ if ~ isequal(z_prjs,[0 0 1])
 end
 
 % combine receivers
-if Pars.RCVRS_ == 4
+if Pars.RCVRS_ > 1
     % combine RF coils
     disp('--> combine RF rcvrs ...');
-    img_cmb = coils_cmb(img,vox,ref_coi,eig_rad);
+    img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
 else  % single channel  
     img_cmb = img;
 end
 
 % save nifti
 mkdir('combine');
-nii = make_nii(abs(img_cmb),vox);
+nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
 
 
@@ -158,7 +185,7 @@ save_nii(nii,'combine/mag_cmb.nii');
 % img_cmb = img_cmb.* repmat(ph_ramp,[nv 1 ns]);
 
 % save nifti
-nii = make_nii(angle(img_cmb),vox);
+nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
 
 clear img;
@@ -173,30 +200,6 @@ unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
-if options.ero
-    % erode the brain 2mm 
-    imsize = size(mask);
-    % make spherical/ellipsoidal convolution kernel (ker)
-    rx = round(2/vox(1));
-    ry = round(2/vox(2));
-    rz = round(2/vox(3));
-    % rz = ceil(ker_rad/vox(3));
-    [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-    h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
-    ker = h/sum(h(:));
-    % circularshift, linear conv to Fourier multiplication
-    csh = [rx,ry,rz]; % circularshift
-    % erode the mask by convolving with the kernel
-    cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
-    mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
-    mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
-    mask_ero = zeros(imsize);
-    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1;
-    mask = mask_ero;
-    unix('mv BET_mask.nii BET_mask_backup.nii');
-    nii = make_nii(mask,vox);
-    save_nii(nii,'BET_mask.nii');
-end
 
 % %% unwrap combined phase with PRELUDE
 % disp('--> unwrap aliasing phase ...');
@@ -207,15 +210,15 @@ end
 
 
 % % unwrap with Laplacian based method (TianLiu's)
-% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), vox);
-% nii = make_nii(unph, vox);
+% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
+% nii = make_nii(unph, voxelSize);
 % save_nii(nii,'unph_lap.nii');
 
 
 % Ryan Topfer's Laplacian unwrapping
-Options.voxelSize = vox;
+Options.voxelSize = voxelSize;
 unph = lapunwrap(angle(img_cmb), Options);
-nii = make_nii(unph, vox);
+nii = make_nii(unph, voxelSize);
 save_nii(nii,'unph_lap.nii');
 
 
@@ -226,63 +229,186 @@ save_nii(nii,'unph_lap.nii');
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
 % tfs = -unph_poly/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
 tfs = -unph/(2.675e8*Pars.te*4.7)*1e6; % unit ppm
-nii = make_nii(tfs,vox);
+nii = make_nii(tfs,voxelSize);
 save_nii(nii,'tfs.nii');
 
 
+% by default
+R = 1;
+% if there's a better way to calculate R, change it here globally
+
+%% PDF
+if sum(strcmpi('pdf',bkg_rm))
+    disp('--> PDF to remove background field ...');
+    [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R,voxelSize,smv_rad, ...
+        abs(img_cmb),z_prjs);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
+
+    if r_mask
+        R_pdf = ones(size(mask));
+        R_pdf(lfs_pdf > r_thr) = 0;
+        [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R_pdf,voxelSize,smv_rad, ...
+            abs(img_cmb),z_prjs);
+    end
+
+    % save nifti
+    mkdir('PDF');
+    nii = make_nii(lfs_pdf,voxelSize);
+    save_nii(nii,'PDF/lfs_pdf.nii');
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on PDF...');
+    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, ...
+        abs(img_cmb), z_prjs, inv_num); 
+
+    % save nifti
+    nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
+    save_nii(nii,'PDF/sus_pdf.nii');
+end
 
 
-% (1) resharp 
-disp('--> resharp to remove background field ...');
-mkdir('resharp');
-[lfs_resharp,mask_resharp] = resharp(tfs,mask,vox,smv_rad,tik_reg);
+%% SHARP (t_svd: truncation threthold for t_svd)
+if sum(strcmpi('sharp',bkg_rm))
+    disp('--> SHARP to remove background field ...');
+    [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,voxelSize,smv_rad,t_svd);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_sharp= poly3d(lfs_sharp,mask_sharp);
 
-nii = make_nii(lfs_resharp,vox);
-save_nii(nii,'resharp/lfs_resharp.nii');
+    if r_mask
+        R_sharp = ones(size(mask));
+        R_sharp(lfs_sharp > r_thr) = 0;
+        [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R_sharp,voxelSize,smv_rad,t_svd);
+    end
 
-
-%%% susceptibility inversion
-disp('--> TV susceptibility inversion ...');
-sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
-
-nii = make_nii(sus_resharp,vox);
-save_nii(nii,'resharp/sus_resharp.nii');
-
-nii = make_nii(sus_resharp.*mask_resharp,vox);
-save_nii(nii,'resharp/sus_resharp_clean.nii');
-
-
-
-% (2) lbv
-disp('--> lbv to remove background field ...');
-lfs_lbv = LBV(tfs,mask,size(tfs),vox,0.01,2); % strip 2 layers
-mkdir('lbv');
-nii = make_nii(lfs_lbv,vox);
-save_nii(nii,'lbv/lfs_lbv.nii');
-mask_lbv = ones(size(mask));
-mask_lbv(lfs_lbv==0) = 0;
-
-% 3D 2nd order polyfit to remove phase-offset
-lfs_lbv_poly= poly3d(lfs_lbv,mask_lbv);
-nii = make_nii(lfs_lbv_poly,vox);
-save_nii(nii,'lbv/lfs_lbv_poly.nii');
+    % save nifti
+    mkdir('SHARP');
+    nii = make_nii(lfs_sharp,voxelSize);
+    save_nii(nii,'SHARP/lfs_sharp.nii');
+    
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on SHARP...');
+    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, ...
+        abs(img_cmb), z_prjs, inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
+    save_nii(nii,'SHARP/sus_sharp.nii');
+end
 
 
-%%% susceptibility inversion
-disp('--> TV susceptibility inversion ...');
-% sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
-sus_lbv = tvdi(lfs_lbv_poly,mask_lbv,vox,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+%% RE-SHARP (tik_reg: Tikhonov regularization parameter)
+if sum(strcmpi('resharp',bkg_rm))
+    disp('--> RESHARP to remove background field ...');
+    [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_resharp= poly3d(lfs_resharp,mask_resharp);
 
-nii = make_nii(sus_lbv,vox);
-save_nii(nii,'lbv/sus_lbv.nii');
+    if r_mask
+        R_resharp = ones(size(mask));
+        R_resharp(lfs_resharp > r_thr) = 0;
+        [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R_resharp,voxelSize,smv_rad,tik_reg);
+    end
 
-nii = make_nii(sus_lbv.*mask_lbv,vox);
-save_nii(nii,'lbv/sus_lbv_clean.nii');
+    % save nifti
+    mkdir('RESHARP');
+    nii = make_nii(lfs_resharp,voxelSize);
+    save_nii(nii,'RESHARP/lfs_resharp.nii');
+   
+
+    % save nifti
+    mkdir('RESHARP');
+    nii = make_nii(lfs_resharp,voxelSize);
+    save_nii(nii,'RESHARP/lfs_resharp2.nii');
+
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on RESHARP...');
+    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, ...
+        abs(img_cmb), z_prjs, inv_num); 
+   
+
+    % save nifti
+    nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
+    save_nii(nii,'RESHARP/sus_resharp.nii');
+
+end
+
+
+%% LBV
+if sum(strcmpi('lbv',bkg_rm))
+    disp('--> LBV to remove background field ...');
+    lfs_lbv = LBV(tfs,mask.*R,size(tfs),voxelSize,0.01,2); % strip 2 layers
+    mask_lbv = ones(size(mask));
+    mask_lbv(lfs_lbv==0) = 0;
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+
+    if r_mask
+        R_lbv = ones(size(mask));
+        R_lbv(lfs_lbv > r_thr) = 0;
+        lfs_lbv = LBV(tfs,mask.*R_lbv,size(tfs),voxelSize,0.01,2); % strip 2 layers
+        mask_lbv = ones(size(mask));
+        mask_lbv(lfs_lbv==0) = 0;
+    end
+
+    % save nifti
+    mkdir('LBV');
+    nii = make_nii(lfs_lbv,voxelSize);
+    save_nii(nii,'LBV/lfs_lbv.nii');
+
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on lbv...');
+    sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg, ...
+        abs(img_cmb),z_prjs,inv_num);   
+
+    % save nifti
+    nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
+    save_nii(nii,'LBV/sus_lbv.nii');
+
+end
+
+%% E-SHARP
+% if sum(strcmpi('esharp',bkg_rm))
+%     disp('--> E-SHARP to remove background field ...');
+%     Options.voxelSize = voxelSize;
+%     lfs = esharp(tfs,mask.*R,Options);
+%     mask_final = mask.*R;
+% 
+% 
+%     % save nifti
+%     mkdir([path_qsm '/rmbkg/']);
+%     nii = make_nii(lfs,voxelSize);
+%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xy.nii']);
+%     nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
+%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xz.nii']);
+%     nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
+%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_yz.nii']);
+%     nii = make_nii(mask_final,voxelSize);
+%     save_nii(nii,[path_qsm '/mask/mask_esharp_final.nii']);
+% 
+% 
+%     % inversion of susceptibility 
+%     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
+%     sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
+% 
+% 
+%     % save nifti
+%     mkdir([path_qsm '/inversion']);
+%     nii = make_nii(sus,voxelSize);
+%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xy.nii']);
+%     nii = make_nii(permute(sus,[1 3 2]),voxelSize);
+%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xz.nii']);
+%     nii = make_nii(permute(sus,[2 3 1]),voxelSize);
+%     save_nii(nii,[path_qsm '/inversion/sus_esharp_yz.nii']);
+% end
 
 
 
-%%% save all variables for debugging purpose
-if sav_all
+
+%% save all variables for debugging purpose
+if save_all
     clear nii;
     save('all.mat','-v7.3');
 end
@@ -291,7 +417,6 @@ end
 save('parameters.mat','options','-v7.3')
 
 
-%%% clean up
+%% clean up
 % unix('rm *.nii*');
 cd(init_dir);
-

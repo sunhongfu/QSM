@@ -52,6 +52,18 @@ if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.5;
 end
 
+if ~ isfield(options,'echo_num')
+    options.echo_num = 5;
+end
+
+if ~ isfield(options,'r_mask')
+    options.r_mask = 1;
+end
+
+if ~ isfield(options,'fit_thr')
+    options.fit_thr = 10;
+end
+
 if ~ isfield(options,'bkg_rm')
     % options.bkg_rm = {'resharp','lbv'};
     % options.bkg_rm = 'resharp';
@@ -78,19 +90,6 @@ if ~ isfield(options,'inv_num')
     options.inv_num = 200;
 end
 
-if ~ isfield(options,'echo_num')
-    options.echo_num = 5;
-end
-
-if ~ isfield(options,'r_mask')
-    options.r_mask = 1;
-end
-
-if ~ isfield(options,'fit_thr')
-    options.fit_thr = 10;
-end
-
-
 if ~ isfield(options,'save_all')
     options.save_all = 1;
 end
@@ -99,14 +98,15 @@ end
 ref_coil = options.ref_coil;
 eig_rad  = options.eig_rad;
 bet_thr  = options.bet_thr;
+echo_num = options.echo_num;
+r_mask   = options.r_mask; 
+fit_thr  = options.fit_thr;
 bkg_rm   = options.bkg_rm;
 smv_rad  = options.smv_rad;
 tik_reg  = options.tik_reg;
 t_svd    = options.t_svd;
 tv_reg   = options.tv_reg;
 inv_num  = options.inv_num;
-echo_num = options.echo_num;
-fit_thr  = options.fit_thr;
 save_all = options.save_all;
 
 
@@ -257,7 +257,7 @@ disp('--> magnitude weighted LS fit of phase to TE ...');
 tfs = -tfs/(2.675e8*4.7)*1e6; % unit ppm
 
 
-if options.r_mask
+if r_mask
     % generate reliability map
     fit_residual_blur = smooth3(fit_residual,'box',round(smv_rad./voxelSize)*2+1); 
     nii = make_nii(fit_residual_blur,voxelSize);
