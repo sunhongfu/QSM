@@ -140,13 +140,13 @@ te = par.te + (0:ne-1)*par.esp;
 % intrinsic euler angles 
 % z-x-z convention, psi first, then theta, lastly phi
 % psi and theta are left-handed, while gamma is right-handed!
-alpha = - par.psi/180*pi;
+% alpha = - par.psi/180*pi;
 beta = - par.theta/180*pi;
 gamma =  par.phi/180*pi;
 z_prjs = [sin(beta)*sin(gamma), sin(beta)*cos(gamma), cos(beta)];
 if ~ isequal(z_prjs,[0 0 1])
     disp('This is not pure axial slicing');
-    z_prjs
+    disp(z_prjs);
 end
 
 
@@ -206,7 +206,7 @@ te = par.te + (0:ne-1)*par.esp;
 
 
 
-%% unwrap phase from each echo
+% unwrap phase from each echo
 disp('--> unwrap aliasing phase for all TEs ...');
 
 setenv('echo_num',num2str(echo_num));
@@ -250,7 +250,7 @@ for echo = 2:ne
 end
 
 
-%% fit phase images with echo times
+% fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
 [tfs, fit_residual] = echofit(unph_cmb,abs(img_cmb),te); 
 
@@ -263,7 +263,7 @@ tfs = -tfs/(2.675e8*4.7)*1e6; % unit ppm
 
 if r_mask
     % generate reliability map
-    fit_residual_blur = smooth3(fit_residual,'box',round(smv_rad./voxelSize)*2+1); 
+    fit_residual_blur = smooth3(fit_residual,'box',round(smv_rad./voxelSize/2)*2+1); 
     nii = make_nii(fit_residual_blur,voxelSize);
     save_nii(nii,'fit_residual_blur.nii');
     R = ones(size(fit_residual_blur));
@@ -273,7 +273,7 @@ else
 end
 
 
-%% PDF
+% PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R,voxelSize,smv_rad, ...
@@ -297,7 +297,7 @@ if sum(strcmpi('pdf',bkg_rm))
 end
 
 
-%% SHARP (t_svd: truncation threthold for t_svd)
+% SHARP (t_svd: truncation threthold for t_svd)
 if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
     [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,voxelSize,smv_rad,t_svd);
@@ -320,7 +320,7 @@ if sum(strcmpi('sharp',bkg_rm))
 end
 
 
-%% RE-SHARP (tik_reg: Tikhonov regularization parameter)
+% RE-SHARP (tik_reg: Tikhonov regularization parameter)
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
@@ -345,7 +345,7 @@ if sum(strcmpi('resharp',bkg_rm))
 end
 
 
-%% LBV
+% LBV
 if sum(strcmpi('lbv',bkg_rm))
     disp('--> LBV to remove background field ...');
     lfs_lbv = LBV(tfs,mask.*R,size(tfs),voxelSize,0.01,2); % strip 2 layers
@@ -372,45 +372,9 @@ if sum(strcmpi('lbv',bkg_rm))
 
 end
 
-%% E-SHARP
-% if sum(strcmpi('esharp',bkg_rm))
-%     disp('--> E-SHARP to remove background field ...');
-%     Options.voxelSize = voxelSize;
-%     lfs = esharp(tfs,mask.*R,Options);
-%     mask_final = mask.*R;
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/rmbkg/']);
-%     nii = make_nii(lfs,voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xy.nii']);
-%     nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xz.nii']);
-%     nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_yz.nii']);
-%     nii = make_nii(mask_final,voxelSize);
-%     save_nii(nii,[path_qsm '/mask/mask_esharp_final.nii']);
-% 
-% 
-%     % inversion of susceptibility 
-%     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-%     sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/inversion']);
-%     nii = make_nii(sus,voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xy.nii']);
-%     nii = make_nii(permute(sus,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xz.nii']);
-%     nii = make_nii(permute(sus,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_yz.nii']);
-% end
 
 
-
-
-%% save all variables for debugging purpose
+% save all variables for debugging purpose
 if save_all
     clear nii;
     save('all.mat','-v7.3');
@@ -420,7 +384,7 @@ end
 save('parameters.mat','options','-v7.3')
 
 
-%% clean up
+% clean up
 % unix('rm *.nii*');
 cd(init_dir);
 
