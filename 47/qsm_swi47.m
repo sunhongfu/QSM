@@ -17,15 +17,17 @@ function qsm_swi47(path_in, path_out, options)
 %    .save_all  - save all the variables for debug          : 1
 
 
-%%% default settings
+% default settings
 if ~ exist('path_in','var') || isempty(path_in)
     path_in = pwd;
 end
 
 if exist([path_in '/fid'],'file')
     path_fid = path_in;
+    path_fid = cd(cd(path_fid));
 elseif exist([path_in '/ge3d__01.fid/fid'],'file')
     path_fid = [path_in, '/ge3d__01.fid'];
+    path_fid = cd(cd(path_fid));
 else
     error('cannot find .fid file');
 end
@@ -55,7 +57,7 @@ if ~ isfield(options,'r_mask')
 end
 
 if ~ isfield(options,'r_thr')
-    options.r_thr = 0.2;
+    options.r_thr = 0.1;
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -65,7 +67,7 @@ if ~ isfield(options,'bkg_rm')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 6;
+    options.smv_rad = 4;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -147,17 +149,19 @@ img = flipdim(flipdim(img,2),3);
 voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 % field directions
-%% intrinsic euler angles 
+% intrinsic euler angles 
 % z-x-z convention, psi first, then theta, lastly phi
 % psi and theta are left-handed, while gamma is right-handed!
-alpha = - Pars.psi/180*pi;
+% alpha = - Pars.psi/180*pi;
 beta = - Pars.theta/180*pi;
 gamma =  Pars.phi/180*pi;
-z_prjs = [sin(beta)*sin(gamma), sin(beta)*cos(gamma), cos(beta)]
+z_prjs = [sin(beta)*sin(gamma), sin(beta)*cos(gamma), cos(beta)];
 if ~ isequal(z_prjs,[0 0 1])
     disp('This is angled slicing');
+    disp(z_prjs);
     pwd
 end
+
 
 % combine receivers
 if Pars.RCVRS_ > 1
@@ -172,7 +176,6 @@ end
 mkdir('combine');
 nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
-
 
 % %% center k-space correction (readout direction)
 % k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img_cmb,1),2),[],1),[],2),1),2);
@@ -191,7 +194,7 @@ save_nii(nii,'combine/ph_cmb.nii');
 clear img;
 
 
-%%% generate brain mask
+% generate brain mask
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
@@ -237,17 +240,18 @@ save_nii(nii,'tfs.nii');
 R = 1;
 % if there's a better way to calculate R, change it here globally
 
-%% PDF
+% PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R,voxelSize,smv_rad, ...
         abs(img_cmb),z_prjs);
-    % 3D 2nd order polyfit to remove any residual background
-    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
+    % 2D 2nd order polyfit to remove any residual background
+    lfs_pdf= poly2d(lfs_pdf,mask_pdf);
 
     if r_mask
+        lfs_pdf_blur = smooth3(lfs_pdf,'box',round(smv_rad./voxelSize/4)*2+1); 
         R_pdf = ones(size(mask));
-        R_pdf(lfs_pdf > r_thr) = 0;
+        R_pdf(lfs_pdf_blur > r_thr) = 0;
         [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R_pdf,voxelSize,smv_rad, ...
             abs(img_cmb),z_prjs);
     end
@@ -268,16 +272,17 @@ if sum(strcmpi('pdf',bkg_rm))
 end
 
 
-%% SHARP (t_svd: truncation threthold for t_svd)
+% SHARP (t_svd: truncation threthold for t_svd)
 if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
     [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,voxelSize,smv_rad,t_svd);
-    % 3D 2nd order polyfit to remove any residual background
-    lfs_sharp= poly3d(lfs_sharp,mask_sharp);
+    % 2D 2nd order polyfit to remove any residual background
+    lfs_sharp= poly2d(lfs_sharp,mask_sharp);
 
     if r_mask
+        lfs_sharp_blur = smooth3(lfs_sharp,'box',round(smv_rad./voxelSize/4)*2+1); 
         R_sharp = ones(size(mask));
-        R_sharp(lfs_sharp > r_thr) = 0;
+        R_sharp(lfs_sharp_blur > r_thr) = 0;
         [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R_sharp,voxelSize,smv_rad,t_svd);
     end
 
@@ -297,16 +302,17 @@ if sum(strcmpi('sharp',bkg_rm))
 end
 
 
-%% RE-SHARP (tik_reg: Tikhonov regularization parameter)
+% RE-SHARP (tik_reg: Tikhonov regularization parameter)
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
-    % 3D 2nd order polyfit to remove any residual background
-    lfs_resharp= poly3d(lfs_resharp,mask_resharp);
+    % 2D 2nd order polyfit to remove any residual background
+    lfs_resharp= poly2d(lfs_resharp,mask_resharp);
 
     if r_mask
+        lfs_resharp_blur = smooth3(lfs_resharp,'box',round(smv_rad./voxelSize/4)*2+1); 
         R_resharp = ones(size(mask));
-        R_resharp(lfs_resharp > r_thr) = 0;
+        R_resharp(lfs_resharp_blur > r_thr) = 0;
         [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R_resharp,voxelSize,smv_rad,tik_reg);
     end
 
@@ -314,12 +320,6 @@ if sum(strcmpi('resharp',bkg_rm))
     mkdir('RESHARP');
     nii = make_nii(lfs_resharp,voxelSize);
     save_nii(nii,'RESHARP/lfs_resharp.nii');
-   
-
-    % save nifti
-    mkdir('RESHARP');
-    nii = make_nii(lfs_resharp,voxelSize);
-    save_nii(nii,'RESHARP/lfs_resharp2.nii');
 
 
     % inversion of susceptibility 
@@ -335,18 +335,19 @@ if sum(strcmpi('resharp',bkg_rm))
 end
 
 
-%% LBV
+% LBV
 if sum(strcmpi('lbv',bkg_rm))
     disp('--> LBV to remove background field ...');
     lfs_lbv = LBV(tfs,mask.*R,size(tfs),voxelSize,0.01,2); % strip 2 layers
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
-    % 3D 2nd order polyfit to remove any residual background
-    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+    % 2D 2nd order polyfit to remove any residual background
+    lfs_lbv= poly2d(lfs_lbv,mask_lbv);
 
     if r_mask
+        lfs_lbv_blur = smooth3(lfs_lbv,'box',round(smv_rad./voxelSize/4)*2+1); 
         R_lbv = ones(size(mask));
-        R_lbv(lfs_lbv > r_thr) = 0;
+        R_lbv(lfs_lbv_blur > r_thr) = 0;
         lfs_lbv = LBV(tfs,mask.*R_lbv,size(tfs),voxelSize,0.01,2); % strip 2 layers
         mask_lbv = ones(size(mask));
         mask_lbv(lfs_lbv==0) = 0;
@@ -369,45 +370,8 @@ if sum(strcmpi('lbv',bkg_rm))
 
 end
 
-%% E-SHARP
-% if sum(strcmpi('esharp',bkg_rm))
-%     disp('--> E-SHARP to remove background field ...');
-%     Options.voxelSize = voxelSize;
-%     lfs = esharp(tfs,mask.*R,Options);
-%     mask_final = mask.*R;
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/rmbkg/']);
-%     nii = make_nii(lfs,voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xy.nii']);
-%     nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xz.nii']);
-%     nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_yz.nii']);
-%     nii = make_nii(mask_final,voxelSize);
-%     save_nii(nii,[path_qsm '/mask/mask_esharp_final.nii']);
-% 
-% 
-%     % inversion of susceptibility 
-%     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-%     sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/inversion']);
-%     nii = make_nii(sus,voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xy.nii']);
-%     nii = make_nii(permute(sus,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xz.nii']);
-%     nii = make_nii(permute(sus,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_yz.nii']);
-% end
 
-
-
-
-%% save all variables for debugging purpose
+% save all variables for debugging purpose
 if save_all
     clear nii;
     save('all.mat','-v7.3');
@@ -417,6 +381,6 @@ end
 save('parameters.mat','options','-v7.3')
 
 
-%% clean up
+% clean up
 % unix('rm *.nii*');
 cd(init_dir);
