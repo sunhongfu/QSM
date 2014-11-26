@@ -7,13 +7,25 @@ function [lfs, mask_ero] = resharp(tfs,mask,vox,ker_rad,tik_reg)
 %   TFS         : input total field shift
 %   MASK        : binary mask defining the brain ROI
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
-%   KER_RAD     : radius of convolution kernel (mm), e.g. 5
+%   KER_RAD     : radius of convolution kernel (mm), e.g. 4
 %   TIK_REG     : Tikhonov regularization parameter, e.g. 5e-4
 %
 %Method is described in the paper:
 %Sun, H. and Wilman, A. H. (2013), 
 %Background field removal using spherical mean value filtering and Tikhonov regularization. 
 %Magn Reson Med. doi: 10.1002/mrm.24765
+
+if ~ exist('vox','var') || isempty(vox)
+    vox = [1,1,1];
+end
+
+if ~ exist('ker_rad','var') || isempty(ker_rad)
+    ker_rad = 4;
+end
+
+if ~ exist('tik_reg','var') || isempty(tik_reg)
+    tik_reg = 5e-4;
+end
 
 imsize = size(tfs);
 
@@ -34,7 +46,7 @@ cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
 mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
 mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-8/sum(h(:))) = 1; % 7 error points tolerance
+mask_ero(mask_tmp > 1-8/sum(h(:))) = 1; % 7 error points tolerence 
 
 
 % prepare convolution kernel: delta-ker
