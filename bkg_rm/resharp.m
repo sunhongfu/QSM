@@ -35,7 +35,7 @@ ry = round(ker_rad/vox(2));
 rz = round(ker_rad/vox(3));
 % rz = ceil(ker_rad/vox(3));
 [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 <= 1);
 ker = h/sum(h(:));
 
 % circularshift, linear conv to Fourier multiplication
