@@ -8,15 +8,15 @@ function qsm_r2s47(path_in, path_out, options)
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_R2s_vxxx
 %   OPTIONS    - parameter structure including fields below
 %    .bet_thr  - threshold for BET brain mask              : 0.5
-%    .bkg_rm    - background field removal method(s)        : 'resharp'
+%    .bkg_rm   - background field removal method(s)        : 'resharp'
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.0005
-%    .t_svd     - truncation of SVD for SHARP               : 0.05
+%    .t_svd    - truncation of SVD for SHARP               : 0.05
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .inv_num   - iteration number of TVDI (nlcg)           : 200
-%    .echo_num   - keep only the first 'echo_num' echoes       : 5
-%    .fit_thr    - truncation level on fitting residual      : 10
-%    .save_all  - save all the variables for debug (~ 0)    : 1
+%    .inv_num  - iteration number of TVDI (nlcg)           : 200
+%    .echo_num - keep only the first 'echo_num' echoes     : 5
+%    .fit_thr  - truncation level on fitting residual      : 10
+%    .save_all - save all the variables for debug (~ 0)    : 1
 
 
 % default settings
@@ -67,9 +67,8 @@ if ~ isfield(options,'fit_thr')
 end
 
 if ~ isfield(options,'bkg_rm')
-    % options.bkg_rm = {'resharp','lbv'};
-    % options.bkg_rm = 'resharp';
-    options.bkg_rm = {'pdf','sharp','resharp','lbv'};
+    options.bkg_rm = 'resharp';
+    % options.bkg_rm = {'pdf','sharp','resharp','lbv'};
 end
 
 if ~ isfield(options,'smv_rad')
@@ -117,8 +116,6 @@ path_qsm = [path_out '/QSM_R2s_v500'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
-
-
 
 
 % reconstruct complex image from fid file
@@ -202,8 +199,6 @@ echo_num = min(ne,echo_num);
 img_cmb = img_cmb(:,:,:,1:echo_num);
 ne = echo_num;
 te = par.te + (0:ne-1)*par.esp;
-
-
 
 
 % unwrap phase from each echo
