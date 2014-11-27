@@ -85,7 +85,7 @@ tik_reg  = options.tik_reg;
 % t_svd    = options.t_svd;
 tv_reg   = options.tv_reg;
 inv_num  = options.inv_num;
-save_all = options.svae_all;
+save_all = options.save_all;
 
 
 % 4.7T corey's EPI parameters
@@ -108,7 +108,7 @@ cd(path_qsm);
 
 
 % reconstruct complex image from fid file
-[par,img_out] = se_epi_dw_recon(pwd,opt);
+[par,img_out] = se_epi_dw_recon(path_fid,opt);
 matlabpool close;
 
 
@@ -116,17 +116,17 @@ matlabpool close;
 [nPE, nRO, nSL, nRN, ~] = size(img_out);
 % [nPE, nRO, nSL, nRN, nrcvrs]
 voxelSize = [par.lpe/nPE*10, par.lro/nRO*10, par.thk];
-img_all = flipdim(flipdim(img_out,1),2);
+img_all = flipdim(flipdim(img_out,1),2); % the same as rot180 (rot90(x,2))
 
 % save all the variables
 if save_all
-    img_cmb_all = zeros([nPE, nRO, nSL, nRN]);
-		mask_all = zeros([nPE, nRO, nSL, nRN]);
-		unph_all = zeros([nPE, nRO, nSL, nRN]);
-		lfs_resharp_all = zeros([nPE, nRO, nSL, nRN]);
-		mask_resharp_all = zeros([nPE, nRO, nSL, nRN]);
-		lfs_poly_all = zeros([nPE, nRO, nSL, nRN]);
-		sus_resharp_all = zeros([nPE, nRO, nSL, nRN]);
+	img_cmb_all = zeros([nPE, nRO, nSL, nRN]);
+	mask_all = zeros([nPE, nRO, nSL, nRN]);
+	unph_all = zeros([nPE, nRO, nSL, nRN]);
+	lfs_resharp_all = zeros([nPE, nRO, nSL, nRN]);
+	mask_resharp_all = zeros([nPE, nRO, nSL, nRN]);
+	lfs_poly_all = zeros([nPE, nRO, nSL, nRN]);
+	sus_resharp_all = zeros([nPE, nRO, nSL, nRN]);
 end
     
 % process QSM on individual run volume
