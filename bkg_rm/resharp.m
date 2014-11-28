@@ -33,6 +33,9 @@ imsize = size(tfs);
 rx = round(ker_rad/vox(1));
 ry = round(ker_rad/vox(2));
 rz = round(ker_rad/vox(3));
+rx = max(rx,1);
+ry = max(ry,1);
+rz = max(rz,1);
 % rz = ceil(ker_rad/vox(3));
 [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
 h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 <= 1);
@@ -42,11 +45,12 @@ ker = h/sum(h(:));
 csh = [rx,ry,rz]; % circularshift
 
 % erode the mask by convolving with the kernel
-cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
-mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
-mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
+% cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
+% mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
+% mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-8/sum(h(:))) = 1; % 7 error points tolerence 
+mask_tmp = convn(mask,ker,'same');
+mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error points tolerence 
 
 
 % prepare convolution kernel: delta-ker

@@ -1,4 +1,4 @@
-function qsm_swi47(path_in, path_out, options)
+% function qsm_swi47(path_in, path_out, options)
 %QSM_SWI47 Quantitative susceptibility mapping from SWI sequence at 4.7T.
 %   QSM_SWI47(PATH_IN, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -7,9 +7,12 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_IN    - directory of .fid from ge3d sequence      : ge3d__01.fid
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_SWI_vxxx
 %   OPTIONS    - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 3
+%    .ref_coil - reference coil to use for phase combine   : 3
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 3
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 4
+%    .r_mask   - mask out extreme local field              : 1
+%    .r_thr    - threshold level for r_mask                : 0.15
+%    .bkg_rm   - background field removal method(s)        : 'resharp'
+%    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
 %    .tik_reg  - Tikhonov regularization for resharp       : 0.0005
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.3
@@ -53,21 +56,20 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'r_mask')
-    options.r_mask = 1;
+    options.r_mask = 0;
 end
 
 if ~ isfield(options,'r_thr')
-    options.r_thr = 0.1;
+    options.r_thr = 0.15;
 end
 
 if ~ isfield(options,'bkg_rm')
-    % options.bkg_rm = {'resharp','lbv'};
-    % options.bkg_rm = 'resharp';
-    options.bkg_rm = {'pdf','sharp','resharp','lbv'};
+    options.bkg_rm = 'resharp';
+    % options.bkg_rm = {'pdf','sharp','resharp','lbv'};
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 4;
+    options.smv_rad = 6;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -306,14 +308,12 @@ end
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
-    % 2D 2nd order polyfit to remove any residual background
-    lfs_resharp= poly2d(lfs_resharp,mask_resharp);
 
     if r_mask
         lfs_resharp_blur = smooth3(lfs_resharp,'box',round(smv_rad./voxelSize/4)*2+1); 
         R_resharp = ones(size(mask));
         R_resharp(lfs_resharp_blur > r_thr) = 0;
-        [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R_resharp,voxelSize,smv_rad,tik_reg);
+        % [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R_resharp,voxelSize,smv_rad,tik_reg);
     end
 
     % save nifti
