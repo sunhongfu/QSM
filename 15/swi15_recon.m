@@ -28,7 +28,7 @@ opt.kern = [1,1,1,1,1;...
 opt.PI_multw = 0;
 opt.numwork = 1;
 
-if isfield(params.protocol_header,'sPat.lRefLinesPE')
+if isfield(params.protocol_header.sPat,'lRefLinesPE')
 	% if GARAPPA
 	% Extract and reshape reference data
 	nref = params.protocol_header.sPat.lRefLinesPE;
@@ -57,12 +57,17 @@ if isfield(params.protocol_header,'sPat.lRefLinesPE')
 	clear k_ref
 	% reshape to the final k-space
 	k = permute(k_f,[1 2 4 3]);
+
+	% get rid of the last PE line from Corey's recon
+	k = k(1:end-1,:,:,:);
+
+	matlabpool close
 end
 
 % partial fourier
 sz = size(k);
 pf = nan;
-flag = params.protocol_header.sKSpace.ucPhasePartialFourier;
+flag = sKSpace.ucPhasePartialFourier;
 flag(isspace(flag))=[];
 switch (flag)
 	case {'0x1', 1}  % PF_HALF
@@ -83,15 +88,19 @@ if ~isnan(pf)
 end
 
 % POCS
-[im, kspFull] = pocs(permute(k,[4 1 2 3]),20);
-k = permute(kspFull,[2 3 4 1]);
+if (size(k,4) > 1) && (~isnan(pf)) 
+	[~, kspFull] = pocs(permute(k,[4 1 2 3]),20);
+	k = permute(kspFull,[2 3 4 1]);
+end
 
 
 % phase resolution
 if (sKSpace.dPhaseResolution ~= 1)
 	disp(sprintf('Phase Resolution: %1.2f', sKSpace.dPhaseResolution));
 	sz = size(k);
-	k = padarray(k, round((sz(1)-1)*(1/sKSpace.dPhaseResolution-1)/2));
+	pad_size = round(sz(1)*(1/sKSpace.dPhaseResolution-1));
+	k = padarray(padarray(k,round(pad_size/2),'post'),pad_size-round(pad_size/2),'pre');
+	% k = padarray(k, round((sz(1)-1)*(1/sKSpace.dPhaseResolution-1)/2));
 end
 
 
@@ -108,11 +117,9 @@ end
 if (sKSpace.dSliceResolution ~= 1)
 	disp(sprintf('Slice Resolution: %1.2f', sKSpace.dSliceResolution));
 	sz = size(k);
-	k = padarray(k, [0, 0, round((sz(3)-1)*(1/sKSpace.dSliceResolution-1)/2)]);
-	% % for testing purpose
-	% % interpolate slice thickness to 2mm
-%	 k = padarray(k, [0, 0, ...
-%	 	round((params.protocol_header.sSliceArray.asSlice{1}.dThickness/2-sz(3))/2)]);
+	pad_size = round(sz(3)*(1/sKSpace.dSliceResolution-1));
+	k = padarray(padarray(k,[0,0,round(pad_size/2)],'post'), [0,0,pad_size-round(pad_size/2)],'pre');
+	% k = padarray(k, [0, 0, round(sz(3)*(1/sKSpace.dSliceResolution-1)/2)]);
 end
 
 
