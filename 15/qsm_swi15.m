@@ -13,8 +13,8 @@ function qsm_swi15(meas_in, path_out, options)
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
 %    .tv_reg   - Total variation regularization parameter  : 0.0005
 %    .bet_thr  - threshold for BET brain mask              : 0.4
-%    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
-%    .sav_all  - save all the variables for debug          : 1
+%    .inv_num  - iteration number of TVDI (nlcg)           : 200
+%    .save_all - save all the variables for debug          : 1
 
 if ~ exist('meas_in','var') || isempty(meas_in)
 	listing = dir([pwd '/*.out']);
@@ -68,34 +68,48 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-3;
+    options.tik_reg = 5e-4;
 end
 
 if ~ isfield(options,'tv_reg')
     options.tv_reg = 5e-4;
 end
 
-if ~ isfield(options,'tvdi_n')
-    options.tvdi_n = 200;
+if ~ isfield(options,'inv_num')
+    options.inv_num = 200;
 end
 
-if ~ isfield(options,'sav_all')
-    options.sav_all = 1;
+if ~ isfield(options,'save_all')
+    options.save_all = 1;
 end
 
-ref_coi = options.ref_coi;
-eig_rad = options.eig_rad;
-bet_thr = options.bet_thr;
-smv_rad = options.smv_rad;
-tik_reg = options.tik_reg;
-tv_reg  = options.tv_reg;
-tvdi_n  = options.tvdi_n;
-sav_all = options.sav_all;
+if isfield(options,'dicompath')
+    dicompath = cd(cd(options.dicompath));
+    listing = dir([dicompath, '/*.IMA']);
+    dicomfile = [dicompath, '/' listing(1).name];
+else
+    dicomfile = [];
+    setenv('pathstr',pathstr);
+    [~,cmout] = unix('find "$pathstr" -name *.IMA | sort');
+    if ~ isempty(cmout)
+        dicoms = strsplit(cmout,'.IMA');
+        dicomfile = [dicoms{1},'.IMA'];
+    end
+end
+
+ref_coi  = options.ref_coi;
+eig_rad  = options.eig_rad;
+bet_thr  = options.bet_thr;
+smv_rad  = options.smv_rad;
+tik_reg  = options.tik_reg;
+tv_reg   = options.tv_reg;
+inv_num  = options.inv_num;
+save_all = options.save_all;
 
 
 % define directories
 [~,name] = fileparts(filename);
-path_qsm = [path_out, filesep, 'QSM_' name];
+path_qsm = [path_out, filesep, 'QSM_v500_' name];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -112,8 +126,43 @@ FOV = params.protocol_header.sSliceArray.asSlice{1};
 voxelSize = [FOV.dPhaseFOV/Npe, FOV.dReadoutFOV/Nro,  FOV.dThickness/Ns];
 
 
+% angles!!!
+if ~ isempty(dicomfile)
+    % read in dicom header, this is accurate information
+    info = dicominfo(dicomfile);
+    Xz = info.ImageOrientationPatient(3);
+    Yz = info.ImageOrientationPatient(6);
+    Zz = sqrt(1 - Xz^2 - Yz^2);
+    z_prjs = [Xz, Yz, Zz]
+else % this would be just an estimation
+    sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
+    if ~ isfield(sNormal,'dSag')
+        sNormal.dSag = 0;
+    end
+    if ischar(sNormal.dSag)
+        sNormal.dSag = 0;
+    end
+    if ~ isfield(sNormal,'dCor')
+        sNormal.dCor = 0;
+    end
+    if ischar(sNormal.dCor)
+        sNormal.dCor = 0;
+    end
+    if ~ isfield(sNormal,'dTra')
+        sNormal.dTra = 0;
+    end
+    if ischar(sNormal.dTra)
+        sNormal.dTra = 0;
+    end
+    z_prjs = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
+end
+
 % combine RF coils
-img_cmb = sense_se(img,voxelSize,ref_coi,eig_rad);
+if size(img,4) > 1
+    img_cmb = coils_cmb(img,voxelSize,ref_coi,eig_rad);
+else
+    img_cmb = img;
+end
 mkdir('combine');
 nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
@@ -144,22 +193,19 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% % unwrap combined phase with PRELUDE
-% disp('--> unwrap aliasing phase ...');
-% unix('prelude -s -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
-% unix('gunzip -f unph.nii.gz');
-% nii = load_nii('unph.nii');
-% unph = double(nii.img);
+% unwrap combined phase with PRELUDE
+disp('--> unwrap aliasing phase ...');
+unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+unix('gunzip -f unph.nii.gz');
+nii = load_nii('unph.nii');
+unph = double(nii.img);
 
 
-% unwrap with Laplacian based method
-unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
-nii = make_nii(unph, voxelSize);
-save_nii(nii,'unph_lap.nii');
-
-% unph = unwrapPhase(abs(img_cmb), angle(img_cmb),size(img_cmb));
+% % unwrap with Laplacian based method
+% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
 % nii = make_nii(unph, voxelSize);
-% save_nii(nii,'unph.nii');
+% save_nii(nii,'unph_lap.nii');
+
 
 
 % normalize to ppm unit
@@ -194,36 +240,15 @@ mask_lbv(lfs_lbv==0) = 0;
 
 
 % susceptibility inversion
-sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
-if ~ isfield(sNormal,'dSag')
-    sNormal.dSag = 0;
-end
-if ischar(sNormal.dSag)
-    sNormal.dSag = 0;
-end
-if ~ isfield(sNormal,'dCor')
-    sNormal.dCor = 0;
-end
-if ischar(sNormal.dCor)
-    sNormal.dCor = 0;
-end
-if ~ isfield(sNormal,'dTra')
-    sNormal.dTra = 0;
-end
-if ischar(sNormal.dTra)
-    sNormal.dTra = 0;
-end
-z_prjs = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
-
 % (1) RESHARP
-[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),nor_vec,tvdi_n);
+[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),z_prjs,inv_num);
 nii = make_nii(sus_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp.nii');
 nii=make_nii(sus_resharp.*mask_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp_clean.nii');
 
 % (2) LBV
-[sus_lbv,residual_lbv] = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,abs(img_cmb),z_prjs,tvdi_n);
+[sus_lbv,residual_lbv] = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,abs(img_cmb),z_prjs,inv_num);
 nii = make_nii(sus_lbv,voxelSize);
 save_nii(nii,'LBV/sus_lbv.nii');
 nii=make_nii(sus_lbv.*mask_lbv,voxelSize);        
@@ -231,7 +256,7 @@ save_nii(nii,'LBV/sus_lbv_clean.nii');
 
 
 % save all variables for debugging purpose
-if sav_all
+if save_all
     clear nii;
     save('all.mat','-v7.3');
 end
