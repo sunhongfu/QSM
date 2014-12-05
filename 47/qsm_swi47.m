@@ -249,8 +249,8 @@ if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = pdf(tfs,mask,voxelSize,smv_rad, ...
         abs(img_cmb),z_prjs);
-    % 2D 2nd order polyfit to remove any residual background
-    lfs_pdf= poly2d(lfs_pdf,mask_pdf);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
     mkdir('PDF');
@@ -272,8 +272,8 @@ end
 if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
     [lfs_sharp, mask_sharp] = sharp(tfs,mask,voxelSize,smv_rad,t_svd);
-    % 2D 2nd order polyfit to remove any residual background
-    lfs_sharp= poly2d(lfs_sharp,mask_sharp);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_sharp= poly3d(lfs_sharp,mask_sharp);
 
     % save nifti
     mkdir('SHARP');
@@ -295,11 +295,13 @@ end
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask,voxelSize,smv_rad,tik_reg);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_resharp= poly3d(lfs_resharp,mask_resharp);
 
     % save nifti
     mkdir('RESHARP');
     nii = make_nii(lfs_resharp,voxelSize);
-    save_nii(nii,'RESHARP/lfs_resharp_prelude_4.nii');
+    save_nii(nii,'RESHARP/lfs_resharp.nii');
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
@@ -319,8 +321,8 @@ if sum(strcmpi('lbv',bkg_rm))
     lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,2); % strip 2 layers
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
-    % 2D 2nd order polyfit to remove any residual background
-    lfs_lbv= poly2d(lfs_lbv,mask_lbv);
+    % 3D 2nd order polyfit to remove any residual background
+    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
 
     % save nifti
     mkdir('LBV');
