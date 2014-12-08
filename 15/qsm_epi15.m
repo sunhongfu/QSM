@@ -8,7 +8,7 @@ function qsm_epi15(meas_in, path_out, options)
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
 %   OPTIONS    - parameter structure including fields below
 %    .ph_corr  - N/2 deghosting phase correction method    : 3
-%    .ref_coi  - reference coil to use for phase combine   : 8
+%    .ref_coi  - reference coil to use for phase combine   : 4
 %    .eig_rad  - radius (mm) of eig decomp kernel          : 5
 %    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
 %    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
@@ -119,7 +119,7 @@ save_all = options.save_all;
 % define directories
 [~,name] = fileparts(filename);
 % path_qsm = [path_out, filesep, strrep(name,' ','_') '_QSM_EPI15_v200'];
-path_qsm = [path_out, filesep, 'QSM_' name];
+path_qsm = [path_out, filesep, 'QSM_EPI15_v100_' name];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -220,7 +220,9 @@ for i = 1:size(img_all,5) % all time series
     disp('--> extract brain volume and generate mask ...');
     setenv('bet_thr',num2str(bet_thr));
     setenv('time_series',num2str(i,'%03i'));
-    unix('bet combine/mag_cmb${time_series}.nii BET${time_series} -f ${bet_thr} -m -Z');
+    bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
+        '-f ${bet_thr} -m -Z'];
+    unix(bash_script);
     unix('gunzip -f BET${time_series}.nii.gz');
     unix('gunzip -f BET${time_series}_mask.nii.gz');
     nii = load_nii(['BET' num2str(i,'%03i') '_mask.nii']);
@@ -229,7 +231,10 @@ for i = 1:size(img_all,5) % all time series
     % unwrap combined phase with PRELUDE
     disp('--> unwrap aliasing phase ...');
     setenv('time_series',num2str(i,'%03i'));
-    unix('prelude -a combine/mag_cmb${time_series}.nii -p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii -m BET${time_series}_mask.nii -n 8');
+    bash_script = ['prelude -a combine/mag_cmb${time_series}.nii ' ...
+        '-p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii ' ...
+        '-m BET${time_series}_mask.nii -n 8'];
+    unix(bash_script);
     unix('gunzip -f unph${time_series}.nii.gz');
     nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
     unph = double(nii.img);
@@ -257,7 +262,8 @@ for i = 1:size(img_all,5) % all time series
 
 
     disp('--> TV susceptibility inversion ...');
-    sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img),z_prjs,inv_num);
+    sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img), ...
+        z_prjs,inv_num);
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,['RESHARP/sus_resharp' num2str(i,'%03i') '.nii']);
 

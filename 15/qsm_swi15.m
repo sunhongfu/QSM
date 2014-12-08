@@ -109,7 +109,7 @@ save_all = options.save_all;
 
 % define directories
 [~,name] = fileparts(filename);
-path_qsm = [path_out, filesep, 'QSM_v500_' name];
+path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -195,7 +195,9 @@ mask = double(nii.img);
 
 % unwrap combined phase with PRELUDE
 disp('--> unwrap aliasing phase ...');
-unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
+    '-u unph.nii -m BET_mask.nii -n 8'];
+unix(bash_script);
 unix('gunzip -f unph.nii.gz');
 nii = load_nii('unph.nii');
 unph = double(nii.img);
@@ -241,14 +243,16 @@ mask_lbv(lfs_lbv==0) = 0;
 
 % susceptibility inversion
 % (1) RESHARP
-[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb),z_prjs,inv_num);
+[sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize, ...
+    tv_reg,abs(img_cmb),z_prjs,inv_num);
 nii = make_nii(sus_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp.nii');
 nii=make_nii(sus_resharp.*mask_resharp,voxelSize);
 save_nii(nii,'RESHARP/sus_resharp_clean.nii');
 
 % (2) LBV
-[sus_lbv,residual_lbv] = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,abs(img_cmb),z_prjs,inv_num);
+[sus_lbv,residual_lbv] = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg, ...
+    abs(img_cmb),z_prjs,inv_num);
 nii = make_nii(sus_lbv,voxelSize);
 save_nii(nii,'LBV/sus_lbv.nii');
 nii=make_nii(sus_lbv.*mask_lbv,voxelSize);        

@@ -1,5 +1,5 @@
 function qsm_epi47(path_in, path_out, options)
-%QSM_EPI47 Quantitative susceptibility mapping from EPI sequence (Corey's) at 4.7T.
+%QSM_EPI47 Quantitative susceptibility mapping from EPI (Corey's) at 4.7T.
 %   QSM_EPI47(PATH_IN, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
@@ -101,7 +101,7 @@ opt.homod = 0;
 
 
 % define directories
-path_qsm = [path_out '/QSM_EPI_v100'];
+path_qsm = [path_out '/QSM_EPI47_v100'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -147,7 +147,9 @@ for i = 1:size(img_all,4) % all time series
 	disp('--> extract brain volume and generate mask ...');
 	setenv('bet_thr',num2str(bet_thr));
 	setenv('time_series',num2str(i,'%03i'));
-	unix('bet combine/mag_cmb${time_series}.nii BET${time_series} -f ${bet_thr} -m -Z');
+	bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
+		'-f ${bet_thr} -m -Z'];
+	unix(bash_script);
 	unix('gunzip -f BET${time_series}.nii.gz');
 	unix('gunzip -f BET${time_series}_mask.nii.gz');
 	nii = load_nii(['BET' num2str(i,'%03i') '_mask.nii']);
@@ -183,7 +185,8 @@ for i = 1:size(img_all,4) % all time series
 	end
 
 	disp('--> TV susceptibility inversion ...');
-	sus_resharp = tvdi(lfs_poly,mask_resharp,voxelSize,tv_reg,abs(img),z_prjs,inv_num);
+	sus_resharp = tvdi(lfs_poly,mask_resharp,voxelSize,tv_reg, ...
+		abs(img),z_prjs,inv_num);
 	nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
 	save_nii(nii,['RESHARP/sus_resharp' num2str(i,'%03i') '.nii']);
 

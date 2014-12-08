@@ -112,7 +112,7 @@ save_all = options.save_all;
 
 
 % define directories
-path_qsm = [path_out '/QSM_R2s_v500'];
+path_qsm = [path_out '/QSM_R2s47_v500'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);

@@ -111,9 +111,9 @@ swi_ver   = options.swi_ver;
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out '/QSM_SWI_v500'];
+    path_qsm = [path_out '/QSM_SWI47_v500'];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out '/QSM_SWI_v500_lap'];
+    path_qsm = [path_out '/QSM_SWI47_v500_lap'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -180,18 +180,6 @@ end
 mkdir('combine');
 nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
-
-% %% center k-space correction (readout direction)
-% k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img_cmb,1),2),[],1),[],2),1),2);
-% [~,Ind] = max(abs(k(:)));
-% Ix = ceil(mod(Ind,np*nv)/nv);
-
-% % Apply phase ramp
-% pix = np/2-Ix; % voxel shift
-% ph_ramp = exp(-sqrt(-1)*2*pi*pix*(-1/2:1/np:1/2-1/np));
-% img_cmb = img_cmb.* repmat(ph_ramp,[nv 1 ns]);
-
-% save nifti
 nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
 
@@ -212,7 +200,9 @@ mask = double(nii.img);
 if strcmpi('prelude',ph_unwrap)
     % unwrap combined phase with PRELUDE
     disp('--> unwrap aliasing phase ...');
-    unix('prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii -u unph.nii -m BET_mask.nii -n 8');
+    bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
+        '-u unph.nii -m BET_mask.nii -n 8'];
+    unix(bash_script);
     unix('gunzip -f unph.nii.gz');
     nii = load_nii('unph.nii');
     unph = double(nii.img);
