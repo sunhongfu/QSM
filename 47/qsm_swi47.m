@@ -60,6 +60,7 @@ if ~ isfield(options,'ph_unwrap')
     % options.ph_unwrap = 'laplacian';
     % % prelude is preferred, unless there's sigularities
     % % in that case, have to use laplacian
+    % another option is 'bestpath'
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -114,6 +115,8 @@ if strcmpi(ph_unwrap,'prelude')
     path_qsm = [path_out '/QSM_SWI47_v500'];
 elseif strcmpi(ph_unwrap,'laplacian')
     path_qsm = [path_out '/QSM_SWI47_v500_lap'];
+elseif strcmpi(ph_unwrap,'bestpath')
+    path_qsm = [path_out '/QSM_SWI47_v500_best'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -219,6 +222,43 @@ elseif strcmpi('laplacian',ph_unwrap)
     nii = make_nii(unph, voxelSize);
     save_nii(nii,'unph_lap.nii');
 
+elseif strcmpi('bestpath',ph_unwrap)
+
+    % unwrap the phase
+    fid = fopen('wrapped_phase.dat','w');
+    fwrite(fid,angle(img_cmb),'float');
+    fclose(fid);
+    % mask_unwrp = uint8(hemo_mask.*255);
+    mask_unwrp = uint8(abs(mask)*255);
+    fid = fopen('mask_unwrp.dat','w');
+    fwrite(fid,mask_unwrp,'uchar');
+    fclose(fid);
+
+    unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
+    setenv('nv',num2str(nv));
+    setenv('np',num2str(np));
+    setenv('ns',num2str(ns));
+    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat' ...
+        '$nv $np $ns reliability.dat'];
+    unix(bash_script) ;
+
+    fid = fopen('unwrapped_phase.dat','r');
+    unph = fread(fid,'float');
+    unph = reshape(unph - unph(1) ,[nv,np,ns]);
+    fclose(fid);
+    nii = make_nii(unph,voxelSize);
+    save_nii(nii,'unph.nii');
+
+    % fid = fopen('reliability.dat','r');
+    % reliability = fread(fid,'float');
+    % fclose(fid);
+    % reliability = reshape(reliability,[nv,np,ns]);
+    % reliability = 1./reliability.*mask;
+    % reliability_smooth = smooth3(reliability,'box',[7,7,3]);
+    % % reliability(reliability <= 0.05) = 0;
+    % % reliability(reliability > 0.05) = 1;
+    % nii = make_nii(reliability_smooth,voxelSize);
+    % save_nii(nii,'reliability_smooth.nii');
 else
     error('what unwrapping methods to use? prelude or laplacian?')
 end
