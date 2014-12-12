@@ -201,3 +201,26 @@ if Pars.RCVRS_ == 4
 else
 	img = IM3D_RCVR1;
 end
+
+
+
+
+%%% interpolate to iso-resoluation in plane
+% k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img,1),2),[],1),[],2),1),2);
+% pad = round((Pars.np/2 * Pars.lpe / Pars.lro - Pars.nv)/2);
+% k = padarray(k,[0 pad]);
+% img = fftshift(fftshift(fft(fft(fftshift(fftshift(k,1),2),[],1),[],2),1),2);
+
+k = fft(fft(img,[],1),[],2);
+pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
+imsize = size(k);
+if mod(imsize(2),2) % if size of k is odd
+    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
+        [0 pad-round(pad/2)], 'post'),2);
+else % size of k is even
+    k_s = fftshift(k,2);
+    k_s(:,1,:) = k_s(:,1,:)/2;
+    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
+        [0 pad-round(pad/2)], 'post'),2);
+end
+img = ifft(ifft(k_pad,[],1),[],2);

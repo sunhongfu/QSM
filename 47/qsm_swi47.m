@@ -128,27 +128,6 @@ disp('--> reconstruct fid to complex img ...');
 [img,Pars] = swi47_recon(path_fid,swi_ver);
 
 
-%%% interpolate to iso-resoluation in plane
-% k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img,1),2),[],1),[],2),1),2);
-% pad = round((Pars.np/2 * Pars.lpe / Pars.lro - Pars.nv)/2);
-% k = padarray(k,[0 pad]);
-% img = fftshift(fftshift(fft(fft(fftshift(fftshift(k,1),2),[],1),[],2),1),2);
-
-k = fft(fft(img,[],1),[],2);
-pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
-imsize = size(k);
-if mod(imsize(2),2) % if size of k is odd
-    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
-        [0 pad-round(pad/2)], 'post'),2);
-else % size of k is even
-    k_s = fftshift(k,2);
-    k_s(:,1,:) = k_s(:,1,:)/2;
-    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
-        [0 pad-round(pad/2)], 'post'),2);
-end
-img = ifft(ifft(k_pad,[],1),[],2);
-
-
 % scanner frame
 img = permute(img, [2 1 3 4]);
 img = flipdim(flipdim(img,2),3);
@@ -210,10 +189,10 @@ if strcmpi('prelude',ph_unwrap)
     nii = load_nii('unph.nii');
     unph = double(nii.img);
 
-% % unwrap with Laplacian based method (TianLiu's)
-% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
-% nii = make_nii(unph, voxelSize);
-% save_nii(nii,'unph_lap.nii');
+    % % unwrap with Laplacian based method (TianLiu's)
+    % unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
+    % nii = make_nii(unph, voxelSize);
+    % save_nii(nii,'unph_lap.nii');
 
 elseif strcmpi('laplacian',ph_unwrap)
     % Ryan Topfer's Laplacian unwrapping
@@ -223,8 +202,7 @@ elseif strcmpi('laplacian',ph_unwrap)
     save_nii(nii,'unph_lap.nii');
 
 elseif strcmpi('bestpath',ph_unwrap)
-
-    % unwrap the phase
+    % unwrap the phase using best path
     fid = fopen('wrapped_phase.dat','w');
     fwrite(fid,angle(img_cmb),'float');
     fclose(fid);

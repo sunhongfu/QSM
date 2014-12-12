@@ -63,6 +63,15 @@ if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.4;
 end
 
+if ~ isfield(options,'ph_unwrap')
+    options.ph_unwrap = 'prelude';
+    % % another option is
+    % options.ph_unwrap = 'laplacian';
+    % % prelude is preferred, unless there's sigularities
+    % % in that case, have to use laplacian
+    % another option is 'bestpath'
+end
+
 if ~ isfield(options,'smv_rad')
     options.smv_rad = 3;
 end
@@ -109,7 +118,13 @@ save_all = options.save_all;
 
 % define directories
 [~,name] = fileparts(filename);
-path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
+if strcmpi(ph_unwrap,'prelude')
+    path_qsm = path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
+elseif strcmpi(ph_unwrap,'laplacian')
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_lap_' name];
+elseif strcmpi(ph_unwrap,'bestpath')
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_best_' name];
+end
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -121,9 +136,12 @@ rawfile = {[pathstr,filesep],filename};
 
 
 % size and resolution
-[Npe,Nro,Ns,~] = size(img);
+[nv,np,ns,~] = size(img);
+nv = nv;
+np = np;
+ns = ns;
 FOV = params.protocol_header.sSliceArray.asSlice{1};
-voxelSize = [FOV.dPhaseFOV/Npe, FOV.dReadoutFOV/Nro,  FOV.dThickness/Ns];
+voxelSize = [FOV.dPhaseFOV/nv, FOV.dReadoutFOV/np,  FOV.dThickness/ns];
 
 
 % angles!!!
@@ -133,6 +151,8 @@ if ~ isempty(dicomfile)
     Xz = info.ImageOrientationPatient(3);
     Yz = info.ImageOrientationPatient(6);
     Zz = sqrt(1 - Xz^2 - Yz^2);
+    disp('find the dicom');
+    dicomfile
     z_prjs = [Xz, Yz, Zz]
 else % this would be just an estimation
     sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
@@ -154,6 +174,7 @@ else % this would be just an estimation
     if ischar(sNormal.dTra)
         sNormal.dTra = 0;
     end
+    disp('no dicom found, try to use normal vector');
     z_prjs = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
 end
 
@@ -171,9 +192,9 @@ save_nii(nii,'combine/ph_cmb.nii');
 
 
 % % combine coils (2D SVD)
-% img_cmb = zeros([Npe,Nro,Ns]);
+% img_cmb = zeros([nv,np,ns]);
 % matlabpool open
-% parfor i = 1:Ns
+% parfor i = 1:ns
 %     img_cmb(:,:,i) = coilCombinePar(img(:,:,i,:));
 % end
 % matlabpool close
@@ -193,21 +214,70 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% unwrap combined phase with PRELUDE
-disp('--> unwrap aliasing phase ...');
-bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
-    '-u unph.nii -m BET_mask.nii -n 8'];
-unix(bash_script);
-unix('gunzip -f unph.nii.gz');
-nii = load_nii('unph.nii');
-unph = double(nii.img);
+
+% phase unwrapping, prelude is preferred!
+if strcmpi('prelude',ph_unwrap)
+    % unwrap combined phase with PRELUDE
+    disp('--> unwrap aliasing phase ...');
+    bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
+        '-u unph.nii -m BET_mask.nii -n 8'];
+    unix(bash_script);
+    unix('gunzip -f unph.nii.gz');
+    nii = load_nii('unph.nii');
+    unph = double(nii.img);
 
 
-% % unwrap with Laplacian based method
-% unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
-% nii = make_nii(unph, voxelSize);
-% save_nii(nii,'unph_lap.nii');
+    % % unwrap with Laplacian based method
+    % unph = unwrapLaplacian(angle(img_cmb), size(img_cmb), voxelSize);
+    % nii = make_nii(unph, voxelSize);
+    % save_nii(nii,'unph_lap.nii');
 
+
+elseif strcmpi('laplacian',ph_unwrap)
+    % Ryan Topfer's Laplacian unwrapping
+    Options.voxelSize = voxelSize;
+    unph = lapunwrap(angle(img_cmb), Options);
+    nii = make_nii(unph, voxelSize);
+    save_nii(nii,'unph_lap.nii');
+
+
+elseif strcmpi('bestpath',ph_unwrap)
+    % unwrap the phase using best path
+    fid = fopen('wrapped_phase.dat','w');
+    fwrite(fid,angle(img_cmb),'float');
+    fclose(fid);
+    % mask_unwrp = uint8(hemo_mask.*255);
+    mask_unwrp = uint8(abs(mask)*255);
+    fid = fopen('mask_unwrp.dat','w');
+    fwrite(fid,mask_unwrp,'uchar');
+    fclose(fid);
+    unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
+    setenv('nv',num2str(nv));
+    setenv('np',num2str(np));
+    setenv('ns',num2str(ns));
+    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat' ...
+        '$nv $np $ns reliability.dat'];
+    unix(bash_script) ;
+    fid = fopen('unwrapped_phase.dat','r');
+    unph = fread(fid,'float');
+    unph = reshape(unph - unph(1) ,[nv,np,ns]);
+    fclose(fid);
+    nii = make_nii(unph,voxelSize);
+    save_nii(nii,'unph.nii');
+
+    % fid = fopen('reliability.dat','r');
+    % reliability = fread(fid,'float');
+    % fclose(fid);
+    % reliability = reshape(reliability,[nv,np,ns]);
+    % reliability = 1./reliability.*mask;
+    % reliability_smooth = smooth3(reliability,'box',[7,7,3]);
+    % % reliability(reliability <= 0.05) = 0;
+    % % reliability(reliability > 0.05) = 1;
+    % nii = make_nii(reliability_smooth,voxelSize);
+    % save_nii(nii,'reliability_smooth.nii');
+else
+    error('what unwrapping methods to use? prelude or laplacian or bestpath?')
+end
 
 
 % normalize to ppm unit
