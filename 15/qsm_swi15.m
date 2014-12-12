@@ -4,17 +4,18 @@ function qsm_swi15(meas_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   MEAS_IN    - filename or directory of meas file(.out)  : *.out
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_*
-%   OPTIONS    - parameter structure including fields below
-%    .ref_coi  - reference coil to use for phase combine   : 4
-%    .eig_rad  - radius (mm) of eig decomp kernel          : 4
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 3
-%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
-%    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .bet_thr  - threshold for BET brain mask              : 0.4
-%    .inv_num  - iteration number of TVDI (nlcg)           : 200
-%    .save_all - save all the variables for debug          : 1
+%   MEAS_IN     - filename or directory of meas file(.out)  : *.out
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_*
+%   OPTIONS     - parameter structure including fields below
+%    .ref_coi   - reference coil to use for phase combine   : 4
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 3
+%    .tik_reg   - Tikhonov regularization for RESHARP       : 0.001
+%    .tv_reg    - Total variation regularization parameter  : 0.0005
+%    .bet_thr   - threshold for BET brain mask              : 0.4
+%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .save_all  - save all the variables for debug          : 1
 
 if ~ exist('meas_in','var') || isempty(meas_in)
 	listing = dir([pwd '/*.out']);
@@ -119,7 +120,7 @@ save_all = options.save_all;
 % define directories
 [~,name] = fileparts(filename);
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
 elseif strcmpi(ph_unwrap,'laplacian')
     path_qsm = [path_out, filesep, 'QSM_SWI15_v500_lap_' name];
 elseif strcmpi(ph_unwrap,'bestpath')

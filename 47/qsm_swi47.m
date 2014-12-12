@@ -9,7 +9,7 @@ function qsm_swi47(path_in, path_out, options)
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 3
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 3
-%    .ph_unwrap - phase unwrapping, prelude or laplacian    : 'prelude'
+%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg   - Tikhonov regularization for resharp       : 0.0005
@@ -238,7 +238,7 @@ elseif strcmpi('bestpath',ph_unwrap)
     % nii = make_nii(reliability_smooth,voxelSize);
     % save_nii(nii,'reliability_smooth.nii');
 else
-    error('what unwrapping methods to use? prelude or laplacian?')
+    error('what unwrapping methods to use? prelude or laplacian or bestpath?')
 end
 
 
