@@ -107,14 +107,15 @@ else
     end
 end
 
-ref_coi  = options.ref_coi;
-eig_rad  = options.eig_rad;
-bet_thr  = options.bet_thr;
-smv_rad  = options.smv_rad;
-tik_reg  = options.tik_reg;
-tv_reg   = options.tv_reg;
-inv_num  = options.inv_num;
-save_all = options.save_all;
+ref_coi   = options.ref_coi;
+eig_rad   = options.eig_rad;
+bet_thr   = options.bet_thr;
+ph_unwrap = options.ph_unwrap;
+smv_rad   = options.smv_rad;
+tik_reg   = options.tik_reg;
+tv_reg    = options.tv_reg;
+inv_num   = options.inv_num;
+save_all  = options.save_all;
 
 
 % define directories
