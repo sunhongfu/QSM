@@ -189,7 +189,7 @@ mask = double(nii.img);
 % phase unwrapping, prelude is preferred!
 if strcmpi('prelude',ph_unwrap)
     % unwrap combined phase with PRELUDE
-    disp('--> unwrap aliasing phase ...');
+    disp('--> unwrap aliasing phase using prelude...');
     bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
         '-u unph.nii -m BET_mask.nii -n 8'];
     unix(bash_script);
@@ -204,6 +204,7 @@ if strcmpi('prelude',ph_unwrap)
 
 elseif strcmpi('laplacian',ph_unwrap)
     % Ryan Topfer's Laplacian unwrapping
+    disp('--> unwrap aliasing phase using laplacian...');
     Options.voxelSize = voxelSize;
     unph = lapunwrap(angle(img_cmb), Options);
     nii = make_nii(unph, voxelSize);
@@ -211,6 +212,7 @@ elseif strcmpi('laplacian',ph_unwrap)
 
 elseif strcmpi('bestpath',ph_unwrap)
     % unwrap the phase using best path
+    disp('--> unwrap aliasing phase using bestpath...');
     fid = fopen('wrapped_phase.dat','w');
     fwrite(fid,angle(img_cmb),'float');
     fclose(fid);
@@ -385,11 +387,13 @@ end
 
 % clean the directory
 if clean_all
+    disp('--> clean temp nifti files ...');
     unix('ls | grep -v LAS | xargs rm -rf');
 end
 
 % save all variables for future reference
 clear nii;
+disp('--> save the entire workspace ...');
 save('all.mat','-v7.3');
 
 % go back to the initial directory

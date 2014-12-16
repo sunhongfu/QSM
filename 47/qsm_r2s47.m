@@ -149,6 +149,7 @@ end
 
 % combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
+    disp('--> combine RF rcvrs ...');
     img_cmb = coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
     mag_cmb = abs(img_cmb);
     % at 4.7T, seems the 3rd coil has the best SNR?
@@ -192,14 +193,12 @@ end
 
 
 % save niftis after coil combination
-mkdir('combine');
 for echo = 1:size(ph_cmb,4)
     nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
 end
 
 % LAS coordinates for ImageJ
-mkdir('LAS/combine');
 for echo = 1:ne
     nii = make_nii(flipdim(flipdim(ph_cmb(:,:,:,echo),2),3),voxelSize);
     save_nii(nii,['LAS/combine/ph_cmb' num2str(echo) '.nii']);
@@ -218,7 +217,7 @@ te = par.te + (0:ne-1)*par.esp;
 
 
 % unwrap phase from each echo
-disp('--> unwrap aliasing phase for all TEs ...');
+disp('--> unwrap aliasing phase for all TEs using prelude...');
 
 setenv('echo_num',num2str(echo_num));
 bash_command = sprintf(['for ph in combine/ph_cmb[1-$echo_num].nii\n' ...
@@ -413,11 +412,13 @@ end
 
 % clean the directory
 if clean_all
+    disp('--> clean temp nifti files ...');
     unix('ls | grep -v LAS | xargs rm -rf');
 end
 
 % save all variables for future reference
 clear nii;
+disp('--> save the entire workspace ...');
 save('all.mat','-v7.3');
 
 % go back to the initial directory
