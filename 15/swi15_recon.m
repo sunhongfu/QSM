@@ -28,39 +28,46 @@ opt.kern = [1,1,1,1,1;...
 opt.PI_multw = 0;
 opt.numwork = 1;
 
-% Extract and reshape reference data
-nref = params.protocol_header.sPat.lRefLinesPE;
-sz = size(k);
-strt = ceil((sz(1)-nref)/2);
+if isfield(params.protocol_header.sPat,'lRefLinesPE')
+	% if GARAPPA
+	% Extract and reshape reference data
+	nref = params.protocol_header.sPat.lRefLinesPE;
+	sz = size(k);
+	strt = ceil((sz(1)-nref)/2);
 
-k_ref = k(strt:strt+nref,:,:,:);
-sz_ref = size(k_ref);
-k_ref = reshape(k_ref,[sz_ref(1:3) 1 sz_ref(4)]);
-% size of k_ref: Npe x Nro x NS x (# calibration scans) x RCVRS
+	k_ref = k(strt:strt+nref,:,:,:);
+	sz_ref = size(k_ref);
+	k_ref = reshape(k_ref,[sz_ref(1:3) 1 sz_ref(4)]);
+	% size of k_ref: Npe x Nro x NS x (# calibration scans) x RCVRS
 
-% Calculate weights
-opt.w = grappa_findw(k_ref,opt);
+	% Calculate weights
+	opt.w = grappa_findw(k_ref,opt);
+	matlabpool close
 
-% Reshape k and only take acquired lines
-k_f = permute(k,[1 2 4 3]);
-clear k
-% size of k_f: Npe/2 x Nro x RCVRS x NS x arraydim
-k_f = k_f(1:2:end,:,:,:);
+	% Reshape k and only take acquired lines
+	k_f = permute(k,[1 2 4 3]);
+	clear k
+	% size of k_f: Npe/2 x Nro x RCVRS x NS x arraydim
+	k_f = k_f(1:2:end,:,:,:);
 
-% Fill lines
-k_f = grappa_fill(k_f,opt);
+	% Fill lines
+	k_f = grappa_fill(k_f,opt);
+	matlabpool close
 
-% Re-fill fully sampled data
-k_f(strt:strt+nref,:,:,:) = permute(k_ref,[1 2 5 3 4]);
-clear k_ref
-% reshape to the final k-space
-k = permute(k_f,[1 2 4 3]);
+	% Re-fill fully sampled data
+	k_f(strt:strt+nref,:,:,:) = permute(k_ref,[1 2 5 3 4]);
+	clear k_ref
+	% reshape to the final k-space
+	k = permute(k_f,[1 2 4 3]);
 
+	% get rid of the last PE line from Corey's recon
+	k = k(1:end-1,:,:,:);
+end
 
 % partial fourier
 sz = size(k);
 pf = nan;
-flag = params.protocol_header.sKSpace.ucPhasePartialFourier;
+flag = sKSpace.ucPhasePartialFourier;
 flag(isspace(flag))=[];
 switch (flag)
 	case {'0x1', 1}  % PF_HALF
@@ -80,12 +87,20 @@ if ~isnan(pf)
 	k = padarray(k, round(sz(1)*(1/(pf)-1)), 'pre');
 end
 
+% POCS
+if (size(k,4) > 1) && (~isnan(pf)) 
+	[~, kspFull] = pocs(permute(k,[4 1 2 3]),20);
+	k = permute(kspFull,[2 3 4 1]);
+end
+
 
 % phase resolution
 if (sKSpace.dPhaseResolution ~= 1)
 	disp(sprintf('Phase Resolution: %1.2f', sKSpace.dPhaseResolution));
 	sz = size(k);
-	k = padarray(k, round((sz(1)-1)*(1/sKSpace.dPhaseResolution-1)/2));
+	pad_size = round(sz(1)*(1/sKSpace.dPhaseResolution-1));
+	k = padarray(padarray(k,round(pad_size/2),'post'),pad_size-round(pad_size/2),'pre');
+	% k = padarray(k, round((sz(1)-1)*(1/sKSpace.dPhaseResolution-1)/2));
 end
 
 
@@ -102,11 +117,9 @@ end
 if (sKSpace.dSliceResolution ~= 1)
 	disp(sprintf('Slice Resolution: %1.2f', sKSpace.dSliceResolution));
 	sz = size(k);
-	k = padarray(k, [0, 0, round((sz(3)-1)*(1/sKSpace.dSliceResolution-1)/2)]);
-	% % for testing purpose
-	% % interpolate slice thickness to 2mm
-%	 k = padarray(k, [0, 0, ...
-%	 	round((params.protocol_header.sSliceArray.asSlice{1}.dThickness/2-sz(3))/2)]);
+	pad_size = round(sz(3)*(1/sKSpace.dSliceResolution-1));
+	k = padarray(padarray(k,[0,0,round(pad_size/2)],'post'), [0,0,pad_size-round(pad_size/2)],'pre');
+	% k = padarray(k, [0, 0, round(sz(3)*(1/sKSpace.dSliceResolution-1)/2)]);
 end
 
 

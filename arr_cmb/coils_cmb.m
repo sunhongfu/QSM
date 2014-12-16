@@ -1,4 +1,4 @@
-function img_cmb_all = sense_se(img,vox,te,cref,radi)
+function img_cmb_all = coils_cmb(img,vox,cref,radi,te,off_corr)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
@@ -13,10 +13,26 @@ function img_cmb_all = sense_se(img,vox,te,cref,radi)
 % for example:
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
 % te = [3, 7, 11, 15, 19]; % echo times, only the first two are required!
-%   if single-echo data, 'te' will not be used, just replace 'te' with ~ or [] as input
-% cref = 3; % (3rd channel as reference coil)
-% radi = 3; % (mm)
+%   if single-echo data, 'te' will not be used, just replace 'te' with [] as input
+% cref = 1; % (1st channel as reference coil)
+% radi = 4; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if ~ exist('cref','var') || isempty(cref)
+    cref = 1;
+end
+
+if ~ exist('radi','var') || isempty(radi)
+    radi = 4;
+end
+
+if ~ exist('te','var') || isempty(te)
+    te = [];
+end
+
+if ~ exist('off_corr','var') || isempty(off_corr)
+    off_corr = 0;
+end
 
 
 % image size: readout, phase encoding, slice encoding, receivers, echoes
@@ -81,7 +97,7 @@ end
 
 
 %% if multi-echo then correct for phase-offset
-if echo > 1
+if (ne > 1) && off_corr
     nii = make_nii(abs(img_cmb_all(:,:,:,1)),vox);
     save_nii(nii,'mag1.nii');
     nii = make_nii(abs(img_cmb_all(:,:,:,2)),vox);
@@ -100,8 +116,6 @@ if echo > 1
     unix('bet mag1.nii BET -f ${bet_thr} -m -R');
     unix('gunzip -f BET.nii.gz');
     unix('gunzip -f BET_mask.nii.gz');
-    nii = load_nii('BET_mask.nii');
-    mask = double(nii.img);
 
     bash_command = sprintf(['prelude -a mag1.nii -p wrph1.nii -u unph1.nii -m BET_mask -n 8&\n' ...
                             'prelude -a mag2.nii -p wrph2.nii -u unph2.nii -m BET_mask -n 8&\n' ...
@@ -114,7 +128,7 @@ if echo > 1
     unph2 = double(nii.img);
 
     offset = (te(1)*unph2 - te(2)*unph1)/(te(1)-te(2));
-    img_cmb_all = img_cmb_all./exp(1j.*repmat(offset,[1,1,1,echo]));
+    img_cmb_all = img_cmb_all./exp(1j.*repmat(offset,[1,1,1,ne]));
 end
 
 end

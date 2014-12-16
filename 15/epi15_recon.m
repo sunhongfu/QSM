@@ -1,4 +1,4 @@
-function [img, params] = epi15_recon(rawfile,ph_corr)
+function [img_all, params] = epi15_recon(rawfile,ph_corr)
 
 
 
@@ -7,20 +7,30 @@ function [img, params] = epi15_recon(rawfile,ph_corr)
 %     patrefscan_phascor, phasestabscan, refphasestabscan] ...
 %         = read_meas_dat(filename);
 [data, phascor1d] = read_meas_dat(rawfile);
+datasize = size(data);
+phascor1dsize = size(phascor1d);
 
-data = permute(squeeze(data),[2 1 5 3 4]);
-k = sum(data,5); % PC x RO x NS x RV
-
-phascor1d = permute(squeeze(phascor1d),[2 1 5 3 4]);
-ref = sum(phascor1d,5); % 3 PC lines of ref scan
+data_all = data;
+phascor1d_all = phascor1d;
 
 
 % YAPS = read_meas_prot(filename); % NOT working!
 % still use siem_read to fetch parameters
 [pathstr, name, ext] = fileparts(rawfile);
-mrdata = siem_read_v2({[pathstr,filesep],[name,ext]});
+mrdata = siem_read_params({[pathstr,filesep],[name,ext]});
 params = mrdata.params;
-clear mrdata;
+sKSpace = params.protocol_header.sKSpace;
+
+
+
+for timeSeries =1:datasize(7)
+    data = permute(reshape(data_all(:,:,:,:,:,:,timeSeries,:,:,:),[datasize(1), datasize(2), datasize(3), datasize(8), datasize(10)]),[2 1 5 3 4]);
+    k = sum(data,5); % PC x RO x NS x RV
+
+    phascor1d = permute(reshape(phascor1d_all(:,:,:,:,:,:,timeSeries,:,:,:),[phascor1dsize(1), phascor1dsize(2), phascor1dsize(3), phascor1dsize(8), phascor1dsize(10)]),[2 1 5 3 4]);
+    ref = sum(phascor1d,5); % 3 PC lines of ref scan
+
+
 
 
 % phase correction (N/2 ghost)
@@ -79,10 +89,10 @@ switch ph_corr
 
         %   Apply phase shift to data in hybrid space
         k = fftshift(fft(fftshift(k,2),[],2),2);
-        for i = 2:2:112
+        for i = 2:2:datasize(2)
             k(i,:,:,:) = k(i,:,:,:) .* reshape(F_odd,[1 RO NS RV]);
         end
-        for i = 1:2:112
+        for i = 1:2:datasize(2)
             k(i,:,:,:) = k(i,:,:,:) .* reshape(F_even,[1 RO NS RV]);
         end
         k = ifftshift(ifft(ifftshift(k,2),[],2),2);
@@ -98,10 +108,10 @@ switch ph_corr
         odd_ref_f = ref_f(1,:,:,:) + ref_f(3,:,:,:);
         even_ref_f = ref_f(2,:,:,:);
 
-        for i = 2:2:112 % start from the bottom
+        for i = 2:2:datasize(2) % start from the bottom
             k(i,:,:,:) = k(i,:,:,:).*exp(-1i*angle(odd_ref_f));
         end
-        for i = 1:2:112
+        for i = 1:2:datasize(2)
             k(i,:,:,:) = k(i,:,:,:).*exp(-1i*angle(even_ref_f));
         end
         k = ifftshift(ifft(ifftshift(k,2),[],2),2);
@@ -118,15 +128,15 @@ switch ph_corr
 
         % linear fit of phrmp (only ROI)
         % find the edge of signal
-        std_ref = zeros(1,246,60,8);
-        ROI_a = zeros(60,8);
+        std_ref = zeros(1,datasize(1)-10,datasize(10),datasize(3));
+        ROI_a = zeros(datasize(10),datasize(3));
         ROI_b = ROI_a;
 
-        diff = phrmp(:,[2:256,end],:,:) - phrmp;
+        diff = phrmp(:,[2:datasize(1),end],:,:) - phrmp;
 
-        for m = 1:8
-            for j = 1:60
-                for i = 1:246
+        for m = 1:datasize(3)
+            for j = 1:datasize(10)
+                for i = 1:datasize(1)-10
                     std_ref(1,i,j,m) = std(diff(1,i:i+10,j,m));
                 end
                 
@@ -135,23 +145,23 @@ switch ph_corr
             end
         end
 
-        phrmp_fit = zeros(1,256,60,8);
+        phrmp_fit = zeros(1,datasize(1),datasize(10),datasize(3));
         % linear fit phrmp
-        for j = 1:60
-            for m = 1:8
+        for j = 1:datasize(10)
+            for m = 1:datasize(3)
                 p = polyfit(ROI_a(j,m):ROI_b(j,m), phrmp(1,ROI_a(j,m):ROI_b(j,m),j,m), 1);
-                phrmp_fit(1,:,j,m) = p(1)*(1:256) + p(2);
+                phrmp_fit(1,:,j,m) = p(1)*(1:datasize(1)) + p(2);
             end
         end
 
 
         kr = fftshift(fft(fftshift(k,2),[],2),2);
-        for i = 1:2:112
+        for i = 1:2:datasize(2)
             kr(i,:,:,:) = kr(i,:,:,:).*exp(1i*phrmp_fit/2);
             % kr(i,:,:,:) = kr(i,:,:,:).*exp(1i*phrmp/2);
 
         end
-        for i = 2:2:112
+        for i = 2:2:datasize(2)
             kr(i,:,:,:) = kr(i,:,:,:).*exp(-1i*phrmp_fit/2);
             % kr(i,:,:,:) = kr(i,:,:,:).*exp(-1i*phrmp/2);
         end
@@ -227,7 +237,7 @@ end
 % partial fourier
 sz = size(k);
 pf = nan;
-flag = params.protocol_header.sKSpace.ucPhasePartialFourier;
+flag = sKSpace.ucPhasePartialFourier;
 flag(isspace(flag))=[];
 switch (flag)
     case {'0x1', 1}  % PF_HALF
@@ -249,21 +259,25 @@ end
 
 
 % POCS
-[im, kspFull] = pocs(permute(k,[4 1 2 3]),20);
-k = permute(kspFull,[2 3 4 1]);
+if size(k,4) > 1 && (~isnan(pf)) 
+    [~, kspFull] = pocs(permute(k,[4 1 2 3]),20);
+    k = permute(kspFull,[2 3 4 1]);
+end
 
 
 % phase resolution
-if (params.protocol_header.sKSpace.dPhaseResolution ~= 1)
-    disp(sprintf('Phase Resolution: %1.2f', params.protocol_header.sKSpace.dPhaseResolution));
+if (sKSpace.dPhaseResolution ~= 1)
+    disp(sprintf('Phase Resolution: %1.2f', sKSpace.dPhaseResolution));
     sz = size(k);
-    k = padarray(k, round((sz(1)-1)*(1/params.protocol_header.sKSpace.dPhaseResolution-1)/2));
+    pad_size = round(sz(1)*(1/sKSpace.dPhaseResolution-1));
+    k = padarray(padarray(k,round(pad_size/2),'post'),pad_size-round(pad_size/2),'pre');
+    % k = padarray(k, round((sz(1)-1)*(1/sKSpace.dPhaseResolution-1)/2));
 end
 
 
 % Asymmetric echo 
 sz = size(k);
-pad = params.protocol_header.sKSpace.lBaseResolution - sz(2)/2;
+pad = sKSpace.lBaseResolution - sz(2)/2;
 if pad
     disp(sprintf('Asymmetric echo: adding %d lines', pad*2));
     k = padarray(k, [0 pad*2], 'pre');
@@ -276,14 +290,14 @@ Nro = size(k,2);
 Npe = size(k,1);
 fw = 0.125;
 
-        x = hann(round(fw*Nro/2)*2);
-        x1 = [x(1:length(x)/2); ones([Nro-length(x),1]); x(length(x)/2+1:end)];
-        y = hann(round(fw*Npe/2)*2);
-        y1 = [y(1:length(y)/2); ones([Npe-length(y),1]); y(length(y)/2+1:end)];
+x = hann(round(fw*Nro/2)*2);
+x1 = [x(1:length(x)/2); ones([Nro-length(x),1]); x(length(x)/2+1:end)];
+y = hann(round(fw*Npe/2)*2);
+y1 = [y(1:length(y)/2); ones([Npe-length(y),1]); y(length(y)/2+1:end)];
         
 [X,Y] = meshgrid(x1,y1);
 Z = X.*Y;
-Z = repmat(Z,[1 1 60 8 ]);
+Z = repmat(Z,[1 1 datasize(10) datasize(3)]);
 
 k = k.*Z;
 
@@ -301,5 +315,12 @@ img = img(:,size(k,2)/4+1:size(k,2)/4*3,:,:);
 
 % permute the matrix first two dimensions (EPI acquisition)
 img = permute(img,[2 1 3 4]);
-% flip the readout to match qsm_swi15 results
-img = flipdim(img,1);
+% flip the readout and slice dimension to match scanner frame
+img = flipdim(flipdim(img,1),3);
+
+
+
+
+
+img_all(:,:,:,:,timeSeries) = img;
+end

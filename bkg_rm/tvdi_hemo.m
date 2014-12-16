@@ -1,4 +1,4 @@
-function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm)
+function [sus,residual_field] = tvdi_hemo(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, x_nonhemo)
 %TVDI Total variation dipole inversion.
 
 % Method is similar to Appendix in the following paper
@@ -23,10 +23,6 @@ end
 
 if ~ exist('Itnlim','var') || isempty(Itnlim)
     Itnlim = 200;
-end
-
-if ~ exist('pNorm','var') || isempty(pNorm)
-    pNorm = 1;
 end
 
 [Nx,Ny,Nz] = size(lfs);
@@ -61,16 +57,16 @@ D = fftshift(D);
 
 % parameter structures for inversion
 % data consistancy and TV term objects
-param.FT = cls_dipconv([Nx,Ny,Nz],D);
+% param.FT = cls_dipconv_hemo([Nx,Ny,Nz],D);
 % param.FT = cls_dipconv_mask([Nx,Ny,Nz],D,mask);
-% param.FT = cls_dipconv_new([Nx,Ny,Nz],D,R);
+param.FT = cls_dipconv_new([Nx,Ny,Nz],D,1-mask);
 param.TV = cls_tv;
 % param.TV = cls_tv_mask(mask);
 
 param.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
 param.gradToll = 0; % step size tolerance stopping criterea
 param.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
-param.pNorm = pNorm; % type of norm to use (i.e. L1 L2 etc)
+param.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
 param.lineSearchItnlim = 100;
 param.lineSearchAlpha = 0.01;
 param.lineSearchBeta = 0.6;
@@ -78,7 +74,7 @@ param.lineSearchT0 = 1 ; % step size to start with
 
 param.TVWeight = tv_reg; % TV penalty 
 param.mask = mask; %%% not used in nlcg
-param.data = lfs;
+param.data = lfs - ifftn(D.*fftn(mask.*x_nonhemo));
 
 param.wt = W; % weighting matrix
 
