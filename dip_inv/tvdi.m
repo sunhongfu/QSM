@@ -1,4 +1,4 @@
-function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, R)
+function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm)
 %TVDI Total variation dipole inversion.
 
 % Method is similar to Appendix in the following paper
@@ -23,6 +23,10 @@ end
 
 if ~ exist('Itnlim','var') || isempty(Itnlim)
     Itnlim = 200;
+end
+
+if ~ exist('pNorm','var') || isempty(pNorm)
+    pNorm = 1;
 end
 
 [Nx,Ny,Nz] = size(lfs);
@@ -66,7 +70,7 @@ param.TV = cls_tv;
 param.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
 param.gradToll = 0; % step size tolerance stopping criterea
 param.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
-param.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
+param.pNorm = pNorm; % type of norm to use (i.e. L1 L2 etc)
 param.lineSearchItnlim = 100;
 param.lineSearchAlpha = 0.01;
 param.lineSearchBeta = 0.6;

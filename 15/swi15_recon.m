@@ -42,6 +42,7 @@ if isfield(params.protocol_header.sPat,'lRefLinesPE')
 
 	% Calculate weights
 	opt.w = grappa_findw(k_ref,opt);
+	matlabpool close
 
 	% Reshape k and only take acquired lines
 	k_f = permute(k,[1 2 4 3]);
@@ -51,6 +52,7 @@ if isfield(params.protocol_header.sPat,'lRefLinesPE')
 
 	% Fill lines
 	k_f = grappa_fill(k_f,opt);
+	matlabpool close
 
 	% Re-fill fully sampled data
 	k_f(strt:strt+nref,:,:,:) = permute(k_ref,[1 2 5 3 4]);
@@ -60,8 +62,6 @@ if isfield(params.protocol_header.sPat,'lRefLinesPE')
 
 	% get rid of the last PE line from Corey's recon
 	k = k(1:end-1,:,:,:);
-
-	matlabpool close
 end
 
 % partial fourier

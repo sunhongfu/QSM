@@ -216,7 +216,7 @@ elseif strcmpi('bestpath',ph_unwrap)
     setenv('nv',num2str(nv));
     setenv('np',num2str(np));
     setenv('ns',num2str(ns));
-    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat' ...
+    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
         '$nv $np $ns reliability.dat'];
     unix(bash_script) ;
 
