@@ -16,7 +16,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .tvdi_n    - iteration number of TVDI (nlcg)           : 200
-%    .save_all   - save all the variables for debug          : 1
+%    .clean_all - clean all the temp nifti results          : 1
 
 
 % default settings
@@ -88,8 +88,8 @@ if ~ isfield(options,'inv_num')
     options.inv_num = 200;
 end
 
-if ~ isfield(options,'save_all')
-    options.save_all = 1;
+if ~ isfield(options,'clean_all')
+    options.clean_all = 1;
 end
 
 if ~ isfield(options,'swi_ver')
@@ -106,17 +106,17 @@ tik_reg   = options.tik_reg;
 t_svd     = options.t_svd;
 tv_reg    = options.tv_reg;
 inv_num   = options.inv_num;
-save_all  = options.save_all;
+clean_all = options.clean_all;
 swi_ver   = options.swi_ver;
 
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out '/QSM_SWI47_v500'];
+    path_qsm = [path_out '/QSM_SWI47_v5'];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out '/QSM_SWI47_v500_lap'];
+    path_qsm = [path_out '/QSM_SWI47_v5_lap'];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out '/QSM_SWI47_v500_best'];
+    path_qsm = [path_out '/QSM_SWI47_v5_best'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -165,12 +165,20 @@ save_nii(nii,'combine/mag_cmb.nii');
 nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
 
+% LAS coordinates for ImageJ
+mkdir('LAS/combine');
+nii = make_nii(flipdim(flipdim(abs(img_cmb),2),3),voxelSize);
+save_nii(nii,'LAS/combine/mag_cmb.nii');
+nii = make_nii(flipdim(flipdim(angle(img_cmb),2),3),voxelSize);
+save_nii(nii,'LAS/combine/ph_cmb.nii');
+
 clear img;
 
 
 % generate brain mask
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
+[status,cmdout] = unix('rm BET*');
 unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -181,7 +189,7 @@ mask = double(nii.img);
 % phase unwrapping, prelude is preferred!
 if strcmpi('prelude',ph_unwrap)
     % unwrap combined phase with PRELUDE
-    disp('--> unwrap aliasing phase ...');
+    disp('--> unwrap aliasing phase using prelude...');
     bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
         '-u unph.nii -m BET_mask.nii -n 8'];
     unix(bash_script);
@@ -196,6 +204,7 @@ if strcmpi('prelude',ph_unwrap)
 
 elseif strcmpi('laplacian',ph_unwrap)
     % Ryan Topfer's Laplacian unwrapping
+    disp('--> unwrap aliasing phase using laplacian...');
     Options.voxelSize = voxelSize;
     unph = lapunwrap(angle(img_cmb), Options);
     nii = make_nii(unph, voxelSize);
@@ -203,6 +212,7 @@ elseif strcmpi('laplacian',ph_unwrap)
 
 elseif strcmpi('bestpath',ph_unwrap)
     % unwrap the phase using best path
+    disp('--> unwrap aliasing phase using bestpath...');
     fid = fopen('wrapped_phase.dat','w');
     fwrite(fid,angle(img_cmb),'float');
     fclose(fid);
@@ -273,6 +283,13 @@ if sum(strcmpi('pdf',bkg_rm))
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
     save_nii(nii,'PDF/sus_pdf.nii');
+
+    % LAS coordinates for ImageJ
+    mkdir('LAS/PDF')
+    nii = make_nii(flipdim(flipdim(lfs_pdf,2),3),voxelSize);
+    save_nii(nii,'LAS/PDF/lfs_pdf.nii');
+    nii = make_nii(flipdim(flipdim(sus_pdf.*mask_pdf,2),3),voxelSize);
+    save_nii(nii,'LAS/PDF/sus_pdf.nii');
 end
 
 
@@ -296,6 +313,13 @@ if sum(strcmpi('sharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
     save_nii(nii,'SHARP/sus_sharp.nii');
+
+    % LAS coordinates for ImageJ
+    mkdir('LAS/SHARP')
+    nii = make_nii(flipdim(flipdim(lfs_sharp,2),3),voxelSize);
+    save_nii(nii,'LAS/SHARP/lfs_sharp.nii');
+    nii = make_nii(flipdim(flipdim(sus_sharp.*mask_sharp,2),3),voxelSize);
+    save_nii(nii,'LAS/SHARP/sus_sharp.nii');
 end
 
 
@@ -320,6 +344,12 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
 
+    % LAS coordinates for ImageJ
+    mkdir('LAS/RESHARP');
+    nii = make_nii(flipdim(flipdim(lfs_resharp,2),3),voxelSize);
+    save_nii(nii,'LAS/RESHARP/lfs_resharp.nii');
+    nii = make_nii(flipdim(flipdim(sus_resharp.*mask_resharp,2),3),voxelSize);
+    save_nii(nii,'LAS/RESHARP/sus_resharp.nii');
 end
 
 
@@ -345,20 +375,26 @@ if sum(strcmpi('lbv',bkg_rm))
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
     save_nii(nii,'LBV/sus_lbv.nii');
-
+   
+    % LAS coordinates for ImageJ
+    mkdir('LAS/LBV');
+    nii = make_nii(flipdim(flipdim(lfs_lbv,2),3),voxelSize);
+    save_nii(nii,'LAS/LBV/lfs_lbv.nii');
+    nii = make_nii(flipdim(flipdim(sus_lbv.*mask_lbv,2),3),voxelSize);
+    save_nii(nii,'LAS/LBV/sus_lbv.nii');
 end
 
 
-% save all variables for debugging purpose
-if save_all
-    clear nii;
-    save('all.mat','-v7.3');
+% clean the directory
+if clean_all
+    disp('--> clean temp nifti files ...');
+    unix('ls | grep -v LAS | xargs rm -rf');
 end
 
-% save parameters used in the recon
-save('parameters.mat','options','-v7.3')
+% save all variables for future reference
+clear nii;
+disp('--> save the entire workspace ...');
+save('all.mat','-v7.3');
 
-
-% clean up
-% unix('rm *.nii*');
+% go back to the initial directory
 cd(init_dir);

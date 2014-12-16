@@ -4,19 +4,19 @@ function qsm_r2s47(path_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_IN    - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_R2s_vxxx
-%   OPTIONS    - parameter structure including fields below
-%    .bet_thr  - threshold for BET brain mask              : 0.5
-%    .bkg_rm   - background field removal method(s)        : 'resharp'
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 4
-%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.0005
-%    .t_svd    - truncation of SVD for SHARP               : 0.05
-%    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .inv_num  - iteration number of TVDI (nlcg)           : 200
-%    .echo_num - keep only the first 'echo_num' echoes     : 5
-%    .fit_thr  - truncation level on fitting residual      : 10
-%    .save_all - save all the variables for debug (~ 0)    : 1
+%   PATH_IN     - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s_vxxx
+%   OPTIONS     - parameter structure including fields below
+%    .bet_thr   - threshold for BET brain mask              : 0.5
+%    .bkg_rm    - background field removal method(s)        : 'resharp'
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
+%    .tik_reg   - Tikhonov regularization for RESHARP       : 0.0005
+%    .t_svd     - truncation of SVD for SHARP               : 0.05
+%    .tv_reg    - Total variation regularization parameter  : 0.0005
+%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .echo_num  - keep only the first 'echo_num' echoes     : 5
+%    .fit_thr   - truncation level on fitting residual      : 10
+%    .clean_all - clean all the temp nifti results          : 1
 
 
 % default settings
@@ -91,28 +91,28 @@ if ~ isfield(options,'inv_num')
     options.inv_num = 200;
 end
 
-if ~ isfield(options,'save_all')
-    options.save_all = 1;
+if ~ isfield(options,'clean_all')
+    options.clean_all = 1;
 end
 
 
-ref_coil = options.ref_coil;
-eig_rad  = options.eig_rad;
-bet_thr  = options.bet_thr;
-echo_num = options.echo_num;
-r_mask   = options.r_mask; 
-fit_thr  = options.fit_thr;
-bkg_rm   = options.bkg_rm;
-smv_rad  = options.smv_rad;
-tik_reg  = options.tik_reg;
-t_svd    = options.t_svd;
-tv_reg   = options.tv_reg;
-inv_num  = options.inv_num;
-save_all = options.save_all;
+ref_coil  = options.ref_coil;
+eig_rad   = options.eig_rad;
+bet_thr   = options.bet_thr;
+echo_num  = options.echo_num;
+r_mask    = options.r_mask; 
+fit_thr   = options.fit_thr;
+bkg_rm    = options.bkg_rm;
+smv_rad   = options.smv_rad;
+tik_reg   = options.tik_reg;
+t_svd     = options.t_svd;
+tv_reg    = options.tv_reg;
+inv_num   = options.inv_num;
+clean_all = options.clean_all;
 
 
 % define directories
-path_qsm = [path_out '/QSM_R2s47_v500'];
+path_qsm = [path_out '/QSM_R2s47_v5'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -149,6 +149,7 @@ end
 
 % combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
+    disp('--> combine RF rcvrs ...');
     img_cmb = coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
     mag_cmb = abs(img_cmb);
     % at 4.7T, seems the 3rd coil has the best SNR?
@@ -163,10 +164,18 @@ for echo = 1:ne
     save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
 end
 
+% LAS coordinates for ImageJ
+mkdir('LAS/combine');
+for echo = 1:ne
+    nii = make_nii(flipdim(flipdim(mag_cmb(:,:,:,echo),2),3),voxelSize);
+    save_nii(nii,['LAS/combine/mag_cmb' num2str(echo) '.nii']);
+end
+
 
 % generate mask from combined magnitude of the 1th echo
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
+[status,cmdout] = unix('rm BET*');
 unix('bet combine/mag_cmb1.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -184,11 +193,17 @@ end
 
 
 % save niftis after coil combination
-mkdir('combine');
 for echo = 1:size(ph_cmb,4)
     nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
 end
+
+% LAS coordinates for ImageJ
+for echo = 1:ne
+    nii = make_nii(flipdim(flipdim(ph_cmb(:,:,:,echo),2),3),voxelSize);
+    save_nii(nii,['LAS/combine/ph_cmb' num2str(echo) '.nii']);
+end
+
 
 img_cmb = mag_cmb.*exp(1j.*ph_cmb);
 clear mag_cmb ph_cmb
@@ -202,7 +217,7 @@ te = par.te + (0:ne-1)*par.esp;
 
 
 % unwrap phase from each echo
-disp('--> unwrap aliasing phase for all TEs ...');
+disp('--> unwrap aliasing phase for all TEs using prelude...');
 
 setenv('echo_num',num2str(echo_num));
 bash_command = sprintf(['for ph in combine/ph_cmb[1-$echo_num].nii\n' ...
@@ -289,6 +304,13 @@ if sum(strcmpi('pdf',bkg_rm))
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
     save_nii(nii,'PDF/sus_pdf.nii');
+
+    % LAS coordinates for ImageJ
+    mkdir('LAS/PDF')
+    nii = make_nii(flipdim(flipdim(lfs_pdf,2),3),voxelSize);
+    save_nii(nii,'LAS/PDF/lfs_pdf.nii');
+    nii = make_nii(flipdim(flipdim(sus_pdf.*mask_pdf,2),3),voxelSize);
+    save_nii(nii,'LAS/PDF/sus_pdf.nii');
 end
 
 
@@ -312,6 +334,13 @@ if sum(strcmpi('sharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
     save_nii(nii,'SHARP/sus_sharp.nii');
+
+    % LAS coordinates for ImageJ
+    mkdir('LAS/SHARP')
+    nii = make_nii(flipdim(flipdim(lfs_sharp,2),3),voxelSize);
+    save_nii(nii,'LAS/SHARP/lfs_sharp.nii');
+    nii = make_nii(flipdim(flipdim(sus_sharp.*mask_sharp,2),3),voxelSize);
+    save_nii(nii,'LAS/SHARP/sus_sharp.nii');
 end
 
 
@@ -337,6 +366,12 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
 
+    % LAS coordinates for ImageJ
+    mkdir('LAS/RESHARP');
+    nii = make_nii(flipdim(flipdim(lfs_resharp,2),3),voxelSize);
+    save_nii(nii,'LAS/RESHARP/lfs_resharp.nii');
+    nii = make_nii(flipdim(flipdim(sus_resharp.*mask_resharp,2),3),voxelSize);
+    save_nii(nii,'LAS/RESHARP/sus_resharp.nii');
 end
 
 
@@ -365,21 +400,28 @@ if sum(strcmpi('lbv',bkg_rm))
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
     save_nii(nii,'LBV/sus_lbv.nii');
 
+    % LAS coordinates for ImageJ
+    mkdir('LAS/LBV');
+    nii = make_nii(flipdim(flipdim(lfs_lbv,2),3),voxelSize);
+    save_nii(nii,'LAS/LBV/lfs_lbv.nii');
+    nii = make_nii(flipdim(flipdim(sus_lbv.*mask_lbv,2),3),voxelSize);
+    save_nii(nii,'LAS/LBV/sus_lbv.nii');
 end
 
 
 
-% save all variables for debugging purpose
-if save_all
-    clear nii;
-    save('all.mat','-v7.3');
+% clean the directory
+if clean_all
+    disp('--> clean temp nifti files ...');
+    unix('ls | grep -v LAS | xargs rm -rf');
 end
 
-% save parameters used in the recon
-save('parameters.mat','options','-v7.3')
+% save all variables for future reference
+clear nii;
+disp('--> save the entire workspace ...');
+save('all.mat','-v7.3');
 
-
-% clean up
-% unix('rm *.nii*');
+% go back to the initial directory
 cd(init_dir);
+
 

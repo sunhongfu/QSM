@@ -209,6 +209,7 @@ save_nii(nii,'combine/ph_cmb.nii');
 
 % generate brain mask
 setenv('bet_thr',num2str(bet_thr));
+[status,cmdout] = unix('rm BET*');
 unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');

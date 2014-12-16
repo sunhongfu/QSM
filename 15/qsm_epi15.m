@@ -220,6 +220,7 @@ for i = 1:size(img_all,5) % all time series
     disp('--> extract brain volume and generate mask ...');
     setenv('bet_thr',num2str(bet_thr));
     setenv('time_series',num2str(i,'%03i'));
+    [status,cmdout] = unix('rm BET*');
     bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
         '-f ${bet_thr} -m -Z'];
     unix(bash_script);
