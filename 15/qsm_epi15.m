@@ -119,7 +119,7 @@ save_all = options.save_all;
 % define directories
 [~,name] = fileparts(filename);
 % path_qsm = [path_out, filesep, strrep(name,' ','_') '_QSM_EPI15_v200'];
-path_qsm = [path_out, filesep, 'QSM_EPI15_v100_' name];
+path_qsm = [path_out, filesep, 'QSM_EPI15_v1_' name];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -230,7 +230,7 @@ for i = 1:size(img_all,5) % all time series
     mask = double(nii.img);
 
     % unwrap combined phase with PRELUDE
-    disp('--> unwrap aliasing phase ...');
+    disp('--> unwrap aliasing phase using prelude ...');
     setenv('time_series',num2str(i,'%03i'));
     bash_script = ['prelude -a combine/mag_cmb${time_series}.nii ' ...
         '-p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii ' ...
@@ -240,6 +240,7 @@ for i = 1:size(img_all,5) % all time series
     nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
     unph = double(nii.img);
 
+    % % if there are singularites, have to use laplacian
     % Options.voxelSize = voxelSize;
     % unph = lapunwrap(angle(img), Options);
     % nii = make_nii(unph, voxelSize);

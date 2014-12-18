@@ -43,7 +43,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 3;
+    options.ref_coil = 1;
 end
 
 if ~ isfield(options,'eig_rad')

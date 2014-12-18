@@ -35,7 +35,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 3;
+    options.ref_coil = 1;
 end
 
 if ~ isfield(options,'eig_rad')
@@ -44,6 +44,13 @@ end
 
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.3;
+end
+
+if ~ isfield(options,'ph_unwrap')
+    options.ph_unwrap = 'laplacian';
+    % % prelude is preferred, unless there's sigularities
+    % % in that case, have to use laplacian
+    % another option is 'bestpath'
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -76,16 +83,17 @@ if ~ isfield(options,'save_all')
 end
 
 
-ref_coil = options.ref_coil;
-eig_rad  = options.eig_rad;
-bet_thr  = options.bet_thr;
-% bkg_rm   = options.bkg_rm;
-smv_rad  = options.smv_rad;
-tik_reg  = options.tik_reg;
-% t_svd    = options.t_svd;
-tv_reg   = options.tv_reg;
-inv_num  = options.inv_num;
-save_all = options.save_all;
+ref_coil  = options.ref_coil;
+eig_rad   = options.eig_rad;
+bet_thr   = options.bet_thr;
+ph_unwrap = options.ph_unwrap;
+% bkg_rm    = options.bkg_rm;
+smv_rad   = options.smv_rad;
+tik_reg   = options.tik_reg;
+% t_svd     = options.t_svd;
+tv_reg    = options.tv_reg;
+inv_num   = options.inv_num;
+save_all  = options.save_all;
 
 
 % 4.7T corey's EPI parameters
@@ -100,8 +108,14 @@ opt.rcvr_comb=0;
 opt.homod = 0;
 
 
-% define directories
-path_qsm = [path_out '/QSM_EPI47_v100'];
+%%% define directories
+if strcmpi(ph_unwrap,'prelude')
+    path_qsm = [path_out '/QSM_EPI15_v1'];
+elseif strcmpi(ph_unwrap,'laplacian')
+    path_qsm = [path_out '/QSM_EPI15_v1_lap'];
+elseif strcmpi(ph_unwrap,'bestpath')
+    path_qsm = [path_out '/QSM_EPI15_v1_best'];
+end
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -112,21 +126,20 @@ cd(path_qsm);
 matlabpool close;
 
 
-% !!!!!!!!!! flip to match 4.7T scanner frame (coordinates)
-[nPE, nRO, nSL, nRN, ~] = size(img_out);
-% [nPE, nRO, nSL, nRN, nrcvrs]
-voxelSize = [par.lpe/nPE*10, par.lro/nRO*10, par.thk];
+% flip to match 4.7T scanner frame/gradients (coordinates)
+[nv, np, ns, nrcvrs, ~] = size(img_out);
+voxelSize = [par.lpe/nv*10, par.lro/np*10, par.thk];
 img_all = flipdim(flipdim(img_out,1),2); % the same as rot180 (rot90(x,2))
 
 % save all the variables
 if save_all
-	img_cmb_all = zeros([nPE, nRO, nSL, nRN]);
-	mask_all = zeros([nPE, nRO, nSL, nRN]);
-	unph_all = zeros([nPE, nRO, nSL, nRN]);
-	lfs_resharp_all = zeros([nPE, nRO, nSL, nRN]);
-	mask_resharp_all = zeros([nPE, nRO, nSL, nRN]);
-	lfs_poly_all = zeros([nPE, nRO, nSL, nRN]);
-	sus_resharp_all = zeros([nPE, nRO, nSL, nRN]);
+	img_cmb_all = zeros([nv, np, ns, nrcvrs]);
+	mask_all = zeros([nv, np, ns, nrcvrs]);
+	unph_all = zeros([nv, np, ns, nrcvrs]);
+	lfs_resharp_all = zeros([nv, np, ns, nrcvrs]);
+	mask_resharp_all = zeros([nv, np, ns, nrcvrs]);
+	lfs_poly_all = zeros([nv, np, ns, nrcvrs]);
+	sus_resharp_all = zeros([nv, np, ns, nrcvrs]);
 end
     
 % process QSM on individual run volume
@@ -135,13 +148,13 @@ for i = 1:size(img_all,4) % all time series
     
     disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
-		img = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+		img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
 	end
 
 	mkdir('combine');
-	nii = make_nii(abs(img),voxelSize);
+	nii = make_nii(abs(img_cmb),voxelSize);
 	save_nii(nii,['combine/mag_cmb' num2str(i,'%03i') '.nii']);
-	nii = make_nii(angle(img),voxelSize);
+	nii = make_nii(angle(img_cmb),voxelSize);
 	save_nii(nii,['combine/ph_cmb' num2str(i,'%03i') '.nii']);
 
 	disp('--> extract brain volume and generate mask ...');
@@ -156,10 +169,55 @@ for i = 1:size(img_all,4) % all time series
 	nii = load_nii(['BET' num2str(i,'%03i') '_mask.nii']);
 	mask = double(nii.img);
 
-    Options.voxelSize = voxelSize;
-	unph = lapunwrap(angle(img), Options);
-	nii = make_nii(unph, voxelSize);
-	save_nii(nii,['unph_lap' num2str(i,'%03i') '.nii']);
+	% unwrap the phase
+	if strcmpi('prelude',ph_unwrap)
+	    % unwrap combined phase with PRELUDE
+	    disp('--> unwrap aliasing phase ...');
+	    setenv('time_series',num2str(i,'%03i'));
+	    bash_script = ['prelude -a combine/mag_cmb${time_series}.nii ' ...
+	        '-p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii ' ...
+	        '-m BET${time_series}_mask.nii -n 8'];
+	    unix(bash_script);
+	    unix('gunzip -f unph${time_series}.nii.gz');
+	    nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
+	    unph = double(nii.img);
+
+	elseif strcmpi('laplacian',ph_unwrap)
+		% Ryan Topfer's Laplacian unwrapping
+	    disp('--> unwrap aliasing phase using laplacian...');
+	    Options.voxelSize = voxelSize;
+		unph = lapunwrap(angle(img_cmb), Options);
+		nii = make_nii(unph, voxelSize);
+		save_nii(nii,['unph_lap' num2str(i,'%03i') '.nii']);
+
+	elseif strcmpi('bestpath',ph_unwrap)
+	    % unwrap the phase using best path
+	    disp('--> unwrap aliasing phase using bestpath...');
+	    fid = fopen('wrapped_phase.dat','w');
+	    fwrite(fid,angle(img_cmb),'float');
+	    fclose(fid);
+	    % mask_unwrp = uint8(hemo_mask.*255);
+	    mask_unwrp = uint8(abs(mask)*255);
+	    fid = fopen('mask_unwrp.dat','w');
+	    fwrite(fid,mask_unwrp,'uchar');
+	    fclose(fid);
+
+	    unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
+	    setenv('nv',num2str(nv));
+	    setenv('np',num2str(np));
+	    setenv('ns',num2str(ns));
+	    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
+	        '$nv $np $ns reliability.dat'];
+	    unix(bash_script) ;
+
+	    fid = fopen('unwrapped_phase.dat','r');
+	    unph = fread(fid,'float');
+	    unph = reshape(unph - unph(1) ,[nv, np, ns]);
+	    fclose(fid);
+	    nii = make_nii(unph,voxelSize);
+	    save_nii(nii,'unph.nii');
+
+	end
 
 	% background field removal
 	disp('--> RESHARP to remove background field ...');
@@ -187,13 +245,13 @@ for i = 1:size(img_all,4) % all time series
 
 	disp('--> TV susceptibility inversion ...');
 	sus_resharp = tvdi(lfs_poly,mask_resharp,voxelSize,tv_reg, ...
-		abs(img),z_prjs,inv_num);
+		abs(img_cmb),z_prjs,inv_num);
 	nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
 	save_nii(nii,['RESHARP/sus_resharp' num2str(i,'%03i') '.nii']);
 
 	% to save all the variables
 	if save_all
-		img_cmb_all(:,:,:,i) = img;
+		img_cmb_all(:,:,:,i) = img_cmb;
 		mask_all(:,:,:,i) = mask;
 		unph_all(:,:,:,i) = unph;
 		lfs_resharp_all(:,:,:,i) = lfs_resharp;

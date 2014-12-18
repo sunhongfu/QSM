@@ -121,11 +121,11 @@ save_all  = options.save_all;
 % define directories
 [~,name] = fileparts(filename);
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_' name];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_lap_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_lap_' name];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v500_best_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_best_' name];
 end
 mkdir(path_qsm);
 init_dir = pwd;
