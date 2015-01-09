@@ -5,8 +5,10 @@ function qsm_r2s47(path_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN     - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s_vxxx
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s_v5
 %   OPTIONS     - parameter structure including fields below
+%    .ref_coil  - reference coil to use for phase combine   : 1
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
 %    .bet_thr   - threshold for BET brain mask              : 0.5
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
@@ -112,7 +114,7 @@ clean_all = options.clean_all;
 
 
 % define directories
-path_qsm = [path_out '/QSM_R2s47_v5'];
+path_qsm = [path_out '/QSM_R2s47_v5_pre'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);

@@ -5,16 +5,17 @@ function qsm_swi47(path_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN     - directory of .fid from ge3d sequence      : ge3d__01.fid
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_vxxx
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 3
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 3
+%    .ref_coil  - reference coil to use for phase combine   : 1
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg   - Tikhonov regularization for resharp       : 0.0005
+%    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
-%    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .tvdi_n    - iteration number of TVDI (nlcg)           : 200
 %    .clean_all - clean all the temp nifti results          : 1
 
@@ -68,6 +69,10 @@ if ~ isfield(options,'bkg_rm')
     % options.bkg_rm = {'pdf','sharp','resharp','lbv'};
 end
 
+if ~ isfield(options,'t_svd')
+    options.t_svd = 0.05;
+end
+
 if ~ isfield(options,'smv_rad')
     options.smv_rad = 4;
 end
@@ -76,8 +81,8 @@ if ~ isfield(options,'tik_reg')
     options.tik_reg = 5e-4;
 end
 
-if ~ isfield(options,'t_svd')
-    options.t_svd = 0.05;
+if ~ isfield(options,'lbv_layer')
+    options.lbv_layer = 2;
 end
 
 if ~ isfield(options,'tv_reg')
@@ -93,7 +98,7 @@ if ~ isfield(options,'clean_all')
 end
 
 if ~ isfield(options,'swi_ver')
-    options.swi_ver = 'amir';
+    options.swi_ver = 'amir'; % or 'hongfu'
 end
 
 ref_coil  = options.ref_coil;
@@ -101,9 +106,10 @@ eig_rad   = options.eig_rad;
 bet_thr   = options.bet_thr;
 ph_unwrap = options.ph_unwrap;
 bkg_rm    = options.bkg_rm;
+t_svd     = options.t_svd;
 smv_rad   = options.smv_rad;
 tik_reg   = options.tik_reg;
-t_svd     = options.t_svd;
+lbv_layer = options.lbv_layer;
 tv_reg    = options.tv_reg;
 inv_num   = options.inv_num;
 clean_all = options.clean_all;
@@ -112,11 +118,11 @@ swi_ver   = options.swi_ver;
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out '/QSM_SWI47_v5'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_pre'];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out '/QSM_SWI47_v5_lap'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_lap'];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out '/QSM_SWI47_v5_best'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_best'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -128,13 +134,14 @@ disp('--> reconstruct fid to complex img ...');
 [img,Pars] = swi47_recon(path_fid,swi_ver);
 
 
-% scanner frame
+% match scanner frame (PE,RO,SL,NE,RX)
+% so that angle corrections can be performed (phi, psi, theta)
 img = permute(img, [2 1 3 4]);
 img = flipdim(flipdim(img,2),3);
 [nv,np,ns,~] = size(img); % phase, readout, slice, receivers
 voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
-% field directions
+
 % intrinsic euler angles 
 % z-x-z convention, psi first, then theta, lastly phi
 % psi and theta are left-handed, while gamma is right-handed!
@@ -356,7 +363,7 @@ end
 % LBV
 if sum(strcmpi('lbv',bkg_rm))
     disp('--> LBV to remove background field ...');
-    lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,2); % strip 2 layers
+    lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,lbv_layer); % strip 2 layers
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
     % 3D 2nd order polyfit to remove any residual background
