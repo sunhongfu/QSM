@@ -13,9 +13,10 @@ function qsm_swi47(path_in, path_out, options)
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
-%    .tik_reg   - Tikhonov regularization for resharp       : 0.0005
+%    .tik_reg   - Tikhonov regularization for resharp       : 5e-4
+%    .lbv_layer - LBV layers to be stripped off             : 2
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
-%    .tv_reg    - Total variation regularization parameter  : 0.0005
+%    .tv_reg    - Total variation regularization parameter  : 5e-4
 %    .tvdi_n    - iteration number of TVDI (nlcg)           : 200
 %    .clean_all - clean all the temp nifti results          : 1
 
