@@ -13,7 +13,8 @@ function qsm_swi15(meas_in, path_out, options)
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
-%    .tik_reg   - Tikhonov regularization for RESHARP       : 0.001
+%    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
+%    .lbv_layer - LBV layers to be stripped off             : 2
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
