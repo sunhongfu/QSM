@@ -98,11 +98,12 @@ if isfield(options,'dicompath')
 else
     dicomfile = [];
     setenv('pathstr',pathstr);
-    [~,cmout] = unix('find "$pathstr" -name *.IMA | sort');
-    if ~ isempty(cmout)
-        dicoms = strsplit(cmout,'.IMA');
-        dicomfile = [dicoms{1},'.IMA'];
-    end
+    [~,dicomfile] = unix('find "$pathstr" -name *.IMA -print -quit');
+    dicomfile = strtrim(dicomfile);
+    % if ~ isempty(cmout)
+    %     dicoms = strsplit(cmout,'.IMA');
+    %     dicomfile = [dicoms{1},'.IMA'];
+    % end
 end
 
 ph_corr  = options.ph_corr;
@@ -190,7 +191,7 @@ for i = 1:size(img_all,5) % all time series
 
     disp('--> combine multiple channels ...');
     if size(img,4) > 1
-        img = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+        img = coils_cmb(img,voxelSize,ref_coi,eig_rad);
     end
 
     mkdir('combine');

@@ -17,7 +17,7 @@ function qsm_swi15(meas_in, path_out, options)
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
-%    .tvdi_n    - iteration number of TVDI (nlcg)           : 200
+%    .inv_num   - iteration number of TVDI (nlcg)           : 200
 %    .save_all  - save the entire workspace/variables       : 1
 
 
@@ -118,11 +118,12 @@ if isfield(options,'dicompath')
 else
     dicomfile = [];
     setenv('pathstr',pathstr);
-    [~,cmout] = unix('find "$pathstr" -name *.IMA | sort');
-    if ~ isempty(cmout)
-        dicoms = strsplit(cmout,'.IMA');
-        dicomfile = [dicoms{1},'.IMA'];
-    end
+    [~,dicomfile] = unix('find "$pathstr" -name *.IMA -print -quit');
+    dicomfile = strtrim(dicomfile);
+    % if ~ isempty(cmout)
+    %     dicoms = strsplit(cmout,'.IMA');
+    %     dicomfile = [dicoms{1},'.IMA'];
+    % end
 end
 
 ref_coil  = options.ref_coil;
@@ -285,7 +286,7 @@ elseif strcmpi('bestpath',ph_unwrap)
     unph = reshape(unph - unph(1) ,[nv,np,ns]);
     fclose(fid);
     nii = make_nii(unph,voxelSize);
-    save_nii(nii,'unph.nii');
+    save_nii(nii,'unph_best.nii');
 
     fid = fopen('reliability.dat','r');
     reliability = fread(fid,'float');
@@ -309,6 +310,8 @@ B_0 = params.protocol_header.m_flMagneticFieldStrength;
 gamma = 2.675222e8;
 tfs = unph/(gamma*TE*B_0)*1e6; % unit ppm
 
+nii = make_nii(tfs,voxelSize);
+save_nii(nii,'tfs.nii');
 
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
