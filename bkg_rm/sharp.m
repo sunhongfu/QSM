@@ -10,26 +10,42 @@ function [lfs, mask_ero] = sharp(tfs,mask,vox,ker_rad,tsvd)
 %   KER_RAD     : radius of convolution kernel (mm), e.g. 5
 %   TSVD        : truncated singular value decomposition. e.g. 0.05
 
+if ~ exist('vox','var') || isempty(vox)
+    vox = [1,1,1];
+end
+
+if ~ exist('ker_rad','var') || isempty(ker_rad)
+    ker_rad = 4;
+end
+
+if ~ exist('tik_reg','var') || isempty(tik_reg)
+    tik_reg = 5e-4;
+end
+
 imsize = size(tfs);
 
 % make spherical/ellipsoidal convolution kernel (ker)
 rx = round(ker_rad/vox(1));
 ry = round(ker_rad/vox(2));
 rz = round(ker_rad/vox(3));
+rx = max(rx,1);
+ry = max(ry,1);
+rz = max(rz,1);
 % rz = ceil(ker_rad/vox(3));
 [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 <= 1);
 ker = h/sum(h(:));
 
 % circularshift, linear conv to Fourier multiplication
 csh = [rx,ry,rz]; % circularshift
 
 % erode the mask by convolving with the kernel
-cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
-mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
-mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
+% cvsize = imsize + [2*rx+1, 2*ry+1, 2*rz+1] -1; % linear conv size
+% mask_tmp = real(ifftn(fftn(mask,cvsize).*fftn(ker,cvsize)));
+% mask_tmp = mask_tmp(rx+1:end-rx, ry+1:end-ry, rz+1:end-rz); % same size
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-8/sum(h(:))) = 1; % 7 error points tolerance
+mask_tmp = convn(mask,ker,'same');
+mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error points tolerence 
 
 
 % prepare convolution kernel: delta-ker
