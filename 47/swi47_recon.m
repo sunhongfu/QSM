@@ -214,13 +214,26 @@ end
 k = fft(fft(img,[],1),[],2);
 pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
 imsize = size(k);
-if mod(imsize(2),2) % if size of k is odd
-    k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
-        [0 pad-round(pad/2)], 'post'),2);
-else % size of k is even
-    k_s = fftshift(k,2);
-    k_s(:,1,:) = k_s(:,1,:)/2;
-    k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
-        [0 pad-round(pad/2)], 'post'),2);
+if pad < 0
+    pad = round(Pars.lro*Pars.nv/Pars.lpe - Pars.np/2);
+    if mod(imsize(1),2) % if size of k is odd
+        k_pad = ifftshift(padarray(padarray(fftshift(k,1),round(pad/2),'pre'), ...
+            pad-round(pad/2), 'post'),1);
+    else % size of k is even
+        k_s = fftshift(k,1);
+        k_s(1,:,:) = k_s(1,:,:)/2;
+        k_pad = ifftshift(padarray(padarray(k_s,round(pad/2),'pre'), ...
+            pad-round(pad/2), 'post'),1);
+    end
+else
+    if mod(imsize(2),2) % if size of k is odd
+        k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
+            [0 pad-round(pad/2)], 'post'),2);
+    else % size of k is even
+        k_s = fftshift(k,2);
+        k_s(:,1,:) = k_s(:,1,:)/2;
+        k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
+            [0 pad-round(pad/2)], 'post'),2);
+    end
 end
 img = ifft(ifft(k_pad,[],1),[],2);
