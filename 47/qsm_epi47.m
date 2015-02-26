@@ -16,7 +16,7 @@ function qsm_epi47(path_in, path_out, options)
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
-%    .tv_reg    - Total variation regularization parameter  : 0.0005
+%    .tv_reg    - Total variation regularization parameter  : 5e-4
 %    .inv_num   - iteration number of TVDI (nlcg)           : 200
 %    .save_all  - save the entire workspace/variables       : 1
 
@@ -62,7 +62,8 @@ if ~ isfield(options,'ph_unwrap')
 end
 
 if ~ isfield(options,'bkg_rm')
-    options.bkg_rm = {'resharp','lbv'};
+    options.bkg_rm = 'resharp';
+    % options.bkg_rm = {'resharp','lbv'};
     % options.bkg_rm = {'pdf','sharp','resharp','lbv'};
 end
 
@@ -144,7 +145,7 @@ matlabpool close;
 voxelSize = [par.lpe/nv*10, par.lro/np*10, par.thk];
 img_all = flipdim(flipdim(img_out,1),2); % the same as rot180 (rot90(x,2))
 
-    
+
 % process QSM on individual run volume
 for i = 1:size(img_all,4) % all time series
 	img = squeeze(img_all(:,:,:,i,:));
