@@ -7,8 +7,8 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_IN     - directory of .fid from ge3d sequence      : ge3d__01.fid
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 1
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .ref_coil  - reference coil to use for phase combine   : 4
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
@@ -45,11 +45,11 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 1;
+    options.ref_coil = 4;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -245,16 +245,20 @@ elseif strcmpi('bestpath',ph_unwrap)
     nii = make_nii(unph,voxelSize);
     save_nii(nii,'unph.nii');
 
-    % fid = fopen('reliability.dat','r');
-    % reliability = fread(fid,'float');
-    % fclose(fid);
-    % reliability = reshape(reliability,[nv,np,ns]);
-    % reliability = 1./reliability.*mask;
-    % reliability_smooth = smooth3(reliability,'box',[7,7,3]);
-    % % reliability(reliability <= 0.05) = 0;
-    % % reliability(reliability > 0.05) = 1;
-    % nii = make_nii(reliability_smooth,voxelSize);
-    % save_nii(nii,'reliability_smooth.nii');
+    fid = fopen('reliability.dat','r');
+    reliability_raw = fread(fid,'float');
+    fclose(fid);
+    reliability_raw = reshape(reliability_raw,[nv,np,ns]);
+    reliability = mask;
+    reliability(reliability_raw >= 20) = 0;
+    % reliability(reliability > 0.1) = 1;
+    nii = make_nii(reliability,voxelSize);
+    save_nii(nii,'reliability.nii');
+    weights = abs(img_cmb)./max(abs(img_cmb(:))).*mask.*reliability;
+    weights = smooth3(weights,'gaussian',[7,7,3],1);
+    % weights = smooth3(weights,'gaussian',[7,7,3],0.5);
+    nii = make_nii(weights,voxelSize);
+    save_nii(nii,'weights.nii');
 else
     error('what unwrapping methods to use? prelude or laplacian or bestpath?')
 end
@@ -270,11 +274,15 @@ nii = make_nii(tfs,voxelSize);
 save_nii(nii,'tfs.nii');
 
 
+if ~ exist('weights')
+    weights = abs(img_cmb);
+end
+
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = pdf(tfs,mask,voxelSize,smv_rad, ...
-        abs(img_cmb),z_prjs);
+        weights,z_prjs);
     % 3D 2nd order polyfit to remove any residual background
     lfs_pdf= poly3d(lfs_pdf,mask_pdf);
 
@@ -286,7 +294,7 @@ if sum(strcmpi('pdf',bkg_rm))
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on PDF...');
     sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, ...
-        abs(img_cmb), z_prjs, inv_num); 
+        weights, z_prjs, inv_num); 
 
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
@@ -316,7 +324,7 @@ if sum(strcmpi('sharp',bkg_rm))
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on SHARP...');
     sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, ...
-        abs(img_cmb), z_prjs, inv_num); 
+        weights, z_prjs, inv_num); 
    
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
@@ -346,7 +354,7 @@ if sum(strcmpi('resharp',bkg_rm))
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
     sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, ...
-        abs(img_cmb), z_prjs, inv_num); 
+        weights, z_prjs, inv_num); 
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
@@ -378,7 +386,7 @@ if sum(strcmpi('lbv',bkg_rm))
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on lbv...');
     sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg, ...
-        abs(img_cmb),z_prjs,inv_num);   
+        weights,z_prjs,inv_num);   
 
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
