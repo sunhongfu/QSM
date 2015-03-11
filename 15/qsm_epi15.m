@@ -146,6 +146,8 @@ if ~ isempty(dicomfile)
     Xz = info.ImageOrientationPatient(3);
     Yz = info.ImageOrientationPatient(6);
     Zz = sqrt(1 - Xz^2 - Yz^2);
+    disp('find the dicom');
+    dicomfile
     z_prjs = [Xz, Yz, Zz]
 else % this would be just an estimation
     sNormal = params.protocol_header.sSliceArray.asSlice{1}.sNormal;
@@ -167,6 +169,7 @@ else % this would be just an estimation
     if ischar(sNormal.dTra)
         sNormal.dTra = 0;
     end
+    disp('no dicom found, try to use normal vector');
     z_prjs = [-sNormal.dSag, -sNormal.dCor, sNormal.dTra]
 end
 
