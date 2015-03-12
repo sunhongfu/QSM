@@ -7,8 +7,8 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_IN     - directory of .fid from ge3d sequence      : ge3d__01.fid
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 4
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .ref_coil  - reference coil to use for phase combine   : 1
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
@@ -45,11 +45,11 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 4;
+    options.ref_coil = 1;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 15;
+    options.eig_rad = 4;
 end
 
 if ~ isfield(options,'bet_thr')
