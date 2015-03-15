@@ -7,7 +7,7 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_IN     - directory of .fid from ge3d sequence      : ge3d__01.fid
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 1
+%    .ref_coil  - reference coil to use for phase combine   : 2
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 4
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
@@ -45,7 +45,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 1;
+    options.ref_coil = 2;
 end
 
 if ~ isfield(options,'eig_rad')
@@ -98,9 +98,9 @@ if ~ isfield(options,'clean_all')
     options.clean_all = 1;
 end
 
-if ~ isfield(options,'swi_ver')
-    options.swi_ver = 'amir'; % or 'hongfu'
-end
+% if ~ isfield(options,'swi_ver')
+%     options.swi_ver = 'amir'; % or 'hongfu'
+% end
 
 ref_coil  = options.ref_coil;
 eig_rad   = options.eig_rad;
@@ -114,7 +114,7 @@ lbv_layer = options.lbv_layer;
 tv_reg    = options.tv_reg;
 inv_num   = options.inv_num;
 clean_all = options.clean_all;
-swi_ver   = options.swi_ver;
+% swi_ver   = options.swi_ver;
 
 
 %%% define directories
@@ -132,7 +132,8 @@ cd(path_qsm);
 
 %%% generate raw img
 disp('--> reconstruct fid to complex img ...');
-[img,Pars] = swi47_recon(path_fid,swi_ver);
+% [img,Pars] = swi47_recon(path_fid,swi_ver);
+[img,Pars] = swi47_recon(path_fid);
 
 
 % match scanner frame (PE,RO,SL,NE,RX)

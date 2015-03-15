@@ -7,12 +7,12 @@ function qsm_epi47(path_in, path_out, options)
 %   PATH_IN    - directory of .fid from gemsme3d sequence  : se_epi_dw***.fid
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 1
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .ref_coil  - reference coil to use for phase combine   : 2
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.4
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
@@ -41,11 +41,11 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 1;
+    options.ref_coil = 2;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -72,7 +72,7 @@ if ~ isfield(options,'t_svd')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 4;
+    options.smv_rad = 5;
 end
 
 if ~ isfield(options,'tik_reg')

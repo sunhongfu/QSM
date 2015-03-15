@@ -4,9 +4,9 @@ if ~ exist('path_in','var') || isempty(path_in)
     path_in = [pwd '/ge3d__01.fid'];
 end
 
-if ~ exist('swi_ver','var') || isempty(swi_ver)
-    swi_ver = 'amir';
-end
+% if ~ exist('swi_ver','var') || isempty(swi_ver)
+%     swi_ver = 'amir';
+% end
 
 file=[path_in,'/fid'];
 parfil=[path_in,'/procpar'];
@@ -63,11 +63,11 @@ fclose(fid);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% old Amir SWI
-if strcmpi(swi_ver,'amir')
+if strcmpi(Pars.seqfil,'ge3d')
     % Reshape raw scanner output to 3D matrix
     IM3D=reshapemat(cpxdata,Pars,1,ebytes);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-elseif strcmpi(swi_ver,'hongfu')
+elseif strcmpi(Pars.seqfil,'ge2dms')
     %%% new msloop
     % Reshape raw scanner output to 3D matrix
     cpxdata=reshape(cpxdata,[],nblocks);
@@ -82,7 +82,7 @@ elseif strcmpi(swi_ver,'hongfu')
     IM3D.RCVR3=squeeze(cpxdata(:,:,3,:));
     IM3D.RCVR4=squeeze(cpxdata(:,:,4,:));
 else
-    error('what is this sequence? amir or hongfu?')
+    error('what is this sequence? amirs ge3d or hongfus ge2dms?')
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
