@@ -22,7 +22,7 @@ if ~ exist('z_prjs','var') || isempty(z_prjs)
 end
 
 if ~ exist('Itnlim','var') || isempty(Itnlim)
-    Itnlim = 200;
+    Itnlim = 500;
 end
 
 if ~ exist('pNorm','var') || isempty(pNorm)
@@ -68,7 +68,7 @@ param.TV = cls_tv;
 % param.TV = cls_tv_mask(mask);
 
 param.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
-param.gradToll = 0; % step size tolerance stopping criterea
+param.gradToll = 1e-4; % step size tolerance stopping criterea
 param.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
 param.pNorm = pNorm; % type of norm to use (i.e. L1 L2 etc)
 param.lineSearchItnlim = 100;

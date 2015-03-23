@@ -8,17 +8,17 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
 %    .tik_reg   - Tikhonov regularization for resharp       : 5e-4
 %    .lbv_layer - LBV layers to be stripped off             : 2
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .tv_reg    - Total variation regularization parameter  : 5e-4
-%    .tvdi_n    - iteration number of TVDI (nlcg)           : 200
-%    .clean_all - clean all the temp nifti results          : 1
+%    .tvdi_n    - iteration number of TVDI (nlcg)           : 500
+%    .clean_all - clean all the temp nifti results          : 0
 
 
 % default settings
@@ -49,7 +49,7 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -75,7 +75,7 @@ if ~ isfield(options,'t_svd')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 4;
+    options.smv_rad = 5;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -91,11 +91,11 @@ if ~ isfield(options,'tv_reg')
 end
 
 if ~ isfield(options,'inv_num')
-    options.inv_num = 200;
+    options.inv_num = 500;
 end
 
 if ~ isfield(options,'clean_all')
-    options.clean_all = 1;
+    options.clean_all = 0;
 end
 
 % if ~ isfield(options,'swi_ver')
@@ -119,7 +119,7 @@ clean_all = options.clean_all;
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_pre'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_v5'];
 elseif strcmpi(ph_unwrap,'laplacian')
     path_qsm = [path_out, filesep, 'QSM_SWI47_v5_lap'];
 elseif strcmpi(ph_unwrap,'bestpath')
@@ -158,6 +158,11 @@ if ~ isequal(z_prjs,[0 0 1])
 end
 
 
+% have a peak of the raw phase
+nii = make_nii(angle(img),voxelSize);
+save_nii(nii,'rawphase.nii');
+
+
 % combine receivers
 if Pars.RCVRS_ > 1
     % combine RF coils
@@ -173,15 +178,6 @@ nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
 nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
-
-% LAS coordinates for ImageJ
-mkdir('LAS/combine');
-nii = make_nii(flipdim(flipdim(abs(img_cmb),2),3),voxelSize);
-save_nii(nii,'LAS/combine/mag_cmb.nii');
-nii = make_nii(flipdim(flipdim(angle(img_cmb),2),3),voxelSize);
-save_nii(nii,'LAS/combine/ph_cmb.nii');
-
-clear img;
 
 
 % generate brain mask
@@ -200,7 +196,7 @@ if strcmpi('prelude',ph_unwrap)
     % unwrap combined phase with PRELUDE
     disp('--> unwrap aliasing phase using prelude...');
     bash_script = ['prelude -a combine/mag_cmb.nii -p combine/ph_cmb.nii ' ...
-        '-u unph.nii -m BET_mask.nii -n 8'];
+        '-u unph.nii -m BET_mask.nii -n 12'];
     unix(bash_script);
     unix('gunzip -f unph.nii.gz');
     nii = load_nii('unph.nii');
@@ -300,13 +296,6 @@ if sum(strcmpi('pdf',bkg_rm))
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
     save_nii(nii,'PDF/sus_pdf.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/PDF')
-    nii = make_nii(flipdim(flipdim(lfs_pdf,2),3),voxelSize);
-    save_nii(nii,'LAS/PDF/lfs_pdf.nii');
-    nii = make_nii(flipdim(flipdim(sus_pdf.*mask_pdf,2),3),voxelSize);
-    save_nii(nii,'LAS/PDF/sus_pdf.nii');
 end
 
 
@@ -330,13 +319,6 @@ if sum(strcmpi('sharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
     save_nii(nii,'SHARP/sus_sharp.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/SHARP')
-    nii = make_nii(flipdim(flipdim(lfs_sharp,2),3),voxelSize);
-    save_nii(nii,'LAS/SHARP/lfs_sharp.nii');
-    nii = make_nii(flipdim(flipdim(sus_sharp.*mask_sharp,2),3),voxelSize);
-    save_nii(nii,'LAS/SHARP/sus_sharp.nii');
 end
 
 
@@ -360,13 +342,6 @@ if sum(strcmpi('resharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/RESHARP');
-    nii = make_nii(flipdim(flipdim(lfs_resharp,2),3),voxelSize);
-    save_nii(nii,'LAS/RESHARP/lfs_resharp.nii');
-    nii = make_nii(flipdim(flipdim(sus_resharp.*mask_resharp,2),3),voxelSize);
-    save_nii(nii,'LAS/RESHARP/sus_resharp.nii');
 end
 
 
@@ -392,20 +367,13 @@ if sum(strcmpi('lbv',bkg_rm))
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
     save_nii(nii,'LBV/sus_lbv.nii');
-   
-    % LAS coordinates for ImageJ
-    mkdir('LAS/LBV');
-    nii = make_nii(flipdim(flipdim(lfs_lbv,2),3),voxelSize);
-    save_nii(nii,'LAS/LBV/lfs_lbv.nii');
-    nii = make_nii(flipdim(flipdim(sus_lbv.*mask_lbv,2),3),voxelSize);
-    save_nii(nii,'LAS/LBV/sus_lbv.nii');
 end
 
 
 % clean the directory
 if clean_all
     disp('--> clean temp nifti files ...');
-    unix('ls | grep -v LAS | xargs rm -rf');
+    unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
 end
 
 % save all variables for future reference

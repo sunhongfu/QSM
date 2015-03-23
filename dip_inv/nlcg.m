@@ -16,6 +16,9 @@ g0 = wGradient(m,params);
 dm = -g0;
 
 f = 0;
+RES0 = 0;
+count =0;
+
 % iterations
 while(k <= params.Itnlim)
    
@@ -38,20 +41,29 @@ while(k <= params.Itnlim)
     end
     
     % updates
-    m = m + t*dm;
+    m = m + t*dm; dm0 = dm;
     g1 = wGradient(m,params);
     bk = g1(:)'*g1(:)/(g0(:)'*g0(:)+eps);
     g0 = g1;
     dm = -g1 + bk*dm;
     k = k + 1;
-    
+     
     % outputs for debugging purpose
-    fprintf('%d , obj: %f, res: %f, tv: %f, LS: %d, toll: %f\n',...
-            k, f1, RES, TVterm, lsiter, abs((f1-f)/f1));
+    fprintf('%d , relative residual: %f\n',...
+            k, abs(RES-RES0)/RES);
     
-    if (abs((f1-f)/f1) <= gradToll); break; end 
+    if (abs(RES-RES0)/RES <= gradToll); 
+        count = count + 1;
+    else
+        count = 0;
+    end 
     
+    if (count == 10)
+        break;
+    end
+
     f = f1;
+    RES0 = RES;
 end
 
 return;

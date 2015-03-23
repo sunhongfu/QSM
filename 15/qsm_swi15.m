@@ -8,16 +8,16 @@ function qsm_swi15(meas_in, path_out, options)
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI15_v5
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 1
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
 %    .bet_thr   - threshold for BET brain mask              : 0.4
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
-%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .inv_num   - iteration number of TVDI (nlcg)           : 500
 %    .save_all  - save the entire workspace/variables       : 1
 
 
@@ -62,7 +62,7 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -88,7 +88,7 @@ if ~ isfield(options,'t_svd')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 4;
+    options.smv_rad = 5;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -104,7 +104,7 @@ if ~ isfield(options,'tv_reg')
 end
 
 if ~ isfield(options,'inv_num')
-    options.inv_num = 200;
+    options.inv_num = 500;
 end
 
 if ~ isfield(options,'save_all')
@@ -139,17 +139,20 @@ tv_reg    = options.tv_reg;
 inv_num   = options.inv_num;
 save_all  = options.save_all;
 
+
 % define directories
+[~,name] = fileparts(filename);
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_pre'];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_' name];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_lap'];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_lap_' name];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_best'];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_best_' name];
 end
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
+disp(['Start recon of ' filename]);
 
 
 % generate raw img

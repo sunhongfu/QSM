@@ -4,18 +4,19 @@ function qsm_epi15(meas_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   MEAS_IN    - filename or directory of meas file(.out)  : *.out
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
-%   OPTIONS    - parameter structure including fields below
-%    .ph_corr  - N/2 deghosting phase correction method    : 3
-%    .ref_coi  - reference coil to use for phase combine   : 4
-%    .eig_rad  - radius (mm) of eig decomp kernel          : 5
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
-%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
-%    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .bet_thr  - threshold for BET brain mask              : 0.4
-%    .inv_num  - iteration number of TVDI (nlcg)           : 200
-%    .save_all - save all the variables for debug          : 1
+%   MEAS_IN     - filename or directory of meas file(.out)  : *.out
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
+%   OPTIONS     - parameter structure including fields below
+%    .ph_corr   - N/2 deghosting phase correction method    : 3
+%    .ref_coil  - reference coil to use for phase combine   : 1
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .bet_thr   - threshold for BET brain mask              : 0.5
+%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
+%    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
+%    .tv_reg    - Total variation regularization parameter  : 5e-4
+%    .inv_num   - max iteration number of TVDI (nlcg)       : 500
+%    .save_all  - save all the variables for debug          : 1
 
 if ~ exist('meas_in','var') || isempty(meas_in)
     listing = dir([pwd '/*.out']);
@@ -59,20 +60,29 @@ if ~ isfield(options,'ph_corr')
     % 3: MTF
 end
 
-if ~ isfield(options,'ref_coi')
-    options.ref_coi = 4;
+if ~ isfield(options,'ref_coil')
+    options.ref_coil = 1;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.45;
+    options.bet_thr = 0.5;
+end
+
+if ~ isfield(options,'ph_unwrap')
+    options.ph_unwrap = 'prelude';
+    % % another option is
+    % options.ph_unwrap = 'laplacian';
+    % % prelude is preferred, unless there's sigularities
+    % % in that case, have to use laplacian
+    % another option is 'bestpath'
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 3;
+    options.smv_rad = 5;
 end
 
 if ~ isfield(options,'tik_reg')
@@ -84,7 +94,7 @@ if ~ isfield(options,'tv_reg')
 end
 
 if ~ isfield(options,'inv_num')
-    options.inv_num = 200;
+    options.inv_num = 500;
 end
 
 if ~ isfield(options,'save_all')
@@ -106,21 +116,27 @@ else
     % end
 end
 
-ph_corr  = options.ph_corr;
-ref_coi  = options.ref_coi;
-eig_rad  = options.eig_rad;
-bet_thr  = options.bet_thr;
-smv_rad  = options.smv_rad;
-tik_reg  = options.tik_reg;
-tv_reg   = options.tv_reg;
-inv_num  = options.inv_num;
-save_all = options.save_all;
+ph_corr   = options.ph_corr;
+ref_coil  = options.ref_coil;
+eig_rad   = options.eig_rad;
+bet_thr   = options.bet_thr;
+ph_unwrap = options.ph_unwrap;
+smv_rad   = options.smv_rad;
+tik_reg   = options.tik_reg;
+tv_reg    = options.tv_reg;
+inv_num   = options.inv_num;
+save_all  = options.save_all;
 
 
 % define directories
 [~,name] = fileparts(filename);
-% path_qsm = [path_out, filesep, strrep(name,' ','_') '_QSM_EPI15_v200'];
-path_qsm = [path_out, filesep, 'QSM_EPI15_v1_' name];
+if strcmpi(ph_unwrap,'prelude')
+    path_qsm = [path_out, filesep, 'QSM_EPI15_v5_' name];
+elseif strcmpi(ph_unwrap,'laplacian')
+    path_qsm = [path_out, filesep, 'QSM_EPI15_v5_lap_' name];
+elseif strcmpi(ph_unwrap,'bestpath')
+    path_qsm = [path_out, filesep, 'QSM_EPI15_v5_best_' name];
+end
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -194,13 +210,15 @@ for i = 1:size(img_all,5) % all time series
 
     disp('--> combine multiple channels ...');
     if size(img,4) > 1
-        img = coils_cmb(img,voxelSize,ref_coi,eig_rad);
+        img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+    else
+        img_cmb = img;
     end
 
     mkdir('combine');
-    nii = make_nii(abs(img),voxelSize);
+    nii = make_nii(abs(img_cmb),voxelSize);
     save_nii(nii,['combine/mag_cmb' num2str(i,'%03i') '.nii']);
-    nii = make_nii(angle(img),voxelSize);
+    nii = make_nii(angle(img_cmb),voxelSize);
     save_nii(nii,['combine/ph_cmb' num2str(i,'%03i') '.nii']);
 
 
@@ -224,31 +242,65 @@ for i = 1:size(img_all,5) % all time series
     disp('--> extract brain volume and generate mask ...');
     setenv('bet_thr',num2str(bet_thr));
     setenv('time_series',num2str(i,'%03i'));
-    [status,cmdout] = unix('rm BET*');
+    [status,cmdout] = unix('rm BET${time_series}.nii* BET${time_series}_mask.nii*');
     bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
-        '-f ${bet_thr} -m -Z'];
+        '-f ${bet_thr} -m -Z -R'];
     unix(bash_script);
     unix('gunzip -f BET${time_series}.nii.gz');
     unix('gunzip -f BET${time_series}_mask.nii.gz');
     nii = load_nii(['BET' num2str(i,'%03i') '_mask.nii']);
     mask = double(nii.img);
 
-    % unwrap combined phase with PRELUDE
-    disp('--> unwrap aliasing phase using prelude ...');
-    setenv('time_series',num2str(i,'%03i'));
-    bash_script = ['prelude -a combine/mag_cmb${time_series}.nii ' ...
-        '-p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii ' ...
-        '-m BET${time_series}_mask.nii -n 8'];
-    unix(bash_script);
-    unix('gunzip -f unph${time_series}.nii.gz');
-    nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
-    unph = double(nii.img);
 
-    % % if there are singularites, have to use laplacian
-    % Options.voxelSize = voxelSize;
-    % unph = lapunwrap(angle(img), Options);
-    % nii = make_nii(unph, voxelSize);
-    % save_nii(nii,['unph_lap' num2str(i,'%03i') '.nii']);
+    % unwrap the phase
+    if strcmpi('prelude',ph_unwrap)
+        % unwrap combined phase with PRELUDE
+        disp('--> unwrap aliasing phase using prelude...');
+        setenv('time_series',num2str(i,'%03i'));
+        bash_script = ['prelude -a combine/mag_cmb${time_series}.nii ' ...
+            '-p combine/ph_cmb${time_series}.nii -u unph${time_series}.nii ' ...
+            '-m BET${time_series}_mask.nii -n 8'];
+        unix(bash_script);
+        unix('gunzip -f unph${time_series}.nii.gz');
+        nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
+        unph = double(nii.img);
+
+    elseif strcmpi('laplacian',ph_unwrap)
+        % Ryan Topfer's Laplacian unwrapping
+        disp('--> unwrap aliasing phase using laplacian...');
+        Options.voxelSize = voxelSize;
+        unph = lapunwrap(angle(img_cmb), Options);
+        nii = make_nii(unph, voxelSize);
+        save_nii(nii,['unph_lap' num2str(i,'%03i') '.nii']);
+
+    elseif strcmpi('bestpath',ph_unwrap)
+        % unwrap the phase using best path
+        disp('--> unwrap aliasing phase using bestpath...');
+        fid = fopen('wrapped_phase.dat','w');
+        fwrite(fid,angle(img_cmb),'float');
+        fclose(fid);
+        % mask_unwrp = uint8(hemo_mask.*255);
+        mask_unwrp = uint8(abs(mask)*255);
+        fid = fopen('mask_unwrp.dat','w');
+        fwrite(fid,mask_unwrp,'uchar');
+        fclose(fid);
+
+        unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
+        setenv('nv',num2str(nv));
+        setenv('np',num2str(np));
+        setenv('ns',num2str(ns));
+        bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
+            '$nv $np $ns reliability.dat'];
+        unix(bash_script) ;
+
+        fid = fopen('unwrapped_phase.dat','r');
+        unph = fread(fid,'float');
+        unph = reshape(unph - unph(1) ,[nv, np, ns]);
+        fclose(fid);
+        nii = make_nii(unph,voxelSize);
+        save_nii(nii,['unph_best' num2str(i,'%03i') '.nii']);
+
+    end
 
 
     % background field removal
@@ -268,7 +320,7 @@ for i = 1:size(img_all,5) % all time series
 
 
     disp('--> TV susceptibility inversion ...');
-    sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img), ...
+    sus_resharp = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb), ...
         z_prjs,inv_num);
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,['RESHARP/sus_resharp' num2str(i,'%03i') '.nii']);
@@ -276,7 +328,7 @@ for i = 1:size(img_all,5) % all time series
 
     % to save all the variables
     if save_all
-        img_cmb_all(:,:,:,i)      = img;
+        img_cmb_all(:,:,:,i)      = img_cmb;
         mask_all(:,:,:,i)         = mask;
         unph_all(:,:,:,i)         = unph;
         lfs_resharp_all(:,:,:,i)  = lfs_resharp;

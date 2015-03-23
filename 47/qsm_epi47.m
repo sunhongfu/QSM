@@ -8,8 +8,8 @@ function qsm_epi47(path_in, path_out, options)
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
-%    .bet_thr   - threshold for BET brain mask              : 0.4
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .bet_thr   - threshold for BET brain mask              : 0.35
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
@@ -17,7 +17,7 @@ function qsm_epi47(path_in, path_out, options)
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
 %    .tv_reg    - Total variation regularization parameter  : 5e-4
-%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .inv_num   - iteration number of TVDI (nlcg)           : 500
 %    .save_all  - save the entire workspace/variables       : 1
 
 % default settings
@@ -45,11 +45,11 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 5;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.4;
+    options.bet_thr = 0.35;
 end
 
 if ~ isfield(options,'ph_unwrap')
@@ -80,7 +80,7 @@ if ~ isfield(options,'tik_reg')
 end
 
 if ~ isfield(options,'lbv_layer')
-    options.lbv_layer = 2;
+    options.lbv_layer = 1;
 end
 
 if ~ isfield(options,'tv_reg')
@@ -88,7 +88,7 @@ if ~ isfield(options,'tv_reg')
 end
 
 if ~ isfield(options,'inv_num')
-    options.inv_num = 200;
+    options.inv_num = 500;
 end
 
 if ~ isfield(options,'save_all')
@@ -141,10 +141,15 @@ matlabpool close;
 
 
 % flip to match 4.7T scanner frame/gradients (coordinates)
-[nv, np, ns, nrcvrs, ~] = size(img_out);
+[nv, np, ns, ~, ~] = size(img_out);
 voxelSize = [par.lpe/nv*10, par.lro/np*10, par.thk];
 img_all = flipdim(flipdim(img_out,1),2); % the same as rot180 (rot90(x,2))
 
+
+% a quick peak at the raw phase
+disp('check out the uncombined raw phase!');
+nii = make_nii(squeeze(angle(img_all(:,:,:,1,:))),voxelSize);
+save_nii(nii,'rawphase.nii');
 
 % process QSM on individual run volume
 for i = 1:size(img_all,4) % all time series
@@ -166,7 +171,7 @@ for i = 1:size(img_all,4) % all time series
 	setenv('time_series',num2str(i,'%03i'));
 	[status,cmdout] = unix('rm BET*');
 	bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
-		'-f ${bet_thr} -m -Z'];
+		'-f ${bet_thr} -m -Z -R'];
 	unix(bash_script);
 	unix('gunzip -f BET${time_series}.nii.gz');
 	unix('gunzip -f BET${time_series}_mask.nii.gz');
