@@ -1,5 +1,17 @@
 function [m,RES,TVterm] = nlcg(m0,params)
-% Phi(m) = ||Fu*m - y||^2 + lamda1*|TV*m|_1
+% Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
+% m: susceptibility
+% W: weighting matrix derived from magnitude intensities
+% Fu: F_{-1}*D*F forward calculates the field from susceptibility
+% y: measured field to be fitted (inversion)
+% lambda1: TV regularization parameter
+% TV: total variation operation
+% ||...||^2: L2 norm
+% |...|_1: L1 norm
+% note the TV term can also be L2 norm if set p=2,
+% then the term would be changed to ||TV*m||^2
+
+
 
 m = m0;
 
