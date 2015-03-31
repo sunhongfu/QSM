@@ -62,10 +62,7 @@ D = fftshift(D);
 % parameter structures for inversion
 % data consistancy and TV term objects
 param.FT = cls_dipconv([Nx,Ny,Nz],D);
-% param.FT = cls_dipconv_mask([Nx,Ny,Nz],D,mask);
-% param.FT = cls_dipconv_new([Nx,Ny,Nz],D,R);
 param.TV = cls_tv;
-% param.TV = cls_tv_mask(mask);
 
 param.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
 param.gradToll = 1e-4; % step size tolerance stopping criterea
