@@ -1,22 +1,31 @@
-function img_cmb_all = sense_se(img,vox,te,cref,radi)
+function img_cmb_all = adaptive_cmb(img,vox,cref,radi)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
 
 % img: raw complex 4D or 5D images: [3Dimages_dimensions, multi-receivers_dimension, (multi-echoes_dimension)]
 % vox: resolution of the images (vector), voxel size
-% te: at least the first and second TEs are needed: [te(1), te(2)]
 % cref: coil referece (coil number)
 % radi: radius of the kernel (e.g. 3mm)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % for example:
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
-% te = [3, 7, 11, 15, 19]; % echo times, only the first two are required!
-%   if single-echo data, 'te' will not be used, just replace 'te' with ~ or [] as input
-% cref = 3; % (3rd channel as reference coil)
-% radi = 3; % (mm)
+% cref = 1; % (1st channel as reference coil)
+% radi = 5; % (mm)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if ~ exist('vox','var') || isempty(vox)
+    vox = [1 1 1];
+end
+
+if ~ exist('cref','var') || isempty(cref)
+    cref = 1;
+end
+
+if ~ exist('radi','var') || isempty(radi)
+    radi = 5;
+end
 
 
 % image size: readout, phase encoding, slice encoding, receivers, echoes
@@ -76,45 +85,6 @@ for echo = 1:ne
     img_cmb(isnan(img_cmb)) = 0;
     img_cmb(isinf(img_cmb)) = 0;
     img_cmb_all(:,:,:,echo) = img_cmb;
-end
-
-
-
-%% if multi-echo then correct for phase-offset
-if echo > 1
-    nii = make_nii(abs(img_cmb_all(:,:,:,1)),vox);
-    save_nii(nii,'mag1.nii');
-    nii = make_nii(abs(img_cmb_all(:,:,:,2)),vox);
-    save_nii(nii,'mag2.nii');
-    nii = make_nii(angle(img_cmb_all(:,:,:,1)),vox);
-    save_nii(nii,'wrph1.nii');
-    nii = make_nii(angle(img_cmb_all(:,:,:,2)),vox);
-    save_nii(nii,'wrph2.nii');
-
-    %% generate mask from combined magnitude of the first echo
-    disp('--> extract brain volume and generate mask ...');
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    bet_thr = 0.5; % adjust the BET parameter accordingly, refer to BET from FSL
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    setenv('bet_thr',num2str(bet_thr));
-    unix('bet mag1.nii BET -f ${bet_thr} -m -R');
-    unix('gunzip -f BET.nii.gz');
-    unix('gunzip -f BET_mask.nii.gz');
-    nii = load_nii('BET_mask.nii');
-    mask = double(nii.img);
-
-    bash_command = sprintf(['prelude -a mag1.nii -p wrph1.nii -u unph1.nii -m BET_mask -n 8&\n' ...
-                            'prelude -a mag2.nii -p wrph2.nii -u unph2.nii -m BET_mask -n 8&\n' ...
-                            'wait\n' ...
-                            'gunzip -f unph*.gz\n']);
-    unix(bash_command);
-    nii = load_nii('unph1.nii');
-    unph1 = double(nii.img);
-    nii = load_nii('unph2.nii');
-    unph2 = double(nii.img);
-
-    offset = (te(1)*unph2 - te(2)*unph1)/(te(1)-te(2));
-    img_cmb_all = img_cmb_all./exp(1j.*repmat(offset,[1,1,1,echo]));
 end
 
 end
