@@ -5,7 +5,7 @@ function qsm_swi47(path_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN     - directory of .fid from ge3d sequence      : ge3d__01.fid
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_v5
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 15
@@ -119,11 +119,11 @@ clean_all = options.clean_all;
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_v5'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47'];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_lap'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_lap'];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_v5_best'];
+    path_qsm = [path_out, filesep, 'QSM_SWI47_best'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -140,7 +140,7 @@ disp('--> reconstruct fid to complex img ...');
 % so that angle corrections can be performed (phi, psi, theta)
 img = permute(img, [2 1 3 4]);
 img = flipdim(flipdim(img,2),3);
-[nv,np,ns,~] = size(img); % phase, readout, slice, receivers
+[nv,np,ns,nrcvrs] = size(img); % phase, readout, slice, receivers
 voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 
@@ -158,8 +158,23 @@ if ~ isequal(z_prjs,[0 0 1])
 end
 
 
+% center k-space correction (readout direction)
+ks = ifftshift(ifftn(img));
+[MAX,Ind] = max(abs(ks(:)));;
+% find maximum readout and phase encoding index
+[Inv, Inp, Ins, Ircvrs] = ind2sub([nv,np,ns,nrcvrs],Ind)
+
+% Apply phase ramp
+pix = np/2-Inp; % voxel shift
+ph_ramp = exp(-sqrt(-1)*2*pi*pix*(-1/2:1/np:1/2-1/np));
+pix2 = nv/2-Inv;
+ph_ramp2 = exp(-sqrt(-1)*2*pi*pix2*(-1/2:1/nv:1/2-1/nv));
+
+img_corr = img.* repmat((ph_ramp),[nv 1 ns nrcvrs]);
+img_corr = img_corr.* repmat(transp(ph_ramp2),[1 np ns nrcvrs]);
+
 % have a peak of the raw phase
-nii = make_nii(angle(img),voxelSize);
+nii = make_nii(angle(img_corr),voxelSize);
 save_nii(nii,'rawphase.nii');
 
 
@@ -167,7 +182,7 @@ save_nii(nii,'rawphase.nii');
 if Pars.RCVRS_ > 1
     % combine RF coils
     disp('--> combine RF rcvrs ...');
-    img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+    img_cmb = adaptive_cmb(img_corr,voxelSize,ref_coil,eig_rad);
 else  % single channel  
     img_cmb = img;
 end
@@ -178,6 +193,7 @@ nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
 nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
+
 
 
 % generate brain mask

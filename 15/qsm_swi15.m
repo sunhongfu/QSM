@@ -5,7 +5,7 @@ function qsm_swi15(meas_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   MEAS_IN     - filename or directory of meas file(.out)  : *.out
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI15_v5
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI15
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 1
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 15
@@ -143,11 +143,11 @@ save_all  = options.save_all;
 % define directories
 [~,name] = fileparts(filename);
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_' name];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_lap_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_lap_' name];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_v5_best_' name];
+    path_qsm = [path_out, filesep, 'QSM_SWI15_best_' name];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -205,7 +205,7 @@ end
 
 % combine RF coils
 if size(img,4) > 1
-    img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+    img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad);
 else
     img_cmb = img;
 end

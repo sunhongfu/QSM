@@ -1,8 +1,8 @@
-function ph_cmb = sense_me(img,vox,te)
-%SENSE combination (for phase).
-%   PH_CMB = SENSE_ME(IMG,PAR) combines phase from multiple receivers
+function ph_cmb = geme_cmb(img,vox,te)
+%Gradient-echo multi-echo combination (for phase).
+%   PH_CMB = GEME_CMB(IMG,PAR) combines phase from multiple receivers
 %
-%   IMG:    raw complex images from multiple receivers, 5D: [3D_image, echoes, receivers/coils]
+%   IMG:    raw complex images from multiple receivers, 5D: [3D_image, echoes, receivers]
 %   TE :    echo times
 %   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
 %   PH_CMB: phase after combination
@@ -20,7 +20,7 @@ nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
 % perform unwrapping
-unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 8');
+unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
 unix('gunzip -f unph_diff.nii.gz');
 
 nii = load_nii('unph_diff.nii');

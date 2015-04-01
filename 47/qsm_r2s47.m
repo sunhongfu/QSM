@@ -5,10 +5,10 @@ function qsm_r2s47(path_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN     - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s_v5
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s47
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 1
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 4
+%    .ref_coil  - reference coil to use for phase combine   : 2
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
 %    .bet_thr   - threshold for BET brain mask              : 0.5
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
@@ -18,7 +18,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .inv_num   - iteration number of TVDI (nlcg)           : 200
 %    .echo_num  - keep only the first 'echo_num' echoes     : 5
 %    .fit_thr   - truncation level on fitting residual      : 10
-%    .clean_all - clean all the temp nifti results          : 1
+%    .clean_all - clean all the temp nifti results          : 0
 
 
 % default settings
@@ -45,11 +45,11 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 1;
+    options.ref_coil = 2;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 4;
+    options.eig_rad = 15;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -94,7 +94,7 @@ if ~ isfield(options,'inv_num')
 end
 
 if ~ isfield(options,'clean_all')
-    options.clean_all = 1;
+    options.clean_all = 0;
 end
 
 
@@ -114,7 +114,7 @@ clean_all = options.clean_all;
 
 
 % define directories
-path_qsm = [path_out '/QSM_R2s47_v5_pre'];
+path_qsm = [path_out '/QSM_R2s47'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -148,13 +148,16 @@ if ~ isequal(z_prjs,[0 0 1])
     disp(z_prjs);
 end
 
+% have a peak at raw phase
+nii = make_nii(squeeze(angle(img(:,:,:,1,:))));
+save_nii(nii,'rawphase.nii');
 
 % combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
     disp('--> combine RF rcvrs ...');
-    img_cmb = coils_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
+    img_cmb = adaptive_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
     mag_cmb = abs(img_cmb);
-    % at 4.7T, seems the 3rd coil has the best SNR?
+    % at 4.7T, seems the 2rd coil has the best SNR?
 else
     mag_cmb = abs(img);
 end
@@ -164,13 +167,6 @@ mkdir('combine');
 for echo = 1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
-end
-
-% LAS coordinates for ImageJ
-mkdir('LAS/combine');
-for echo = 1:ne
-    nii = make_nii(flipdim(flipdim(mag_cmb(:,:,:,echo),2),3),voxelSize);
-    save_nii(nii,['LAS/combine/mag_cmb' num2str(echo) '.nii']);
 end
 
 
@@ -188,7 +184,7 @@ mask = double(nii.img);
 
 % combine phase using double-echo method
 if par.nrcvrs > 1
-    ph_cmb = sense_me(img,voxelSize,te);
+    ph_cmb = geme_cmb(img,voxelSize,te);
 else
     ph_cmb = angle(img);
 end
@@ -199,13 +195,6 @@ for echo = 1:size(ph_cmb,4)
     nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
     save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
 end
-
-% LAS coordinates for ImageJ
-for echo = 1:ne
-    nii = make_nii(flipdim(flipdim(ph_cmb(:,:,:,echo),2),3),voxelSize);
-    save_nii(nii,['LAS/combine/ph_cmb' num2str(echo) '.nii']);
-end
-
 
 img_cmb = mag_cmb.*exp(1j.*ph_cmb);
 clear mag_cmb ph_cmb
@@ -306,13 +295,6 @@ if sum(strcmpi('pdf',bkg_rm))
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
     save_nii(nii,'PDF/sus_pdf.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/PDF')
-    nii = make_nii(flipdim(flipdim(lfs_pdf,2),3),voxelSize);
-    save_nii(nii,'LAS/PDF/lfs_pdf.nii');
-    nii = make_nii(flipdim(flipdim(sus_pdf.*mask_pdf,2),3),voxelSize);
-    save_nii(nii,'LAS/PDF/sus_pdf.nii');
 end
 
 
@@ -336,13 +318,6 @@ if sum(strcmpi('sharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
     save_nii(nii,'SHARP/sus_sharp.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/SHARP')
-    nii = make_nii(flipdim(flipdim(lfs_sharp,2),3),voxelSize);
-    save_nii(nii,'LAS/SHARP/lfs_sharp.nii');
-    nii = make_nii(flipdim(flipdim(sus_sharp.*mask_sharp,2),3),voxelSize);
-    save_nii(nii,'LAS/SHARP/sus_sharp.nii');
 end
 
 
@@ -367,13 +342,6 @@ if sum(strcmpi('resharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/RESHARP');
-    nii = make_nii(flipdim(flipdim(lfs_resharp,2),3),voxelSize);
-    save_nii(nii,'LAS/RESHARP/lfs_resharp.nii');
-    nii = make_nii(flipdim(flipdim(sus_resharp.*mask_resharp,2),3),voxelSize);
-    save_nii(nii,'LAS/RESHARP/sus_resharp.nii');
 end
 
 
@@ -401,13 +369,6 @@ if sum(strcmpi('lbv',bkg_rm))
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
     save_nii(nii,'LBV/sus_lbv.nii');
-
-    % LAS coordinates for ImageJ
-    mkdir('LAS/LBV');
-    nii = make_nii(flipdim(flipdim(lfs_lbv,2),3),voxelSize);
-    save_nii(nii,'LAS/LBV/lfs_lbv.nii');
-    nii = make_nii(flipdim(flipdim(sus_lbv.*mask_lbv,2),3),voxelSize);
-    save_nii(nii,'LAS/LBV/sus_lbv.nii');
 end
 
 
@@ -415,7 +376,7 @@ end
 % clean the directory
 if clean_all
     disp('--> clean temp nifti files ...');
-    unix('ls | grep -v LAS | xargs rm -rf');
+    unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
 end
 
 % save all variables for future reference

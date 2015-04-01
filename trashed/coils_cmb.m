@@ -23,7 +23,7 @@ if ~ exist('cref','var') || isempty(cref)
 end
 
 if ~ exist('radi','var') || isempty(radi)
-    radi = 4;
+    radi = 5;
 end
 
 if ~ exist('te','var') || isempty(te)
@@ -141,7 +141,8 @@ end
 
 function sen = eig_fun(RS)
     for i = 1:size(RS,3);
-        [V,D] = eig(RS(:,:,i));
+        % [V,D] = eig(RS(:,:,i));
+        [V,D] = svd(RS(:,:,i));
         sen(:,i) = V(:,1);
     end
 end

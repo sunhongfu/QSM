@@ -5,7 +5,7 @@ function qsm_epi47(path_in, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_IN    - directory of .fid from gemsme3d sequence  : se_epi_dw***.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI_vxxx
+%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 15
@@ -124,11 +124,11 @@ opt.homod = 0;
 
 %%% define directories
 if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out '/QSM_EPI47_v1'];
+    path_qsm = [path_out '/QSM_EPI47'];
 elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out '/QSM_EPI47_v1_lap'];
+    path_qsm = [path_out '/QSM_EPI47_lap'];
 elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out '/QSM_EPI47_v1_best'];
+    path_qsm = [path_out '/QSM_EPI47_best'];
 end
 mkdir(path_qsm);
 init_dir = pwd;
@@ -157,7 +157,7 @@ for i = 1:size(img_all,4) % all time series
     
     disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
-		img_cmb = coils_cmb(img,voxelSize,ref_coil,eig_rad);
+		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad);
 	end
 
 	mkdir('combine');

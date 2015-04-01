@@ -3,17 +3,16 @@ function img_cmb_all = adaptive_cmb(img,vox,cref,radi)
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
 
-% img: raw complex 4D or 5D images: [3Dimages_dimensions, multi-receivers_dimension, (multi-echoes_dimension)]
+% img: raw complex 4D or 5D images: [3Dimages, multi-receivers, (multi-echoes)]
 % vox: resolution of the images (vector), voxel size
 % cref: coil referece (coil number)
 % radi: radius of the kernel (e.g. 3mm)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% for example:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
 % cref = 1; % (1st channel as reference coil)
 % radi = 5; % (mm)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if ~ exist('vox','var') || isempty(vox)
     vox = [1 1 1];
@@ -97,7 +96,8 @@ end
 
 function sen = eig_fun(RS)
     for i = 1:size(RS,3);
-        [V,D] = eig(RS(:,:,i));
+        % [V,D] = eig(RS(:,:,i));
+        [V,D] = svd(RS(:,:,i));
         sen(:,i) = V(:,1);
     end
 end
