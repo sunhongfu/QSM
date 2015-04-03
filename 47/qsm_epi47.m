@@ -123,13 +123,14 @@ opt.homod = 0;
 
 
 %%% define directories
-if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out '/QSM_EPI47'];
-elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out '/QSM_EPI47_lap'];
-elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out '/QSM_EPI47_best'];
-end
+% if strcmpi(ph_unwrap,'prelude')
+%     path_qsm = [path_out '/QSM_EPI47_pre'];
+% elseif strcmpi(ph_unwrap,'laplacian')
+%     path_qsm = [path_out '/QSM_EPI47_lap'];
+% elseif strcmpi(ph_unwrap,'bestpath')
+%     path_qsm = [path_out '/QSM_EPI47_best'];
+% end
+path_qsm = [path_out '/QSM_EPI47'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);

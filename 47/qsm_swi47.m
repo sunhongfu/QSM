@@ -10,7 +10,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .ref_coil  - reference coil to use for phase combine   : 2
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 15
 %    .bet_thr   - threshold for BET brain mask              : 0.3
-%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
+%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'laplacian'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
 %    .tik_reg   - Tikhonov regularization for resharp       : 5e-4
@@ -57,12 +57,8 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
-    % % another option is
-    % options.ph_unwrap = 'laplacian';
-    % % prelude is preferred, unless there's sigularities
-    % % in that case, have to use laplacian
-    % another option is 'bestpath'
+    options.ph_unwrap = 'laplacian';
+    % lap can handle singularities
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -118,13 +114,14 @@ clean_all = options.clean_all;
 
 
 %%% define directories
-if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI47'];
-elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_lap'];
-elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI47_best'];
-end
+% if strcmpi(ph_unwrap,'prelude')
+%     path_qsm = [path_out, filesep, 'QSM_SWI47_pre'];
+% elseif strcmpi(ph_unwrap,'laplacian')
+%     path_qsm = [path_out, filesep, 'QSM_SWI47_lap'];
+% elseif strcmpi(ph_unwrap,'bestpath')
+%     path_qsm = [path_out, filesep, 'QSM_SWI47_best'];
+% end
+path_qsm = [path_out, filesep, 'QSM_SWI47'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
