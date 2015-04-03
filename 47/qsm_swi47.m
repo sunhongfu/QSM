@@ -171,7 +171,7 @@ pix2 = nv/2-Inv;
 ph_ramp2 = exp(-sqrt(-1)*2*pi*pix2*(-1/2:1/nv:1/2-1/nv));
 
 img_corr = img.* repmat((ph_ramp),[nv 1 ns nrcvrs]);
-img_corr = img_corr.* repmat(transp(ph_ramp2),[1 np ns nrcvrs]);
+img_corr = img_corr.* repmat(transpose(ph_ramp2),[1 np ns nrcvrs]);
 
 % have a peak of the raw phase
 nii = make_nii(angle(img_corr),voxelSize);
