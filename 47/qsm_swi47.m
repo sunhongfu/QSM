@@ -162,7 +162,7 @@ end
 ks = ifftshift(ifftn(img));
 [MAX,Ind] = max(abs(ks(:)));;
 % find maximum readout and phase encoding index
-[Inv, Inp, Ins, Ircvrs] = ind2sub([nv,np,ns,nrcvrs],Ind)
+[Inv, Inp, Ins, Ircvrs] = ind2sub([nv,np,ns,nrcvrs],Ind);
 
 % Apply phase ramp
 pix = np/2-Inp; % voxel shift
