@@ -12,7 +12,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'laplacian'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg   - Tikhonov regularization for resharp       : 5e-4
 %    .lbv_layer - LBV layers to be stripped off             : 2
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
@@ -71,7 +71,7 @@ if ~ isfield(options,'t_svd')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 5;
+    options.smv_rad = 4;
 end
 
 if ~ isfield(options,'tik_reg')
