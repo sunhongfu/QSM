@@ -18,7 +18,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .tv_reg    - Total variation regularization parameter  : 5e-4
 %    .tvdi_n    - iteration number of TVDI (nlcg)           : 500
-%    .clean_all - clean all the temp nifti results          : 0
+%    .clean_all - clean all the temp nifti results          : 1
 
 
 % default settings
@@ -91,7 +91,7 @@ if ~ isfield(options,'inv_num')
 end
 
 if ~ isfield(options,'clean_all')
-    options.clean_all = 0;
+    options.clean_all = 1;
 end
 
 % if ~ isfield(options,'swi_ver')
@@ -387,12 +387,12 @@ end
 if clean_all
     disp('--> clean temp nifti files ...');
     unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
+else
+    % save all variables for future reference
+    clear nii;
+    disp('--> save the entire workspace ...');
+    save('all.mat','-v7.3');
 end
-
-% save all variables for future reference
-clear nii;
-disp('--> save the entire workspace ...');
-save('all.mat','-v7.3');
 
 % go back to the initial directory
 cd(init_dir);
