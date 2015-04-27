@@ -384,6 +384,9 @@ else
     save('all.mat','-v7.3');
 end
 
+% save parameters used in the recon
+save('parameters.mat','options','-v7.3')
+
 % go back to the initial directory
 cd(init_dir);
 
