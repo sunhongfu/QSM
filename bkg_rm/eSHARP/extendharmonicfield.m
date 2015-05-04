@@ -37,6 +37,12 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 %		.voxelSize
 %			(e.g. .Parameters.voxelSize = [1 1 1] mm, isotropic)
 %
+%       .radius
+%           determins size of spherical region over which extrapolation takes 
+%           place.
+%           ***NB*** if this is not large enough to incorporate all of the EP
+%           the extrapolation will FAIL on account of the truncation operator
+%           M being incorrect. (to be fixed.)
 %
 %       .......................
 %
@@ -90,7 +96,7 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 % the scripts for which will of course need to be discoverable by Matlab 
 % (i.e. in its search path). In addition, a call is made to a command line 
 % tool: 
-%       mapiptoep
+%       mapip2ep
 %   
 %   User must first BUILD the mapip2ep executable from mapipto2ep.cpp
 %
@@ -133,7 +139,6 @@ end
 DEFAULT_EXPANSIONORDER          = 2 ;
 DEFAULT_ISDISPLAYINGPROGRESS    = true ; 
 DEFAULT_TMPSAVEFLDR             = './' ;
-DEFAULT_RADIUS                  = [8 8 4];
 
 if  ~myisfield( Parameters, 'voxelSize' ) || (nnz(Parameters.voxelSize) ~=3)
     error('Parameters.voxelSize must be a 3 component vector. See HELP') ;
@@ -145,10 +150,6 @@ end
 
 if  ~myisfield( Parameters, 'isDisplayingProgress' ) || isempty(Parameters.isDisplayingProgress)
     Parameters.isDisplayingProgress = DEFAULT_ISDISPLAYINGPROGRESS ;
-end
-
-if  ~myisfield( Parameters, 'radius' ) || isempty(Parameters.radius)
-    Parameters.radius = DEFAULT_RADIUS ;
 end
 
 if  ~myisfield( Parameters, 'tmpSaveFldr' ) || isempty(Parameters.tmpSaveFldr)
@@ -168,46 +169,46 @@ Parameters.offset = Parameters.expansionOrder ;
 
 maskEP = logical( mask - maskReduced );
 
-outerEdgeEP = mask - shaver( mask, 1 ) ;
-outerEdgeIP = maskReduced - shaver( maskReduced, 1 ) ;
-
-    
-% -------------------------------------------------------------------------
-
-% -------------------------------------------------------------------------
-% To determine the radius of the the harmonic neighbourhood overwhich the
-% expansion takes place, the following will determine the max distance 
-% between the outermost EP and the outermost IP.
-% The radius will then be set to 
-%                               ceil( (max.dist + 1 )/2) 
+% outerEdgeEP = mask - shaver( mask, 1 ) ;
+% outerEdgeIP = maskReduced - shaver( maskReduced, 1 ) ;
 %
-% This ensures all EP will be covered, but it isn't necessarily faithful 
-% to the underlying physics (i.e. it implicitly assumes that the spherical
-% region centered at IP and of radius sqrt((EP-IP)^2) does NOT include any
-% sources of background field (e.g. an air-tissue interface)). 
-
-
-[xOuterEdgeEP, yOuterEdgeEP, zOuterEdgeEP] = ...
-    ind2sub( size(outerEdgeEP), find( outerEdgeEP ) ) ;
-
-xOuterEdgeEP = Parameters.voxelSize(1)*xOuterEdgeEP;
-yOuterEdgeEP = Parameters.voxelSize(2)*yOuterEdgeEP;
-zOuterEdgeEP = Parameters.voxelSize(3)*zOuterEdgeEP;
-
-nOuterEdgeEP = length( xOuterEdgeEP ) ;
-
-
-[xOuterEdgeIP, yOuterEdgeIP, zOuterEdgeIP] = ...
-    ind2sub( size(outerEdgeIP), find( outerEdgeIP ) ) ;
-
-xyzOuterEdgeIP = [ Parameters.voxelSize(1)*xOuterEdgeIP'; 
-                   Parameters.voxelSize(2)*yOuterEdgeIP'; 
-                   Parameters.voxelSize(3)*zOuterEdgeIP' ]; 
-disp( ' size ' )
-size(xyzOuterEdgeIP)
-
-nOuterEdgeIP = length( xOuterEdgeIP ) ;
-
+%     
+% % -------------------------------------------------------------------------
+%
+% % -------------------------------------------------------------------------
+% % To determine the radius of the the harmonic neighbourhood overwhich the
+% % expansion takes place, the following will determine the max distance 
+% % between the outermost EP and the outermost IP.
+% % The radius will then be set to 
+% %                               ceil( (max.dist + 1 )/2) 
+% %
+% % This ensures all EP will be covered, but it isn't necessarily faithful 
+% % to the underlying physics (i.e. it implicitly assumes that the spherical
+% % region centered at IP and of radius sqrt((EP-IP)^2) does NOT include any
+% % sources of background field (e.g. an air-tissue interface)). 
+%
+%
+% [xOuterEdgeEP, yOuterEdgeEP, zOuterEdgeEP] = ...
+%     ind2sub( size(outerEdgeEP), find( outerEdgeEP ) ) ;
+%
+% xOuterEdgeEP = Parameters.voxelSize(1)*xOuterEdgeEP;
+% yOuterEdgeEP = Parameters.voxelSize(2)*yOuterEdgeEP;
+% zOuterEdgeEP = Parameters.voxelSize(3)*zOuterEdgeEP;
+%
+% nOuterEdgeEP = length( xOuterEdgeEP ) ;
+%
+%
+% [xOuterEdgeIP, yOuterEdgeIP, zOuterEdgeIP] = ...
+%     ind2sub( size(outerEdgeIP), find( outerEdgeIP ) ) ;
+%
+% xyzOuterEdgeIP = [ Parameters.voxelSize(1)*xOuterEdgeIP'; 
+%                    Parameters.voxelSize(2)*yOuterEdgeIP'; 
+%                    Parameters.voxelSize(3)*zOuterEdgeIP' ]; 
+% disp( ' size ' )
+% size(xyzOuterEdgeIP)
+%
+% nOuterEdgeIP = length( xOuterEdgeIP ) ;
+%
 %
 % maxMinIpToEpDistance = 0 ;
 % minDistancesIPtoEP = zeros( nOuterEdgeEP, 1 ) ;
@@ -242,11 +243,6 @@ nOuterEdgeIP = length( xOuterEdgeIP ) ;
 
 maskIP = logical( shaver( maskReduced, Parameters.offset ) ...
                 - shaver( maskReduced, Parameters.radius ) );
-
-NiiOptions.filename = './maskEP' ;
-nii( double(maskEP), NiiOptions ) ;
-NiiOptions.filename = './maskIP' ;
-nii( double(maskIP), NiiOptions ) ;
 
 [ A, M ] = createextensionoperator( maskIP, maskEP, Parameters ) ;
 
