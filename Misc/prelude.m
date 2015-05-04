@@ -1,8 +1,6 @@
 function [ unwrappedPhase ] = prelude( rawPhase, mag, Options )
 %PRELUDE 
 %
-%	
-%
 %   PRELUDE calls FSL Prelude
 %
 %	unwrappedPhase = PRELUDE( rawPhase, mag )
@@ -12,24 +10,26 @@ function [ unwrappedPhase ] = prelude( rawPhase, mag, Options )
 %   
 %   The following Option-fields are supported
 %
-%		.voxelSize
-%				default: [1 1 1]
+%        .voxelSize
+%               default: [1 1 1]
 %
-%       .path2UnwrappedPhase
-%               default: 'unwrappedPhase.nii' is temporarily created 
-%					in the same directory as the raw phase input,
-%					however it is subsequently deleted (assumption being 
-%					the user wants the unwrapped phase returned merely as a matlab array).
+%        .path2UnwrappedPhase 
+%               default: 'unwrappedPhase.nii' 
+%                       temporarily created in the same directory as the raw
+%                       phase input, however it is subsequently deleted
+%                       (assumption being the user wants the unwrapped phase
+%                       returned merely as a matlab array).
 %
-%		.mask
+%        .mask
 %
 %
-%		.isUnwrappingIn2D
-%				default: true
+%        .isUnwrappingIn2D
+%                        default: true
 %
-%		.isSavingNiftis
-%				default: false
+%        .isSavingNiftis
+%                        default: false
 %
+%    .......................
 % 	topfer@ualberta.ca	2014
 
 	DEFAULT_VOXELSIZE             = [1 1 1] ;
@@ -92,17 +92,20 @@ function [ unwrappedPhase ] = prelude( rawPhase, mag, Options )
 	unwrapCommand = ['prelude -p ' dataSaveDirectory 'rawPhase' ...
 					 		' -a ' dataSaveDirectory 'mag' ...
 					 		' -o ' Options.path2UnwrappedPhase ...
-					 		' ' Options.etc] ;
-	        
-	system(unwrapCommand) 
-	        
+					 		' ' Options.etc] ; 
+
+	system(unwrapCommand) ;
+
 	system(['gunzip ' Options.path2UnwrappedPhase '.gz -df']) ;
 
 	unwrappedPhase = nii( Options.path2UnwrappedPhase ) ;
 
 	if ~Options.isSavingNiftis
 		delete( [dataSaveDirectory 'rawPhase.nii'], [dataSaveDirectory 'mag.nii'], ...
-				[dataSaveDirectory 'mask.nii'], [dataSaveDirectory 'unwrappedPhase.nii'] ) ;
-	end
-
+				[dataSaveDirectory 'unwrappedPhase.nii'] ) ;
+                
+                if myisfield( Options, 'mask' )	
+                        delete( [dataSaveDirectory 'mask.nii'] ) ;
+                end
+    end
 end

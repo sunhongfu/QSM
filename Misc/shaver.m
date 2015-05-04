@@ -1,5 +1,4 @@
 function[ ROIout ] = shaver( ROIin, R )
-
 %SHAVER shaves a 3D binary mask by 'R'
 %
 %   SHAVER convolves binary input image ROI with an ellipsoid defined by

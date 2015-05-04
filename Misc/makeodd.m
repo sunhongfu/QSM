@@ -1,5 +1,4 @@
 function[dataArray] = makeodd(dataArray, option, finalGridDimensionVector)
-
 %MAKEODD returns dataArray with odd dimensions
 %   
 %   Syntax

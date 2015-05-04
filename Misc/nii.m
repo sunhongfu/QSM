@@ -60,7 +60,7 @@ if isConverting2Nii
     if  ~myisfield( Options, 'filename' ) || isempty(Options.filename)
         Options.filename = DEFAULT_FILENAME ;
     else
-        if( ~strcmp( Options.filename(end-3:end), '.nii') )
+        if length( Options.filename < 4) || ( ~strcmp( Options.filename(end-3:end), '.nii') )
             Options.filename = [Options.filename '.nii' ] ;
         end
     end
@@ -70,7 +70,7 @@ if isConverting2Nii
     end
 
     % flip rows & columns for make_nii
-    img = permute( img, [2 1 3] ) ;
+    img = permute( img, [2 1 3 4] ) ;
 
     save_nii( make_nii(img, Options.voxelSize), Options.filename) ;
 
@@ -80,7 +80,7 @@ else
     img = double( img.img ) ;
 
     % flip rows & columns for load_nii
-    img = permute( img, [2 1 3] ) ;
+    img = permute( img, [2 1 3 4] ) ;
 
 
 end
