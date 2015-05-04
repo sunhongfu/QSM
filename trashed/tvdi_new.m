@@ -1,4 +1,4 @@
-function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm)
+function [sus,residual_field] = tvdi_new(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim,res, mask_hemo)
 %TVDI Total variation dipole inversion.
 
 % Method is similar to Appendix in the following paper
@@ -16,31 +16,34 @@ function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, It
 %   WEIGHTS: weights for the data consistancy term
 %   Z_PRJS : normal vector of the imaging plane
 %   ITNLIM : interation numbers of nlcg
+%   res    : residual susceptibility without hemorrhages
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
     z_prjs = [0, 0, 1]; % PURE axial slices
 end
 
 if ~ exist('Itnlim','var') || isempty(Itnlim)
-    Itnlim = 500;
-end
-
-if ~ exist('pNorm','var') || isempty(pNorm)
-    pNorm = 1;
+    Itnlim = 200;
 end
 
 [Nx,Ny,Nz] = size(lfs);
 imsize = size(lfs);
 
 % weights for data consistancy term (normalized)
-W = mask.*weights;
-W = W/sum(W(:))*sum(mask(:));
+% W = mask.*weights;
+% W = W/sum(W(:))*sum(mask(:));
+% W = weights;
+
+W = weights/sum(weights(:))*prod(imsize);
 
 % % set the DC point of field in k-space to 0
 % % mean value of lfs to be 0
 % lfs = lfs.*mask;
 % lfs = lfs-sum(lfs(:))/sum(mask(:));
 % lfs = lfs.*mask;
+
+%%%
+lfs = lfs - mean(lfs(:));
 
 % create K-space filter kernel D
 %%%%% make this a seperate function in the future
@@ -61,13 +64,15 @@ D = fftshift(D);
 
 % parameter structures for inversion
 % data consistancy and TV term objects
-param.FT = cls_dipconv([Nx,Ny,Nz],D);
+% param.FT = cls_dipconv([Nx,Ny,Nz],D);
+param.FT = cls_dipconv_new([Nx,Ny,Nz],D,mask_hemo);
+% param.TV = cls_tv_new(mask_hemo);
 param.TV = cls_tv;
 
 param.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
-param.gradToll = 1e-4; % step size tolerance stopping criterea
+param.gradToll = 0; % step size tolerance stopping criterea
 param.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
-param.pNorm = pNorm; % type of norm to use (i.e. L1 L2 etc)
+param.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
 param.lineSearchItnlim = 100;
 param.lineSearchAlpha = 0.01;
 param.lineSearchBeta = 0.6;
@@ -75,7 +80,7 @@ param.lineSearchT0 = 1 ; % step size to start with
 
 param.TVWeight = tv_reg; % TV penalty 
 param.mask = mask; %%% not used in nlcg
-param.data = lfs;
+param.data = lfs - ifftn(D.*fftn(mask.*res));
 
 param.wt = W; % weighting matrix
 
@@ -94,7 +99,7 @@ sus = nlcg(zeros(Nx,Ny,Nz), param);
 % sus = real(sus).*mask;
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
-sus = real(sus);
+sus = real(sus).*mask_hemo+res.*(1-mask_hemo);
 
 residual_field = lfs - real(ifftn(D.*fftn(sus)));
 

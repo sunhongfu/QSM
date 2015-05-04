@@ -1,8 +1,12 @@
-function [img,Pars] = swi47_recon(path_in)
+function [img,Pars] = swi47_recon(path_in,swi_ver)
 
 if ~ exist('path_in','var') || isempty(path_in)
     path_in = [pwd '/ge3d__01.fid'];
 end
+
+% if ~ exist('swi_ver','var') || isempty(swi_ver)
+%     swi_ver = 'amir';
+% end
 
 file=[path_in,'/fid'];
 parfil=[path_in,'/procpar'];
@@ -57,16 +61,38 @@ R = iPars.nput('Stop program now to decide what to do (press CTRL C) ')
 end
 fclose(fid);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% old Amir SWI
+if strcmpi(Pars.seqfil,'ge3d')
+    % Reshape raw scanner output to 3D matrix
+    IM3D=reshapemat(cpxdata,Pars,1,ebytes);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+elseif strcmpi(Pars.seqfil,'ge2dms')
+    %%% new msloop
+    % Reshape raw scanner output to 3D matrix
+    cpxdata=reshape(cpxdata,[],nblocks);
+    cpxdata=cpxdata(28/ebytes+1:end,:);
+    cpxdata=reshape(cpxdata,2,[]);
+    cpxdata=rot90(cpxdata);
+    cpxdata=complex(cpxdata(:,1),cpxdata(:,2));
+    cpxdata=reshape(cpxdata,Pars.np/2,Pars.NS,4,Pars.nv);
+    cpxdata=single(cpxdata);
+    IM3D.RCVR1=squeeze(cpxdata(:,:,1,:));
+    IM3D.RCVR2=squeeze(cpxdata(:,:,2,:));
+    IM3D.RCVR3=squeeze(cpxdata(:,:,3,:));
+    IM3D.RCVR4=squeeze(cpxdata(:,:,4,:));
+else
+    error('what is this sequence? amirs ge3d or hongfus ge2dms?')
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Reshape raw scanner output to 3D matrix
-IM3D=reshapemat(cpxdata,Pars,1,ebytes);
 IM3D_RCVR1=IM3D.RCVR1;
 if Pars.RCVRS_==4  % 4 RCVRS
-IM3D_RCVR2=IM3D.RCVR2;
-IM3D_RCVR3=IM3D.RCVR3;
-IM3D_RCVR4=IM3D.RCVR4;
+    IM3D_RCVR2=IM3D.RCVR2;
+    IM3D_RCVR3=IM3D.RCVR3;
+    IM3D_RCVR4=IM3D.RCVR4;
 end
-clear cpxdata IM3D 
+clear IM3D cpxdata
 
 
 % REMOVE DC SHIFTS/ARTIFACTS
@@ -175,3 +201,39 @@ if Pars.RCVRS_ == 4
 else
 	img = IM3D_RCVR1;
 end
+
+
+
+
+%%% interpolate to iso-resoluation in plane
+% k = ifftshift(ifftshift(ifft(ifft(ifftshift(ifftshift(img,1),2),[],1),[],2),1),2);
+% pad = round((Pars.np/2 * Pars.lpe / Pars.lro - Pars.nv)/2);
+% k = padarray(k,[0 pad]);
+% img = fftshift(fftshift(fft(fft(fftshift(fftshift(k,1),2),[],1),[],2),1),2);
+
+k = fft(fft(img,[],1),[],2);
+pad = round(Pars.np/2*Pars.lpe / Pars.lro - Pars.nv);
+imsize = size(k);
+if pad < 0
+    pad = round(Pars.lro*Pars.nv/Pars.lpe - Pars.np/2);
+    if mod(imsize(1),2) % if size of k is odd
+        k_pad = ifftshift(padarray(padarray(fftshift(k,1),round(pad/2),'pre'), ...
+            pad-round(pad/2), 'post'),1);
+    else % size of k is even
+        k_s = fftshift(k,1);
+        k_s(1,:,:) = k_s(1,:,:)/2;
+        k_pad = ifftshift(padarray(padarray(k_s,round(pad/2),'pre'), ...
+            pad-round(pad/2), 'post'),1);
+    end
+else
+    if mod(imsize(2),2) % if size of k is odd
+        k_pad = ifftshift(padarray(padarray(fftshift(k,2),[0 round(pad/2)],'pre'), ...
+            [0 pad-round(pad/2)], 'post'),2);
+    else % size of k is even
+        k_s = fftshift(k,2);
+        k_s(:,1,:) = k_s(:,1,:)/2;
+        k_pad = ifftshift(padarray(padarray(k_s,[0 round(pad/2)],'pre'), ...
+            [0 pad-round(pad/2)], 'post'),2);
+    end
+end
+img = ifft(ifft(k_pad,[],1),[],2);

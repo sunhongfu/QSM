@@ -1,27 +1,26 @@
-function ph_cmb = sense_me(img,par)
-%SENSE combination (for phase).
-%   PH_CMB = SENSE(IMG,PAR) combines phase from multiple receivers
+function ph_cmb = geme_cmb(img,vox,te)
+%Gradient-echo multi-echo combination (for phase).
+%   PH_CMB = GEME_CMB(IMG,PAR) combines phase from multiple receivers
 %
-%   IMG:    raw complex images from multiple receivers, [np nv nv2 ne nrcvrs]
-%   PAR:    parameters of the sequence
+%   IMG:    raw complex images from multiple receivers, 5D: [3D_image, echoes, receivers]
+%   TE :    echo times
+%   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
 %   PH_CMB: phase after combination
 
 
 [~,~,~,ne,nrcvrs] = size(img);
-res = par.res;
-TE  = par.te + (0:par.ne-1)*par.esp;
-TE1 = TE(1);
-TE2 = TE(2);
+TE1 = te(1);
+TE2 = te(2);
 
 img_diff = img(:,:,:,2,:)./img(:,:,:,1,:);
 ph_diff = img_diff./abs(img_diff);
 ph_diff_cmb = sum(abs(img(:,:,:,1,:)).*ph_diff,5);
 
-nii = make_nii(angle(ph_diff_cmb),res);
+nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
 % perform unwrapping
-unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 8');
+unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
 unix('gunzip -f unph_diff.nii.gz');
 
 nii = load_nii('unph_diff.nii');
@@ -33,7 +32,7 @@ offsets = offsets./abs(offsets);
 
 
 for chan = 1:nrcvrs
-    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./res/2)*2+1); 
+    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./vox/2)*2+1); 
     offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
 end
 

@@ -1,5 +1,17 @@
 function [m,RES,TVterm] = nlcg(m0,params)
-% Phi(m) = ||Fu*m - y||^2 + lamda1*|TV*m|_1
+% Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
+% m: susceptibility
+% W: weighting matrix derived from magnitude intensities
+% Fu: F_{-1}*D*F forward calculates the field from susceptibility
+% y: measured field to be fitted (inversion)
+% lambda1: TV regularization parameter
+% TV: total variation operation
+% ||...||^2: L2 norm
+% |...|_1: L1 norm
+% note the TV term can also be L2 norm if set p=2,
+% then the term would be changed to ||TV*m||^2
+
+
 
 m = m0;
 
@@ -16,6 +28,9 @@ g0 = wGradient(m,params);
 dm = -g0;
 
 f = 0;
+RES0 = 0;
+count =0;
+
 % iterations
 while(k <= params.Itnlim)
    
@@ -38,20 +53,29 @@ while(k <= params.Itnlim)
     end
     
     % updates
-    m = m + t*dm;
+    m = m + t*dm; dm0 = dm;
     g1 = wGradient(m,params);
     bk = g1(:)'*g1(:)/(g0(:)'*g0(:)+eps);
     g0 = g1;
     dm = -g1 + bk*dm;
     k = k + 1;
-    
+     
     % outputs for debugging purpose
-    fprintf('%d , obj: %f, res: %f, tv: %f, LS: %d, toll: %f\n',...
-            k, f1, RES, TVterm, lsiter, abs((f1-f)/f1));
+    fprintf('%d , relative residual: %f\n',...
+            k, abs(RES-RES0)/RES);
     
-    if (abs((f1-f)/f1) <= gradToll); break; end 
+    if (abs(RES-RES0)/RES <= gradToll); 
+        count = count + 1;
+    else
+        count = 0;
+    end 
     
+    if (count == 10)
+        break;
+    end
+
     f = f1;
+    RES0 = RES;
 end
 
 return;

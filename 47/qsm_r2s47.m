@@ -4,29 +4,34 @@ function qsm_r2s47(path_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_IN    - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_R2s_vxxx
-%   OPTIONS    - parameter structure including fields below
-%    .bet_thr  - threshold for BET brain mask              : 0.5
-%    .bkgrm    - background field removal method(s)        : 'resharp'
-%    .smv_rad  - radius (mm) of SMV convolution kernel     : 6
-%    .tik_reg  - Tikhonov regularization for RESHARP       : 0.001
-%    .tsvd     - truncation of SVD for SHARP               : 0.05
-%    .tv_reg   - Total variation regularization parameter  : 0.0005
-%    .tvdi_n   - iteration number of TVDI (nlcg)           : 200
-%    .echo_t   - keep only the first 'echo_t' echoes       : 5
-%    .fit_t    - truncation level on fitting residual      : 5
-%    .sav_all  - save all the variables for debug (~ 0)    : 1
+%   PATH_IN     - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
+%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s47
+%   OPTIONS     - parameter structure including fields below
+%    .ref_coil  - reference coil to use for phase combine   : 2
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .bet_thr   - threshold for BET brain mask              : 0.5
+%    .bkg_rm    - background field removal method(s)        : 'resharp'
+%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
+%    .tik_reg   - Tikhonov regularization for RESHARP       : 0.0005
+%    .t_svd     - truncation of SVD for SHARP               : 0.05
+%    .tv_reg    - Total variation regularization parameter  : 0.0005
+%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .echo_num  - keep only the first 'echo_num' echoes     : 5
+%    .fit_thr   - truncation level on fitting residual      : 10
+%    .clean_all - clean all the temp nifti results          : 1
 
-%% default settings
+
+% default settings
 if ~ exist('path_in','var') || isempty(path_in)
     path_in = pwd;
 end
 
 if exist([path_in '/fid'],'file')
     path_fid = path_in;
+    path_fid = cd(cd(path_fid));
 elseif exist([path_in '/gemsme3d_R2s_01.fid/fid'],'file')
     path_fid = [path_in, '/gemsme3d_R2s_01.fid'];
+    path_fid = cd(cd(path_fid));
 else
     error('cannot find .fid file');
 end
@@ -39,221 +44,174 @@ if ~ exist('options','var') || isempty(options)
     options = [];
 end
 
+if ~ isfield(options,'ref_coil')
+    options.ref_coil = 2;
+end
+
+if ~ isfield(options,'eig_rad')
+    options.eig_rad = 15;
+end
+
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.5;
 end
 
-if ~ isfield(options,'bkgrm')
-    options.bkgrm = {'resharp','lbv'};
-    % options.bkgrm = 'resharp';
+if ~ isfield(options,'echo_num')
+    options.echo_num = 5;
+end
+
+if ~ isfield(options,'r_mask')
+    options.r_mask = 1;
+end
+
+if ~ isfield(options,'fit_thr')
+    options.fit_thr = 10;
+end
+
+if ~ isfield(options,'bkg_rm')
+    options.bkg_rm = 'resharp';
+    % options.bkg_rm = {'pdf','sharp','resharp','lbv'};
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 6;
+    options.smv_rad = 4;
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-3;
+    options.tik_reg = 5e-4;
 end
 
-if ~ isfield(options,'tsvd')
-    options.tsvd = 0.05;
+if ~ isfield(options,'t_svd')
+    options.t_svd = 0.05;
 end
 
 if ~ isfield(options,'tv_reg')
     options.tv_reg = 5e-4;
 end
 
-if ~ isfield(options,'tvdi_n')
-    options.tvdi_n = 200;
+if ~ isfield(options,'inv_num')
+    options.inv_num = 200;
 end
 
-if ~ isfield(options,'echo_t')
-    options.echo_t = 5;
+if ~ isfield(options,'clean_all')
+    options.clean_all = 1;
 end
 
-if ~ isfield(options,'fit_t')
-    options.fit_t = 5;
-end
 
-if ~ isfield(options,'sav_all')
-    options.sav_all = 1;
-end
+ref_coil  = options.ref_coil;
+eig_rad   = options.eig_rad;
+bet_thr   = options.bet_thr;
+echo_num  = options.echo_num;
+r_mask    = options.r_mask; 
+fit_thr   = options.fit_thr;
+bkg_rm    = options.bkg_rm;
+smv_rad   = options.smv_rad;
+tik_reg   = options.tik_reg;
+t_svd     = options.t_svd;
+tv_reg    = options.tv_reg;
+inv_num   = options.inv_num;
+clean_all = options.clean_all;
 
-bet_thr = options.bet_thr;
-bkgrm   = options.bkgrm;
-smv_rad = options.smv_rad;
-tik_reg = options.tik_reg;
-tsvd    = options.tsvd;
-tv_reg  = options.tv_reg;
-tvdi_n  = options.tvdi_n;
-echo_t  = options.echo_t;
-fit_t   = options.fit_t;
-sav_all = options.sav_all;
 
-%% define directories
-path_qsm = [path_out '/QSM_R2s_v200_midnight'];
+% define directories
+path_qsm = [path_out '/QSM_R2s47'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
 
-%% reconstruct complex image from fid file
+% reconstruct complex image from fid file
 disp('--> reconstruct fid to complex img ...');
 [img,par] = r2s47_recon(path_fid);
 
 
-%%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% keep only the first 'echo_t' echoes
-% img_orig = img;
-img = img(:,:,:,1:echo_t,:);
-par.ne = echo_t;
-%%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-% swap the first two dimensions and match scanner frame
-img = permute(img,[2 1 3 4 5]); %PE,RO,SL,NE,RX
+% match scanner frame (PE,RO,SL,NE,RX)
+% so that angle corrections can be performed (phi, psi, theta)
+img = permute(img,[2 1 3 4 5]); 
 img = flipdim(img,1);
 img = flipdim(img,2);
-par.res = [par.res(2), par.res(1), par.res(3)];
 [nv,np,nv2,ne,~] = size(img);
-voxelSize = par.res; % resolution in mm/pixel
-
-phi = par.phi/180*pi;
-psi = par.psi/180*pi;
-theta = -par.theta/180*pi;
-z_prjs = [sin(psi)*sin(theta), cos(psi)*sin(theta), cos(theta)]; 
+voxelSize = [par.lpe/par.nv, par.lro/(par.np/2), par.lpe2/par.nv2]*10;
+% resolution in mm/pixel
+te = par.te + (0:ne-1)*par.esp;
 
 
+% intrinsic euler angles 
+% z-x-z convention, psi first, then theta, lastly phi
+% psi and theta are left-handed, while gamma is right-handed!
+% alpha = - par.psi/180*pi;
+beta = - par.theta/180*pi;
+gamma =  par.phi/180*pi;
+z_prjs = [sin(beta)*sin(gamma), sin(beta)*cos(gamma), cos(beta)];
+if ~ isequal(z_prjs,[0 0 1])
+    disp('This is not pure axial slicing');
+    disp(z_prjs);
+end
 
-%%%%%%%%%%%%%%%%%% new %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% if par.nrcvrs > 1
-%     % combine using eig method
-%     img_cmb = sense_se(permute(img,[1 2 3 5 4]),voxelSize,3,3);
-% else
-%     img_cmb = img;
-% end
+% have a peak at raw phase
+nii = make_nii(squeeze(angle(img(:,:,:,1,:))));
+save_nii(nii,'rawphase.nii');
 
-% mkdir('combine');
-% for echo = 1:size(img_cmb,4)
-%     nii = make_nii(abs(img_cmb(:,:,:,echo)),voxelSize);
-%     save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
-%     nii = make_nii(angle(img_cmb(:,:,:,echo)),voxelSize);
-%     save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
-% end
-
-
-% %% generate mask from combined magnitude of the first echo
-% disp('--> extract brain volume and generate mask ...');
-% setenv('bet_thr',num2str(bet_thr));
-% unix('bet combine/mag_cmb1.nii BET -f ${bet_thr} -m -R');
-% unix('gunzip -f BET.nii.gz');
-% unix('gunzip -f BET_mask.nii.gz');
-% nii = load_nii('BET_mask.nii');
-% mask = double(nii.img);
-
-
-% % fit the echoes complexly
-% [p1, dp1, relres, p0]=Fit_ppm_complex(img_cmb);
-% nii = make_nii(p1,voxelSize);
-% save_nii(nii,'complex_fit_p1.nii');
-
-
-% % unwrap using laplacian
-% unph = unwrapLaplacian(p1, size(p1), voxelSize);
-% nii = make_nii(unph, voxelSize);
-% save_nii(nii,'unph_lap.nii');
-
-% %convert x to ppm
-% tfs = unph/(2*pi*par.esp*42.576*4.7*1e6)*1e6;
-% nii = make_nii(tfs, voxelSize);
-% save_nii(nii,'tfs_ppm.nii');
-
-
-% % RESHARP
-% relres_blur = smooth3(relres,'box',round(6./par.res/2)*2+1); 
-% nii = make_nii(relres_blur,voxelSize);
-% save_nii(nii,'relres_blur.nii');
-
-% R = ones(size(relres_blur));
-% R(relres_blur >= 0.2) = 0;
-
-% [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
-% mkdir('RESHARP');
-% nii = make_nii(lfs_resharp,voxelSize);
-% save_nii(nii,'RESHARP/lfs_resharp.nii');
-
-
-% % inversion of susceptibility 
-% disp('--> TV susceptibility inversion on RESHARP...');
-% [sus_resharp,residual_resharp] = tvdi(lfs_resharp,mask_resharp,voxelSize,tv_reg,abs(img_cmb(:,:,:,end)),z_prjs,tvdi_n);
-
-
-% % save nifti
-% nii = make_nii(sus_resharp,voxelSize);
-% save_nii(nii,'RESHARP/sus_resharp.nii');
-
-% % save nifti
-% nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
-% save_nii(nii,'RESHARP/sus_resharp_clean.nii');
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% %% combine magnitude channels using marc's 'arrayrec.m'
-% disp('--> combine rcvrs for magnitude ...');
-% mag_cmb = zeros(nv,np,nv2,ne);
-% for echo = 1:ne
-%     mag_cmb(:,:,:,echo) = arrayrec(squeeze(img(:,:,:,echo,:)),1/2);
-% end
-
-%% combine using eig
+% combine magnitudes using eig method (DO Walsh, MRM2000)
 if par.nrcvrs > 1
-    % combine using eig method
-    mag_cmb = abs( sense_se(permute(img,[1 2 3 5 4]),voxelSize,3,3) );
+    disp('--> combine RF rcvrs ...');
+    img_cmb = adaptive_cmb(permute(img,[1 2 3 5 4]),voxelSize,ref_coil,eig_rad);
+    mag_cmb = abs(img_cmb);
+    % at 4.7T, seems the 2rd coil has the best SNR?
 else
     mag_cmb = abs(img);
 end
 
-% save nifti for unwrapping usage
+% save niftis after coil combination
 mkdir('combine');
-for echo =  1:ne
+for echo = 1:ne
     nii = make_nii(mag_cmb(:,:,:,echo),voxelSize);
-    save_nii(nii,['combine/mag_te' num2str(echo) '.nii']);
+    save_nii(nii,['combine/mag_cmb' num2str(echo) '.nii']);
 end
 
 
-%% generate mask from combined magnitude of the first echo
+% generate mask from combined magnitude of the 1th echo
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
-unix('bet combine/mag_te1.nii BET -f ${bet_thr} -m -R');
+[status,cmdout] = unix('rm BET*');
+unix('bet combine/mag_cmb1.nii BET -f ${bet_thr} -m -R');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-%% combine phase channels
-disp('--> combine rcvrs for phase ...');
-ph_cmb = sense_me(img,par);
 
-% save nifti for unwrapping usage
-for echo =  1:ne
-    nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
-    save_nii(nii,['combine/ph_te' num2str(echo) '.nii']);
+% combine phase using double-echo method
+if par.nrcvrs > 1
+    ph_cmb = geme_cmb(img,voxelSize,te);
+else
+    ph_cmb = angle(img);
 end
 
-clear img;
+
+% save niftis after coil combination
+for echo = 1:size(ph_cmb,4)
+    nii = make_nii(ph_cmb(:,:,:,echo),voxelSize);
+    save_nii(nii,['combine/ph_cmb' num2str(echo) '.nii']);
+end
+
+img_cmb = mag_cmb.*exp(1j.*ph_cmb);
+clear mag_cmb ph_cmb
 
 
-%% unwrap phase from each echo
-disp('--> unwrap aliasing phase for all TEs ...');
+% keep only the first 'echo_num' echoes
+echo_num = min(ne,echo_num);
+img_cmb = img_cmb(:,:,:,1:echo_num);
+ne = echo_num;
+te = par.te + (0:ne-1)*par.esp;
 
-bash_command = sprintf(['for ph in combine/ph*\n' ...
+
+% unwrap phase from each echo
+disp('--> unwrap aliasing phase for all TEs using prelude...');
+
+setenv('echo_num',num2str(echo_num));
+bash_command = sprintf(['for ph in combine/ph_cmb[1-$echo_num].nii\n' ...
 'do\n' ...
 '	base=`basename $ph`;\n' ...
 '	dir=`dirname $ph`;\n' ...
@@ -268,7 +226,7 @@ unix(bash_command);
 
 unph_cmb = zeros(nv,np,nv2,ne);
 for echo = 1:ne
-    nii = load_nii(['unph_te' num2str(echo) '.nii']);
+    nii = load_nii(['unph_cmb' num2str(echo) '.nii']);
     unph_cmb(:,:,:,echo) = double(nii.img);
 end
 
@@ -276,8 +234,11 @@ end
 % check and correct for 2pi jump between echoes
 disp('--> correct for potential 2pi jumps between TEs ...')
 
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
+nii = load_nii('unph_cmb1.nii');
+unph1 = double(nii.img);
+nii = load_nii('unph_cmb2.nii');
+unph2 = double(nii.img);
+unph_diff = unph2 - unph1;
 
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
@@ -290,9 +251,9 @@ for echo = 2:ne
 end
 
 
-%% fit phase images with echo times
+% fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
-[tfs, fit_residual] = echofit(unph_cmb,mag_cmb,par); 
+[tfs, fit_residual] = echofit(unph_cmb,abs(img_cmb),te); 
 
 % normalize to main field
 % ph = gamma*dB*TE
@@ -301,22 +262,25 @@ disp('--> magnitude weighted LS fit of phase to TE ...');
 tfs = -tfs/(2.675e8*4.7)*1e6; % unit ppm
 
 
-% generate reliability map
-fit_residual_blur = smooth3(fit_residual,'box',round(6./par.res/2)*2+1); 
-nii = make_nii(fit_residual_blur,voxelSize);
-save_nii(nii,'fit_residual_blur.nii');
+if r_mask
+    % generate reliability map
+    fit_residual_blur = smooth3(fit_residual,'box',round(smv_rad./voxelSize/2)*2+1); 
+    nii = make_nii(fit_residual_blur,voxelSize);
+    save_nii(nii,'fit_residual_blur.nii');
+    R = ones(size(fit_residual_blur));
+    R(fit_residual_blur >= fit_thr) = 0;
+else
+    R = 1;
+end
 
-R = ones(size(fit_residual_blur));
-R(fit_residual_blur >= 10) = 0;
 
-% R = ones(size(fit_residual));
-% R(fit_residual >= fit_t) = 0;
-
-
-%% PDF
-if sum(strcmpi('pdf',bkgrm))
+% PDF
+if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
-    [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R,voxelSize,smv_rad,mag_cmb(:,:,:,echo_t));
+    [lfs_pdf,mask_pdf] = pdf(tfs,mask.*R,voxelSize,smv_rad, ...
+        abs(img_cmb(:,:,:,end)),z_prjs);
+    % % 3D 2nd order polyfit to remove any residual background
+    % lfs_pdf= poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
     mkdir('PDF');
@@ -325,7 +289,8 @@ if sum(strcmpi('pdf',bkgrm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on PDF...');
-    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), z_prjs, tvdi_n); 
+    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, ...
+        abs(img_cmb(:,:,:,echo_num)), z_prjs, inv_num); 
 
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
@@ -333,10 +298,12 @@ if sum(strcmpi('pdf',bkgrm))
 end
 
 
-%% SHARP (tsvd: truncation threthold for TSVD)
-if sum(strcmpi('sharp',bkgrm))
+% SHARP (t_svd: truncation threthold for t_svd)
+if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
-    [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,voxelSize,smv_rad,tsvd);
+    [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,voxelSize,smv_rad,t_svd);
+    % % 3D 2nd order polyfit to remove any residual background
+    % lfs_sharp= poly3d(lfs_sharp,mask_sharp);
 
     % save nifti
     mkdir('SHARP');
@@ -345,16 +312,17 @@ if sum(strcmpi('sharp',bkgrm))
     
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on SHARP...');
-    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), z_prjs, tvdi_n); 
+    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, ...
+        abs(img_cmb(:,:,:,echo_num)), z_prjs, inv_num); 
    
     % save nifti
-    nii = make_nii(sus_shar.*mask_sharp,voxelSize);
+    nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
     save_nii(nii,'SHARP/sus_sharp.nii');
 end
 
 
-%% RE-SHARP (tik_reg: Tikhonov regularization parameter)
-if sum(strcmpi('resharp',bkgrm))
+% RE-SHARP (tik_reg: Tikhonov regularization parameter)
+if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxelSize,smv_rad,tik_reg);
 
@@ -367,87 +335,59 @@ if sum(strcmpi('resharp',bkgrm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
-    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, mag_cmb(:,:,:,echo_t), z_prjs, tvdi_n); 
+    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, ...
+        abs(img_cmb(:,:,:,echo_num)), z_prjs, inv_num); 
    
 
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
-
 end
 
 
-%% LBV
-if sum(strcmpi('lbv',bkgrm))
+% LBV
+if sum(strcmpi('lbv',bkg_rm))
     disp('--> LBV to remove background field ...');
     lfs_lbv = LBV(tfs,mask.*R,size(tfs),voxelSize,0.01,2); % strip 2 layers
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
+    % % 3D 2nd order polyfit to remove phase-offset
+    % lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+
 
     % save nifti
-    mkdir('lbv');
+    mkdir('LBV');
     nii = make_nii(lfs_lbv,voxelSize);
-    save_nii(nii,'lbv/lfs_lbv.nii');
+    save_nii(nii,'LBV/lfs_lbv.nii');
 
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on lbv...');
-    sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg,mag_cmb(:,:,:,echo_t),z_prjs,tvdi_n);   
+    sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg, ...
+        abs(img_cmb(:,:,:,echo_num)),z_prjs,inv_num);   
 
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
-    save_nii(nii,'lbv/sus_lbv.nii');
-
+    save_nii(nii,'LBV/sus_lbv.nii');
 end
 
-%% E-SHARP
-% if sum(strcmpi('esharp',bkgrm))
-%     disp('--> (8/9) E-SHARP to remove background field ...');
-%     Options.voxelSize = voxelSize;
-%     lfs = esharp(tfs,mask.*R,Options);
-%     mask_final = mask.*R;
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/rmbkg/']);
-%     nii = make_nii(lfs,voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xy.nii']);
-%     nii = make_nii(permute(lfs,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_xz.nii']);
-%     nii = make_nii(permute(lfs,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/rmbkg/lfs_esharp_yz.nii']);
-%     nii = make_nii(mask_final,voxelSize);
-%     save_nii(nii,[path_qsm '/mask/mask_esharp_final.nii']);
-% 
-% 
-%     % inversion of susceptibility 
-%     disp('--> (9/9) TV susceptibility inversion on E-SHARP...');
-%     sus = tvdi(lfs, mask_final, voxelSize, tv_reg, mag_cmb(:,:,:,4)); 
-% 
-% 
-%     % save nifti
-%     mkdir([path_qsm '/inversion']);
-%     nii = make_nii(sus,voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xy.nii']);
-%     nii = make_nii(permute(sus,[1 3 2]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_xz.nii']);
-%     nii = make_nii(permute(sus,[2 3 1]),voxelSize);
-%     save_nii(nii,[path_qsm '/inversion/sus_esharp_yz.nii']);
-% end
-%%%%%%%%%%%%%%%%%%%% old %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%% save all variables for debugging purpose
-if sav_all
+% clean the directory
+if clean_all
+    disp('--> clean temp nifti files ...');
+    unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
+else
+    % save all variables for future reference
     clear nii;
+    disp('--> save the entire workspace ...');
     save('all.mat','-v7.3');
 end
 
 % save parameters used in the recon
 save('parameters.mat','options','-v7.3')
 
-
-%% clean up
-% unix('rm *.nii*');
+% go back to the initial directory
 cd(init_dir);
+
 
