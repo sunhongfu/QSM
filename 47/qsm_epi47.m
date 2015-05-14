@@ -152,32 +152,72 @@ disp('check out the uncombined raw phase!');
 nii = make_nii(squeeze(angle(img_all(:,:,:,1,:))),voxelSize);
 save_nii(nii,'rawphase.nii');
 
-% process QSM on individual run volume
-for i = 1:size(img_all,4) % all time series
+[nv np ns nr nrcvrs] = size(img_all);
+% nr is the number of runs
+img_cmb_all = zeros([nv np ns nr]);
+
+mkdir('combine');
+% matlabpool open
+% recon combined magnitude
+for i = 1:nr % all time series
 	img = squeeze(img_all(:,:,:,i,:));
     
     disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
 		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad);
 	end
+	img_cmb_all(:,:,:,i) = img_cmb;
 
-	mkdir('combine');
 	nii = make_nii(abs(img_cmb),voxelSize);
 	save_nii(nii,['combine/mag_cmb' num2str(i,'%03i') '.nii']);
 	nii = make_nii(angle(img_cmb),voxelSize);
 	save_nii(nii,['combine/ph_cmb' num2str(i,'%03i') '.nii']);
+end
+nii = make_nii(abs(img_cmb_all),voxelSize);
+save_nii(nii,'all_mag_cmb.nii');
+% matlabpool close
 
-	disp('--> extract brain volume and generate mask ...');
-	setenv('bet_thr',num2str(bet_thr));
-	setenv('time_series',num2str(i,'%03i'));
-	[status,cmdout] = unix('rm BET*');
-	bash_script = ['bet combine/mag_cmb${time_series}.nii BET${time_series} ' ...
-		'-f ${bet_thr} -m -Z -R'];
-	unix(bash_script);
-	unix('gunzip -f BET${time_series}.nii.gz');
-	unix('gunzip -f BET${time_series}_mask.nii.gz');
-	nii = load_nii(['BET' num2str(i,'%03i') '_mask.nii']);
-	mask = double(nii.img);
+% generate BET on 1st volume
+[status,cmdout] = unix('rm BET*');
+disp('--> extract brain volume and generate mask ...');
+setenv('bet_thr',num2str(bet_thr));
+bash_script = ['bet combine/mag_cmb001.nii BET ' ...
+	'-f ${bet_thr} -m -Z -R'];
+unix(bash_script);
+unix('gunzip -f BET.nii.gz');
+unix('gunzip -f BET_mask.nii.gz');
+nii = load_nii(['BET_mask.nii']);
+mask = double(nii.img);
+
+mask_rep = repmat(mask,[1 1 1 nr]);
+nii = make_nii(mask_rep,voxelSize);
+save_nii(nii,'mask_rep.nii');
+
+% spm to align all volumes
+P = spm_select('ExtList', pwd, '^all_mag_cmb.nii',1:200);
+flags.mask=0;
+spm_realign(P);
+load all_mag_cmb.mat
+m=[voxelSize(1) 0 0 0; 0 voxelSize(2) 0 0; 0 0 voxelSize(3) 0; 0 0 0 1];
+for i = 2:size(mat,3)
+	% mat(:,:,i) = inv(inv(m)*mat(:,:,i))*m;
+		mat(:,:,i) = m*inv(mat(:,:,i))*m;
+end
+save('mask_rep.mat','mat');
+P = spm_select('ExtList', pwd, '^mask_rep.nii',1:200);
+flags.mask=0;
+spm_reslice(P,flags);
+
+nii = load_nii('rmask_rep.nii');
+rmask = nii.img;
+
+
+
+% process QSM on individual run volume
+for i = 1:nr % all time series
+	img_cmb = img_cmb_all(:,:,:,i);
+	nii = make_nii(rmask(:,:,:,i),voxelSize);
+	save_nii(nii,['BET' num2str(i,'%03i') '_mask.nii']);
 
 	% unwrap the phase
 	if strcmpi('prelude',ph_unwrap)
@@ -370,7 +410,6 @@ for i = 1:size(img_all,4) % all time series
 
 	% to save all the variables
 	if save_all
-		img_cmb_all(:,:,:,i) = img_cmb;
 		mask_all(:,:,:,i) = mask;
 		unph_all(:,:,:,i) = unph;
 	end
