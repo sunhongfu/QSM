@@ -307,6 +307,9 @@ for i = 1:nr % all time series
 	    sus_pdf = tvdi(lfs_pdf, mask_pdf, voxelSize, tv_reg, ...
 	        abs(img_cmb), z_prjs, inv_num); 
 
+	   	% demean susceptibility
+	   	sus_pdf = sus_pdf - mean(sus_pdf(logical(mask_pdf(:))));
+
 	    % save nifti
 	    nii = make_nii(sus_pdf.*mask_pdf,voxelSize);
 	    save_nii(nii,['PDF/sus_pdf' num2str(i,'%03i') '.nii']);
@@ -335,6 +338,9 @@ for i = 1:nr % all time series
 	    disp('--> TV susceptibility inversion on SHARP...');
 	    sus_sharp = tvdi(lfs_sharp, mask_sharp, voxelSize, tv_reg, ...
 	        abs(img_cmb), z_prjs, inv_num); 
+
+	   	% demean susceptibility
+	   	sus_sharp = sus_sharp - mean(sus_sharp(logical(mask_sharp(:))));
 	   
 	    % save nifti
 	    nii = make_nii(sus_sharp.*mask_sharp,voxelSize);
@@ -364,7 +370,10 @@ for i = 1:nr % all time series
 	    disp('--> TV susceptibility inversion on RESHARP...');
 	    sus_resharp = tvdi(lfs_resharp, mask_resharp, voxelSize, tv_reg, ...
 	        abs(img_cmb), z_prjs, inv_num); 
-	   
+	   	
+	   	% demean susceptibility
+	   	sus_resharp = sus_resharp - mean(sus_resharp(logical(mask_resharp(:))));
+
 	    % save nifti
 	    nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
 	    save_nii(nii,['RESHARP/sus_resharp' num2str(i,'%03i') '.nii']);
@@ -395,6 +404,9 @@ for i = 1:nr % all time series
 	    disp('--> TV susceptibility inversion on lbv...');
 	    sus_lbv = tvdi(lfs_lbv,mask_lbv,voxelSize,tv_reg, ...
 	        abs(img_cmb),z_prjs,inv_num);   
+
+	   	% demean susceptibility
+	   	sus_lbv = sus_lbv - mean(sus_lbv(logical(mask_lbv(:))));
 
 	    % save nifti
 	    nii = make_nii(sus_lbv.*mask_lbv,voxelSize);
