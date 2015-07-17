@@ -61,15 +61,22 @@ while(k <= params.Itnlim)
     k = k + 1;
      
     % outputs for debugging purpose
-    fprintf('%d , relative residual: %f\n',...
-            k, abs(RES-RES0)/RES);
+    % fprintf('%d , relative residual: %f\n',...
+    %         k, abs(RES-RES0)/RES);
     
-    if (abs(RES-RES0)/RES <= gradToll); 
+    % if (abs(RES-RES0)/RES <= gradToll); 
+    %     count = count + 1;
+    % else
+    %     count = 0;
+    % end 
+    fprintf('%d , relative changes: %f\n',...
+            k, norm(t*dm(:))/norm(m(:)));
+    
+    if (norm(t*dm(:))/norm(m(:)) <= gradToll); 
         count = count + 1;
     else
         count = 0;
     end 
-    
     if (count == 10)
         break;
     end
