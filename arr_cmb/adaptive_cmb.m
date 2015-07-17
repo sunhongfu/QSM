@@ -1,4 +1,4 @@
-function img_cmb_all = adaptive_cmb(img,vox,cref,radi)
+function img_cmb_all = adaptive_cmb(img,vox,cref,radi,flag_pool)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
@@ -26,6 +26,9 @@ if ~ exist('radi','var') || isempty(radi)
     radi = 5;
 end
 
+if ~ exist('flag_pool','var') || isempty(flag_pool)
+    flag_pool = 1;
+end
 
 % image size: readout, phase encoding, slice encoding, receivers, echoes
 [np,nv,nv2,nrcvrs,ne] = size(img);
@@ -61,11 +64,20 @@ RS = reshape(permute(RS,[4 5 1 2 3]),nrcvrs,nrcvrs,np*nv,nv2);
 
 
 sen = zeros(nrcvrs,np*nv,nv2);
-matlabpool open
-parfor sl = 1:nv2
-    sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
+% (1) using MATLAB POOL
+if flag_pool
+    matlabpool open
+    parfor sl = 1:nv2
+        sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
+    end
+    matlabpool close
+else
+% (2) NOT using MATLAB POOL
+    for sl = 1:nv2
+        sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
+    end
 end
-matlabpool close
+
 sen = reshape(permute(sen,[2,3,1]),[np,nv,nv2,nrcvrs]);
 
 % relative to the ref coil
