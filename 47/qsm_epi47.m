@@ -7,8 +7,8 @@ function qsm_epi47(path_in, path_out, options)
 %   PATH_IN    - directory of .fid from gemsme3d sequence  : se_epi_dw***.fid
 %   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI
 %   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .ref_coil  - reference coil to use for phase combine   : 3
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.35
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
@@ -18,7 +18,7 @@ function qsm_epi47(path_in, path_out, options)
 %    .lbv_layer - number of layers to be stripped off LBV   : 2
 %    .tv_reg    - Total variation regularization parameter  : 5e-4
 %    .inv_num   - iteration number of TVDI (nlcg)           : 500
-%    .save_all  - save the entire workspace/variables       : 1
+%    .save_all  - save the entire workspace/variables       : 0
 
 % default settings
 if ~ exist('path_in','var') || isempty(path_in)
@@ -28,6 +28,9 @@ end
 if exist([path_in '/fid'],'file')
     path_fid = path_in;
     path_fid = cd(cd(path_fid));
+elseif exist(path_in,'file')
+	[pathstr,name,ext] = fileparts(path_in);
+	path_fid = cd(cd(pathstr));
 else
     error('cannot find .fid file');
 end
@@ -41,11 +44,11 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'ref_coil')
-    options.ref_coil = 2;
+    options.ref_coil = 3;
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 15;
+    options.eig_rad = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -53,9 +56,9 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
+    % options.ph_unwrap = 'prelude';
     % % another option is
-    % options.ph_unwrap = 'laplacian';
+    options.ph_unwrap = 'laplacian';
     % % prelude is preferred, unless there's sigularities
     % % in that case, have to use laplacian
     % another option is 'bestpath'
@@ -92,7 +95,7 @@ if ~ isfield(options,'inv_num')
 end
 
 if ~ isfield(options,'save_all')
-    options.save_all = 1;
+    options.save_all = 0;
 end
 
 
@@ -138,7 +141,7 @@ cd(path_qsm);
 
 % reconstruct complex image from fid file
 [par,img_out] = se_epi_dw_recon(path_fid,opt);
-matlabpool close;
+matlabpool close
 
 
 % flip to match 4.7T scanner frame/gradients (coordinates)
@@ -157,14 +160,13 @@ save_nii(nii,'rawphase.nii');
 img_cmb_all = zeros([nv np ns nr]);
 
 mkdir('combine');
-% matlabpool open
 % recon combined magnitude
 for i = 1:nr % all time series
 	img = squeeze(img_all(:,:,:,i,:));
     
     disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
-		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad);
+		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad,0);
 	end
 	img_cmb_all(:,:,:,i) = img_cmb;
 
@@ -175,7 +177,6 @@ for i = 1:nr % all time series
 end
 nii = make_nii(abs(img_cmb_all),voxelSize);
 save_nii(nii,'all_mag_cmb.nii');
-% matlabpool close
 
 % generate BET on 1st volume
 [status,cmdout] = unix('rm BET*');
@@ -194,7 +195,7 @@ nii = make_nii(mask_rep,voxelSize);
 save_nii(nii,'mask_rep.nii');
 
 % spm to align all volumes
-P = spm_select('ExtList', pwd, '^all_mag_cmb.nii',1:200);
+P = spm_select('ExtList', pwd, '^all_mag_cmb.nii',Inf);
 flags.mask=0;
 spm_realign(P);
 load all_mag_cmb.mat
@@ -204,14 +205,14 @@ for i = 2:size(mat,3)
 		mat(:,:,i) = m*inv(mat(:,:,i))*m;
 end
 save('mask_rep.mat','mat');
-P = spm_select('ExtList', pwd, '^mask_rep.nii',1:200);
+P = spm_select('ExtList', pwd, '^mask_rep.nii',Inf);
 flags.mask=0;
 spm_reslice(P,flags);
 
 nii = load_nii('rmask_rep.nii');
 rmask = nii.img;
-
-
+rmask(isnan(rmask)) = 0;
+rmask(isinf(rmask)) = 0;
 
 % process QSM on individual run volume
 for i = 1:nr % all time series
@@ -440,5 +441,5 @@ save('parameters.mat','options','-v7.3')
 
 
 % clean up
-% unix('rm *.nii*');
+unix('rm *.nii*');
 cd(init_dir);

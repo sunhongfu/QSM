@@ -197,7 +197,7 @@ if save_all
     unph_all         = zeros([Nro,Npe,Nsl,Nrn]);
     lfs_resharp_all  = zeros([Nro,Npe,Nsl,Nrn]);
     mask_resharp_all = zeros([Nro,Npe,Nsl,Nrn]);
-    lfs_poly_all     = zeros([Nro,Npe,Nsl,Nrn]);
+    lfs_all          = zeros([Nro,Npe,Nsl,Nrn]);
     sus_resharp_all  = zeros([Nro,Npe,Nsl,Nrn]);
 end
 
@@ -299,7 +299,6 @@ for i = 1:size(img_all,5) % all time series
         fclose(fid);
         nii = make_nii(unph,voxelSize);
         save_nii(nii,['unph_best' num2str(i,'%03i') '.nii']);
-
     end
 
 
@@ -315,7 +314,7 @@ for i = 1:size(img_all,5) % all time series
     lfs_resharp = lph_resharp/(gamma*TE*B_0)*1e6; % unit ppm
 
     nii = make_nii(lfs_resharp,voxelSize);
-    save_nii(nii,['RESHARP/lfs_resharp_poly' num2str(i,'%03i') '.nii']);
+    save_nii(nii,['RESHARP/lfs_resharp' num2str(i,'%03i') '.nii']);
 
 
 
