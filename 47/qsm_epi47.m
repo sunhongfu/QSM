@@ -167,7 +167,10 @@ for i = 1:nr % all time series
     disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
 		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad,0);
+	else
+		img_cmb = img;
 	end
+
 	img_cmb_all(:,:,:,i) = img_cmb;
 
 	nii = make_nii(abs(img_cmb),voxelSize);
