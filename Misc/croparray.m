@@ -25,17 +25,17 @@ if any(isOdd)
 % if odd
 midPoint = (gridDimensionVector + [1 1 1])/ 2 ; 
 
-tmp1 = midPoint - (outputSize + [1 1 1])/2 + [1 1 1] ;
-tmp2 = midPoint + (outputSize + [1 1 1])/2 - [1 1 1] ;
+low = midPoint - outputSize/2 + [1 1 1] ;
+high = midPoint + outputSize/2 ;
 
-dataArray = dataArray( tmp1(1):tmp2(1), tmp1(2):tmp2(2), tmp1(3):tmp2(3)) ;
+dataArray = dataArray( low(1):high(1), low(2):high(2), low(3):high(3)) ;
 
 else
 
-tmp1 = gridDimensionVector/2 - outputSize/2 + [1 1 1];
-tmp2 = gridDimensionVector/2 + outputSize/2 ;
+low = gridDimensionVector/2 - outputSize/2 + [1 1 1];
+high = gridDimensionVector/2 + outputSize/2 ;
 
-dataArray = dataArray( tmp1(1):tmp2(1), tmp1(2):tmp2(2), tmp1(3):tmp2(3) ) ;
+dataArray = dataArray( low(1):high(1), low(2):high(2), low(3):high(3) ) ;
 
 
 

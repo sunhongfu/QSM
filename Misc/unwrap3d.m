@@ -107,6 +107,7 @@ unwrappedPhase = fread( fIn, nVoxels, 'single=>single' ) ;
 fclose( fIn ) ;
 
 unwrappedPhase = reshape( unwrappedPhase, gridSize )  ;
+unwrappedPhase = (mask~=0).*unwrappedPhase ;
 unwrappedPhase = permute( unwrappedPhase, [2 1 3] ) ;
 
 if ~Options.isSavingBinaries

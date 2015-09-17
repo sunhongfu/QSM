@@ -1,4 +1,4 @@
-function [lfs, res] = echofit(ph, mag, par)
+function [lfs, res] = echofit(ph, mag, echoTimes)
 %ECHOFIT Magnitude-weighted least square regression of phase to echo time.
 %   [LFS,RES] = echofit(PH,MAG,PAR) fits the phases with TEs, weighted by
 %   magnitudes and force intercepts to zeros
@@ -16,7 +16,7 @@ if ~ size(ph)==size(mag)
 end
 
 [np,nv,ns,ne] = size(ph);
-TE = par.te + (0:ne-1)*par.esp;
+TE = echoTimes;
 
 ph = permute(ph,[4 1 2 3]);
 mag = permute(mag,[4 1 2 3]);

@@ -1,7 +1,21 @@
-function [lfs,mask_ero] = pdf(tfs,mask,voxelSize,ker_rad,weight,theta)
+function [lfs,mask_ero] = projectionontodipolefields(tfs,mask,voxelSize,ker_rad,weight,theta)
+%PROJECTIONONTODIPOLEFIELDS
+%
+% Syntax
+% 
+% [lfs,mask_ero] = projectionontodipolefields( ...
+%   tfs, ...      % total field shift
+%   mask,...      % region of 'local' susceptibility
+%   voxelSize,... %
+%   ker_rad,...   % kernel radius for erosion
+%   weight,...    % data reliability weights (e.g. magnitude)
+%   theta);       % angle of slice-normal to z-axis (default: 0, axial orientation) 
 
+if ~exist('weight','var') || isempty(weight)
+    weight = mask;
+end
 
-if ~ exist('theta','var') || isempty(theta)
+if ~exist('theta','var') || isempty(theta)
     theta = 0;
 end
 
@@ -34,7 +48,7 @@ D(nv/2+1,np/2+1,ns/2+1) = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if abs(theta) >= 0.1 % 18/pi = 5.73d
     disp('rotate dipole kernel');
-    %% rotate the kernel to match the angle of acqisition
+    %% rotate the kernel to match the angle of acquisition
     [X,Y,Z] = ndgrid(x,y,z);
     % rotM = [cos(theta) 0 sin(theta); 0 1 0; -sin(theta) 0 cos(theta)];
     rotM = [1,0,0; 0,cos(theta),-sin(theta); 0,sin(theta),cos(theta)];

@@ -69,6 +69,8 @@ if isConverting2Nii
         Options.voxelSize = DEFAULT_VOXELSIZE ;
     end
 
+    img = double(img) ;
+
     % flip rows & columns for make_nii
     img = permute( img, [2 1 3 4] ) ;
 

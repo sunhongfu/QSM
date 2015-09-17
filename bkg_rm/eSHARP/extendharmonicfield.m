@@ -109,7 +109,7 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 % =========================================================================
 % =========================================================================
 
-pathToBinaries = '../bin/' ;
+pathToBinaries = '~/Projects/General/bin/' ;
 
 % =========================================================================
 % =========================================================================
@@ -140,8 +140,15 @@ DEFAULT_EXPANSIONORDER          = 2 ;
 DEFAULT_ISDISPLAYINGPROGRESS    = true ; 
 DEFAULT_TMPSAVEFLDR             = './' ;
 
+
 if  ~myisfield( Parameters, 'voxelSize' ) || (nnz(Parameters.voxelSize) ~=3)
     error('Parameters.voxelSize must be a 3 component vector. See HELP') ;
+end
+
+if  ~myisfield( Parameters, 'radius' ) || isempty(Parameters.radius) 
+    error('Parameters.radius must be defined (a single or 3 component vector). See HELP') ;
+elseif length(Parameters.radius) == 1 
+    Parameters.radius = Parameters.radius*[1 1 1] ;
 end
 
 if  ~myisfield( Parameters, 'expansionOrder' ) || isempty(Parameters.expansionOrder)
@@ -314,8 +321,7 @@ mapip2epArguments = [ ...
                   '  ' num2str( Parameters.radius ) ...
                   '  ' [Parameters.tmpSaveFldr 'maskIP.bin ' ] ...
                   '  ' [Parameters.tmpSaveFldr 'maskEP.bin ' ] ...
-                  '  ' Parameters.tmpSaveFldr ] ;
-
+                  '  ' Parameters.tmpSaveFldr ] 
 
 system([ 'mapip2ep ' mapip2epArguments]) ;
 % -------------------------------------------------------------------------
@@ -353,6 +359,19 @@ columns = columns +1 ;
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
+disp('Deleting tmp files')
+delete([ Parameters.tmpSaveFldr 'maskIP.bin']  ) ;
+delete([ Parameters.tmpSaveFldr 'maskEP.bin']  ) ;
+delete([ Parameters.tmpSaveFldr 'displacementsX.bin']);
+delete([ Parameters.tmpSaveFldr 'displacementsY.bin']);
+delete([ Parameters.tmpSaveFldr 'displacementsZ.bin']);
+delete([ Parameters.tmpSaveFldr 'rows.bin']);
+delete([ Parameters.tmpSaveFldr 'columns.bin']);
+delete([ Parameters.tmpSaveFldr 'indexIP.bin']);
+
+% -------------------------------------------------------------------------
+
+% -------------------------------------------------------------------------
 %% Create matrix operator A
 numRows = numEP ;
 
@@ -360,20 +379,29 @@ Dx = sparse( rows, columns, Dx, numRows, numVoxelsImg ) ;
 Dy = sparse( rows, columns, Dy, numRows, numVoxelsImg ) ;
 Dz = sparse( rows, columns, Dz, numRows, numVoxelsImg ) ;
 
+disp('clearing')
+clear rows columns
+
 I  = ( abs(Dx) + abs(Dy) + abs(Dz) ) ~= 0 ;
 
-distanceIP2EP = ( ...
-                ((Parameters.voxelSize(1)*Dx).^2 ) + ...
-                ((Parameters.voxelSize(2)*Dy).^2 ) + ...
-                ((Parameters.voxelSize(3)*Dz).^2 ) ) .^ 0.5 ;
+% IP to EP distance:
+W = ( ((Parameters.voxelSize(1)*Dx).^2 ) + ...
+      ((Parameters.voxelSize(2)*Dy).^2 ) + ...
+      ((Parameters.voxelSize(3)*Dz).^2 ) ) .^ 0.5 ;
 
-% weights:
-W             = distanceIP2EP ;
-W(I)          = W(I) .^-1 ;
+% inverse as weights: W
+W(I) = W(I) .^-1 ;
 
+if Parameters.expansionOrder == 0
+    disp('clearing 2') 
+    clear Dx Dy Dz
+end
+
+disp('normalizing')
 % normalize:
 W             = spdiags( 1./sum(W, 2), 0, numRows, numRows ) * W ;
 
+disp('forming operator???')
 % matrix (Taylor expansion) operator:	
 A = W .* I ;
 
@@ -397,21 +425,6 @@ end
 
 % truncation (masking) operator (e.g. M*x, 'picks out' the EP from vector x)
 M = sparse( 1:numRows, find( maskEP(:) ), ones([numRows 1]), numRows, numVoxelsImg ) ;
-
-
-
-% -------------------------------------------------------------------------
-
-% -------------------------------------------------------------------------
-disp('Deleting tmp files')
-delete([ Parameters.tmpSaveFldr 'maskIP.bin']  ) ;
-delete([ Parameters.tmpSaveFldr 'maskEP.bin']  ) ;
-delete([ Parameters.tmpSaveFldr 'displacementsX.bin']);
-delete([ Parameters.tmpSaveFldr 'displacementsY.bin']);
-delete([ Parameters.tmpSaveFldr 'displacementsZ.bin']);
-delete([ Parameters.tmpSaveFldr 'rows.bin']);
-delete([ Parameters.tmpSaveFldr 'columns.bin']);
-delete([ Parameters.tmpSaveFldr 'indexIP.bin']);
 
 
 
