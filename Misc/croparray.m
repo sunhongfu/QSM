@@ -15,7 +15,7 @@ function[ dataArray ] = croparray( dataArray, gridSizeOut )
 % Arbitrary dimensions
 
 gridSizeIn = size( dataArray ) ;
-assert( all( gridSizeIn > gridSizeOut ), 'desired grid size must be <= original' ) ; 
+assert( all( gridSizeIn >= gridSizeOut ), 'desired grid size must be <= original' ) ; 
 
 midPoint  = round( gridSizeIn / 2 ) ; 
 low       = midPoint - round( gridSizeOut / 2 ) + 1 ; 

@@ -301,9 +301,9 @@ disp('Extending harmonic field') ;
 disp(['Expansion order: ' int2str(Parameters.expansionOrder)]) ;
 
 gridSizeImg  = size( maskIp ) ;
-numVoxelsImg = prod( gridSizeImg ) ;
-numIP        = nnz( maskIp(:) ) ;
-numEP        = nnz( maskEp(:) ) ;
+nVoxelsImg = prod( gridSizeImg ) ;
+nIp        = nnz( maskIp(:) ) ;
+nEp        = nnz( maskEp(:) ) ;
 
 %%
 %%------- Map IP to EP
@@ -349,13 +349,14 @@ rows = fread( fopen( ...
 columns = fread( fopen( ...
 	[ Parameters.tmpSaveFldr 'columns.bin'], 'r'), inf, 'int32' );
 
-%indexIP        = fread(  fopen(['../Tmp/indexIP.bin'], 'r'), inf, 'int32' ) ;
+indexEp = fread( fopen( ...
+	[ Parameters.tmpSaveFldr 'indexEP.bin'], 'r'), inf, 'int32' ) ;
 
 %% Adjust C zero-based indexing to MATLAB style:
 %indexIP = indexIP + 1 ; 
 rows    = rows + 1 ;
-columns = columns +1 ;
-
+columns = columns + 1 ;
+indexEp = indexEp + 1 ;
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
@@ -367,30 +368,30 @@ delete([ Parameters.tmpSaveFldr 'displacementsY.bin']);
 delete([ Parameters.tmpSaveFldr 'displacementsZ.bin']);
 delete([ Parameters.tmpSaveFldr 'rows.bin']);
 delete([ Parameters.tmpSaveFldr 'columns.bin']);
-delete([ Parameters.tmpSaveFldr 'indexIP.bin']);
+delete([ Parameters.tmpSaveFldr 'indexEP.bin']);
 
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
 %% Create matrix operator A
-numRows = numEP ;
 
-Dx = sparse( rows, columns, Dx, numRows, numVoxelsImg ) ;
-Dy = sparse( rows, columns, Dy, numRows, numVoxelsImg ) ;
-Dz = sparse( rows, columns, Dz, numRows, numVoxelsImg ) ;
+nRows = nEp ;
 
-nEpRecovered   = nnz(unique(rows)) 
-nEpDesired     = nnz(maskEp(:)) 
-disp(['Recovering ' num2str(nEpRecovered) ' of total ' num2str(nEpDesired) ...
-    ':' num2str(nEpRecovered/nEpDesired)]);
+Dx = sparse( rows, columns, Dx, nRows, nVoxelsImg ) ;
+Dy = sparse( rows, columns, Dy, nRows, nVoxelsImg ) ;
+Dz = sparse( rows, columns, Dz, nRows, nVoxelsImg ) ;
 
-if nEpRecovered ~= nEpDesired
+% (ideally: nEpRecoverable = nRows = nEp, but this depends on the chosen radius of expansion)
+
+nEpRecoverable = length( unique( indexEp  ) ) ; 
+
+disp(['Recovering ' num2str(nEpRecoverable) ' of total ' num2str(nEp) ...
+    ' ( ' num2str(100*nEpRecoverable/nEp) '% ) ']);
+
+if nEpRecoverable ~= nEp
     disp('Some EP remain out of reach with the current radius of expansion!') ;
-    maskEp = zeros(numVoxelsImg,1) ;
-    maskEp(unique(rows)) = 1 ;
 end
 
-disp('clearing')
 clear rows columns
 
 I  = ( abs(Dx) + abs(Dy) + abs(Dz) ) ~= 0 ;
@@ -408,11 +409,9 @@ if Parameters.expansionOrder == 0
     clear Dx Dy Dz
 end
 
-disp('normalizing')
 % normalize:
-W             = spdiags( 1./sum(W, 2), 0, numRows, numRows ) * W ;
+W = spdiags( 1./sum(W, 2), 0, nRows, nRows ) * W ;
 
-disp('forming operator???')
 % matrix (Taylor expansion) operator:	
 A = W .* I ;
 
@@ -435,7 +434,9 @@ if (Parameters.expansionOrder > 0)
 end
 
 % truncation (masking) operator (e.g. M*x, 'picks out' the EP from vector x)
-M = sparse( 1:numRows, find( maskEp(:) ), ones([numRows 1]), numRows, numVoxelsImg ) ;
+M = sparse( find(sum(I, 2) ~= 0 ), unique(indexEp), ones([nEpRecoverable 1]), nRows, nVoxelsImg ) ;
+
+%M = sparse( 1:nRows, find( maskEp(:) ), ones([nRows 1]), nRows, nVoxelsImg ) ;
 
 
 
