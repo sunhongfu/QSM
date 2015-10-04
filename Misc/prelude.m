@@ -7,6 +7,11 @@ function [ unwrappedPhase ] = prelude( rawPhase, mag, Options )
 %	unwrappedPhase = PRELUDE( rawPhase, mag, Options )
 %
 %    .......................
+%
+%    rawPhase: 3d array of the wrapped phase values
+%    mag:      3d array of the corresponding magnitude data
+%
+%    .......................
 %   
 %   The following Option-fields are supported
 %

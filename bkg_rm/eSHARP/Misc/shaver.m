@@ -19,7 +19,8 @@ if any( R == 0 )
 	ROIout = ROIin ;
 	disp('Radius cannot be zero. Returning input array') 
 else
-	tmp = whos('ROIin');
+	inputIsFloat = true;
+    tmp = whos('ROIin');
 	switch tmp.class
 	    case {'single','double'}
 	        inputIsFloat   = true ;

@@ -1,4 +1,4 @@
-function[ dataArray ] = croparray( dataArray, outputSize ) 
+function[ dataArray ] = croparray( dataArray, gridSizeOut ) 
 
 %CROPARRAY returns cropped/central portion of 3D array
 %
@@ -12,31 +12,16 @@ function[ dataArray ] = croparray( dataArray, outputSize )
 % padarray
 
 % TODO
-% should work for arbitrary dimensions
-% odd & even arrays
-% check outputSize < inputSize
+% Arbitrary dimensions
 
-gridDimensionVector = size( dataArray ) ;
+gridSizeIn = size( dataArray ) ;
+assert( all( gridSizeIn >= gridSizeOut ), 'desired grid size must be <= original' ) ; 
 
+midPoint  = round( gridSizeIn / 2 ) ; 
+low       = midPoint - round( gridSizeOut / 2 ) + 1 ; 
+high      = low + gridSizeOut - 1;
 
-isOdd               = logical(mod( gridDimensionVector, 2 )) ;
-
-if any(isOdd)
-% if odd
-midPoint = (gridDimensionVector + [1 1 1])/ 2 ; 
-
-tmp1 = midPoint - (outputSize + [1 1 1])/2 + [1 1 1] ;
-tmp2 = midPoint + (outputSize + [1 1 1])/2 - [1 1 1] ;
-
-dataArray = dataArray( tmp1(1):tmp2(1), tmp1(2):tmp2(2), tmp1(3):tmp2(3)) ;
-
-else
-
-tmp1 = gridDimensionVector/2 - outputSize/2 + [1 1 1];
-tmp2 = gridDimensionVector/2 + outputSize/2 ;
-
-dataArray = dataArray( tmp1(1):tmp2(1), tmp1(2):tmp2(2), tmp1(3):tmp2(3) ) ;
-
+dataArray = dataArray( low(1):high(1), low(2):high(2), low(3):high(3) ) ;
 
 
 end

@@ -2,26 +2,23 @@ function [Dx, Dy, Dz] = createdifferenceoperators( gridSize, gridSpacing, nOrder
 %CREATEDIFFERENCEOPERATORS
 %
 %   Returns sparse ("central difference") matrices Dx, Dy, & Dz that act as partial
-%   differential operators in each direction.
+%   differential operators in row, column, and slice directions respectively.
 %
 %   Syntax
 %
-%   [Dx, Dy, Dz] = DIFFERENCEOPERATORS( gridSize, gridSpacing, order )
+%   [Dx, Dy, Dz] = CREATEDIFFERENCEOPERATORS( gridSize, gridSpacing, order )
 %   
 %   Input
 %   
 %   gridSize 
-%       actual 3D size of the vector the differential operators will 
-%       ultimately be applied to 
-%       (i.e. gridSize = [numRows numColumns numSlices] )
-%       (e.g. gridSize = [FOV_FE FOV_PE FOV_SS] )
+%       Actual 3D size of the vector the differential operators will 
+%       ultimately be applied to (i.e. gridSize = [nRows nColumns nSlices] )
 %
 %   gridSpacing
 %       distance b/tw lattice points [dx dy dz]
 %
 %   order 
 %       == 1
-%        
 %           1st order fwd differences 
 %           e.g. Dx*b + Dy*b + Dz*b = gradient of b
 %

@@ -90,12 +90,12 @@ class displacementsIP2EP
 public:
 	// member data
 	// NB: type INT is not necessarily ideal here but used for simplicity.
-	vector<int> indexIP, row, col, dx, dy, dz ;
+	vector<int> indexEP, row, col, dx, dy, dz ;
 
 	// constructor
 	displacementsIP2EP( ) 
 	{ 	
-		vector<int> indexIP;
+		vector<int> indexEP;
 		vector<int> row; 
 		vector<int> col; 
 		vector<int> dx;
@@ -128,7 +128,7 @@ public:
 		writevector2file( dz, saveFldr + string("displacementsZ.bin") ) ;
 		writevector2file( row, saveFldr + string("rows.bin") ) ;
 		writevector2file( col, saveFldr + string("columns.bin") ) ;
-		writevector2file( indexIP, saveFldr + string("indexIP.bin") ) ;
+		writevector2file( indexEP, saveFldr + string("indexEP.bin") ) ;
 	}	
 
 
@@ -382,7 +382,7 @@ displacementsIP2EP assignEP2IP( vector<bool> &maskIP, vector<bool> &maskEP, vect
 
 						subs3 deltaIP2EP = subsEP - subsTmp ;
 
-						D.indexIP.push_back( voxel ) ;	
+						D.indexEP.push_back( voxel ) ;	
 						D.row.push_back( rowEP ) ;
 						D.col.push_back( colIP ) ;
 						D.dx.push_back( deltaIP2EP.i ) ;	
@@ -396,7 +396,7 @@ displacementsIP2EP assignEP2IP( vector<bool> &maskIP, vector<bool> &maskEP, vect
 			++rowEP ; 
 		}
 
-	cerr << endl << "num IP/num voxels: " << double(rowEP)/double(numVoxelsImg) << endl ;
+	cerr << endl << "num EP/num voxels: " << double(rowEP)/double(numVoxelsImg) << endl ;
 
 	return D ;
 

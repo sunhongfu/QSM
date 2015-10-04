@@ -13,7 +13,7 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 %
 %       Syntax
 %   
-%       [xEP,A,M] = EXTENDHARMONICFIELD( xIP, mask, maskIP, Parameters )    
+%       [xEP,A,M] = EXTENDHARMONICFIELD( xIP, mask, maskIp, Parameters )    
 %       
 %       .......................
 %
@@ -21,9 +21,9 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 %
 %       EXTENDHARMONICFIELD takes a harmonic field (xIP) defined over some
 %       reduced region of "internal points" (IP), themselves defined by 3D
-%       binary array maskIP, and extrapolates the field out to a set of
+%       binary array maskIp, and extrapolates the field out to a set of
 %       "external points" (EP): viz, the voxels contained within the binary
-%       array 'mask' which do not overlap with the IP of maskIP.
+%       array 'mask' which do not overlap with the IP of maskIp.
 %       
 %       The extrapolated field xEP is the product of M' * A * xIP(:) - reshaped
 %       to the original dimensions of xIP - where M is a trunctation (masking)
@@ -109,7 +109,7 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 % =========================================================================
 % =========================================================================
 
-pathToBinaries = '/home/hongfu/Documents/MATLAB/qsm_testing/bkg_rm/eSHARP/' ;
+pathToBinaries = '~/Projects/General/bin/' ;
 
 % =========================================================================
 % =========================================================================
@@ -140,8 +140,15 @@ DEFAULT_EXPANSIONORDER          = 2 ;
 DEFAULT_ISDISPLAYINGPROGRESS    = true ; 
 DEFAULT_TMPSAVEFLDR             = './' ;
 
+
 if  ~myisfield( Parameters, 'voxelSize' ) || (nnz(Parameters.voxelSize) ~=3)
     error('Parameters.voxelSize must be a 3 component vector. See HELP') ;
+end
+
+if  ~myisfield( Parameters, 'radius' ) || isempty(Parameters.radius) 
+    error('Parameters.radius must be defined (a single or 3 component vector). See HELP') ;
+elseif length(Parameters.radius) == 1 
+    Parameters.radius = Parameters.radius*[1 1 1] ;
 end
 
 if  ~myisfield( Parameters, 'expansionOrder' ) || isempty(Parameters.expansionOrder)
@@ -167,7 +174,7 @@ Parameters.offset = Parameters.expansionOrder ;
 % -------
 % Create extension operator
 
-maskEP = logical( mask - maskReduced );
+maskEp = logical( mask - maskReduced );
 
 % outerEdgeEP = mask - shaver( mask, 1 ) ;
 % outerEdgeIP = maskReduced - shaver( maskReduced, 1 ) ;
@@ -241,10 +248,10 @@ maskEP = logical( mask - maskReduced );
 % Parameters.radius = ceil( ceil(max( minDistancesIPtoEP )) ./Parameters.voxelSize ) ;
 
 
-maskIP = logical( shaver( maskReduced, Parameters.offset ) ...
+maskIp = logical( shaver( maskReduced, Parameters.offset ) ...
                 - shaver( maskReduced, Parameters.radius ) );
 
-[ A, M ] = createextensionoperator( maskIP, maskEP, Parameters ) ;
+[ A, M ] = createextensionoperator( maskIp, maskEp, Parameters ) ;
 
 % -------------------------------------------------------------------------
 
@@ -257,7 +264,7 @@ end
 
 
 
-function[ A, M ] = createextensionoperator( maskIP, maskEP, Parameters )
+function[ A, M ] = createextensionoperator( maskIp, maskEp, Parameters )
 %CREATEEXTENSIONOPERATOR
 %
 %	Returns a matrix operator to extrapolate a harmonic field
@@ -266,17 +273,17 @@ function[ A, M ] = createextensionoperator( maskIP, maskEP, Parameters )
 %
 %       Syntax
 %   
-%       [A,M] = CREATEEXTENSIONOPERATOR( maskIP, maskEP, Parameters )
+%       [A,M] = CREATEEXTENSIONOPERATOR( maskIp, maskEp, Parameters )
 %       
 %       .......................
 %
 %       Description
 %
 %       CREATEEXTENSIONOPERATOR takes a 3D binary array of "internal points"
-%       (maskIP) and outputs an extension operator (A) which, when applied to a
+%       (maskIp) and outputs an extension operator (A) which, when applied to a
 %       harmonic field defined over the IP region, yields a vector of the
 %       extrapolated field over the "external point" region (defined by the 3D
-%       binary array maskEP).  
+%       binary array maskEp).  
 % 
 %       Output argument M is a truncation (masking) operator for the EP, such that
 %       M*x 'picks out' the EP from vector x.
@@ -293,29 +300,28 @@ disp('########################') ;
 disp('Extending harmonic field') ;
 disp(['Expansion order: ' int2str(Parameters.expansionOrder)]) ;
 
-gridSizeImg  = size( maskIP ) ;
-numVoxelsImg = prod( gridSizeImg ) ;
-numIP        = nnz( maskIP(:) ) ;
-numEP        = nnz( maskEP(:) ) ;
+gridSizeImg  = size( maskIp ) ;
+nVoxelsImg = prod( gridSizeImg ) ;
+nIp        = nnz( maskIp(:) ) ;
+nEp        = nnz( maskEp(:) ) ;
 
 %%
 %%------- Map IP to EP
     
-fout = fopen([Parameters.tmpSaveFldr 'maskEP.bin'], 'w') ;
-fwrite(fout, uint8( maskEP(:) ) ) ;
+fout = fopen([Parameters.tmpSaveFldr 'maskEp.bin'], 'w') ;
+fwrite(fout, uint8( maskEp(:) ) ) ;
 fclose( fout ) ;
 
-fout = fopen([Parameters.tmpSaveFldr 'maskIP.bin'], 'w') ;
-fwrite(fout, uint8( maskIP(:) ) ) ;
+fout = fopen([Parameters.tmpSaveFldr 'maskIp.bin'], 'w') ;
+fwrite(fout, uint8( maskIp(:) ) ) ;
 fclose( fout ) ;
 
 mapip2epArguments = [ ...
                   '  ' num2str( gridSizeImg ) ...
                   '  ' num2str( Parameters.radius ) ...
-                  '  ' [Parameters.tmpSaveFldr 'maskIP.bin ' ] ...
-                  '  ' [Parameters.tmpSaveFldr 'maskEP.bin ' ] ...
-                  '  ' Parameters.tmpSaveFldr ] ;
-
+                  '  ' [Parameters.tmpSaveFldr 'maskIp.bin ' ] ...
+                  '  ' [Parameters.tmpSaveFldr 'maskEp.bin ' ] ...
+                  '  ' Parameters.tmpSaveFldr ] 
 
 system([ 'mapip2ep ' mapip2epArguments]) ;
 % -------------------------------------------------------------------------
@@ -343,36 +349,68 @@ rows = fread( fopen( ...
 columns = fread( fopen( ...
 	[ Parameters.tmpSaveFldr 'columns.bin'], 'r'), inf, 'int32' );
 
-%indexIP        = fread(  fopen(['../Tmp/indexIP.bin'], 'r'), inf, 'int32' ) ;
+indexEp = fread( fopen( ...
+	[ Parameters.tmpSaveFldr 'indexEP.bin'], 'r'), inf, 'int32' ) ;
 
 %% Adjust C zero-based indexing to MATLAB style:
 %indexIP = indexIP + 1 ; 
 rows    = rows + 1 ;
-columns = columns +1 ;
+columns = columns + 1 ;
+indexEp = indexEp + 1 ;
+% -------------------------------------------------------------------------
+
+% -------------------------------------------------------------------------
+disp('Deleting tmp files')
+delete([ Parameters.tmpSaveFldr 'maskIp.bin']  ) ;
+delete([ Parameters.tmpSaveFldr 'maskEp.bin']  ) ;
+delete([ Parameters.tmpSaveFldr 'displacementsX.bin']);
+delete([ Parameters.tmpSaveFldr 'displacementsY.bin']);
+delete([ Parameters.tmpSaveFldr 'displacementsZ.bin']);
+delete([ Parameters.tmpSaveFldr 'rows.bin']);
+delete([ Parameters.tmpSaveFldr 'columns.bin']);
+delete([ Parameters.tmpSaveFldr 'indexEP.bin']);
 
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
 %% Create matrix operator A
-numRows = numEP ;
 
-Dx = sparse( rows, columns, Dx, numRows, numVoxelsImg ) ;
-Dy = sparse( rows, columns, Dy, numRows, numVoxelsImg ) ;
-Dz = sparse( rows, columns, Dz, numRows, numVoxelsImg ) ;
+nRows = nEp ;
+
+Dx = sparse( rows, columns, Dx, nRows, nVoxelsImg ) ;
+Dy = sparse( rows, columns, Dy, nRows, nVoxelsImg ) ;
+Dz = sparse( rows, columns, Dz, nRows, nVoxelsImg ) ;
+
+% (ideally: nEpRecoverable = nRows = nEp, but this depends on the chosen radius of expansion)
+
+nEpRecoverable = length( unique( indexEp  ) ) ; 
+
+disp(['Recovering ' num2str(nEpRecoverable) ' of total ' num2str(nEp) ...
+    ' ( ' num2str(100*nEpRecoverable/nEp) '% ) ']);
+
+if nEpRecoverable ~= nEp
+    disp('Some EP remain out of reach with the current radius of expansion!') ;
+end
+
+clear rows columns
 
 I  = ( abs(Dx) + abs(Dy) + abs(Dz) ) ~= 0 ;
 
-distanceIP2EP = ( ...
-                ((Parameters.voxelSize(1)*Dx).^2 ) + ...
-                ((Parameters.voxelSize(2)*Dy).^2 ) + ...
-                ((Parameters.voxelSize(3)*Dz).^2 ) ) .^ 0.5 ;
+% IP to EP distance:
+W = ( ((Parameters.voxelSize(1)*Dx).^2 ) + ...
+      ((Parameters.voxelSize(2)*Dy).^2 ) + ...
+      ((Parameters.voxelSize(3)*Dz).^2 ) ) .^ 0.5 ;
 
-% weights:
-W             = distanceIP2EP ;
-W(I)          = W(I) .^-1 ;
+% inverse as weights: W
+W(I) = W(I) .^-1 ;
+
+if Parameters.expansionOrder == 0
+    disp('clearing 2') 
+    clear Dx Dy Dz
+end
 
 % normalize:
-W             = spdiags( 1./sum(W, 2), 0, numRows, numRows ) * W ;
+W = spdiags( 1./sum(W, 2), 0, nRows, nRows ) * W ;
 
 % matrix (Taylor expansion) operator:	
 A = W .* I ;
@@ -396,22 +434,9 @@ if (Parameters.expansionOrder > 0)
 end
 
 % truncation (masking) operator (e.g. M*x, 'picks out' the EP from vector x)
-M = sparse( 1:numRows, find( maskEP(:) ), ones([numRows 1]), numRows, numVoxelsImg ) ;
+M = sparse( find(sum(I, 2) ~= 0 ), unique(indexEp), ones([nEpRecoverable 1]), nRows, nVoxelsImg ) ;
 
-
-
-% -------------------------------------------------------------------------
-
-% -------------------------------------------------------------------------
-disp('Deleting tmp files')
-delete([ Parameters.tmpSaveFldr 'maskIP.bin']  ) ;
-delete([ Parameters.tmpSaveFldr 'maskEP.bin']  ) ;
-delete([ Parameters.tmpSaveFldr 'displacementsX.bin']);
-delete([ Parameters.tmpSaveFldr 'displacementsY.bin']);
-delete([ Parameters.tmpSaveFldr 'displacementsZ.bin']);
-delete([ Parameters.tmpSaveFldr 'rows.bin']);
-delete([ Parameters.tmpSaveFldr 'columns.bin']);
-delete([ Parameters.tmpSaveFldr 'indexIP.bin']);
+%M = sparse( 1:nRows, find( maskEp(:) ), ones([nRows 1]), nRows, nVoxelsImg ) ;
 
 
 
