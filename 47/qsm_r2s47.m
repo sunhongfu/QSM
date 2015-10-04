@@ -11,6 +11,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.5
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
+%	choices: 'pdf','sharp','resharp','esharp','lbv'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 0.0005
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
@@ -348,6 +349,58 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(sus_resharp.*mask_resharp,voxelSize);
     save_nii(nii,'RESHARP/sus_resharp.nii');
 end
+
+
+% E-SHARP (SHARP edge extension)
+if sum(strcmpi('esharp',bkg_rm))
+    disp('--> E-SHARP to remove background field ...');
+    Parameters.voxelSize             = voxelSize; % in mm
+    Parameters.resharpRegularization = tik_reg ;
+    Parameters.resharpKernelRadius   = smv_rad ; % in mm
+    Parameters.radius                = [ 10 10 5 ] ;
+
+    % taking off additional 3 voxels from edge - not sure the outermost 
+    % phase data included in the original mask is reliable. 
+    tfs        = tfs .* mask;
+    mask       = shaver( ( tfs ~= 0 ), 1 ) ; % 1 voxel taken off
+    totalField = mask .* tfs ;
+
+    % resharp 
+    [reducedLocalField, maskReduced] = ...
+        resharp( totalField, ...
+                 double(mask), ...
+                 Parameters.voxelSize, ...
+                 Parameters.resharpKernelRadius, ...
+                 Parameters.resharpRegularization ) ;
+
+    % extrapolation ~ esharp 
+    reducedBackgroundField = maskReduced .* ( totalField - reducedLocalField) ;
+
+    extendedBackgroundField = extendharmonicfield( ...
+       reducedBackgroundField, mask, maskReduced, Parameters) ;
+
+    backgroundField = extendedBackgroundField + reducedBackgroundField ;
+    localField      = totalField - backgroundField ;
+
+    lfs_esharp      = localField;
+    mask_esharp     = mask;  
+
+    % save nifti
+    mkdir('ESHARP');
+    nii = make_nii(lfs_esharp,voxelSize);
+    save_nii(nii,'ESHARP/lfs_esharp.nii');
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on ESHARP...');
+    sus_esharp = tvdi(lfs_esharp, mask_esharp, voxelSize, tv_reg, ...
+        weights, z_prjs, inv_num);
+
+    % save nifti
+    nii = make_nii(sus_esharp.*mask_esharp,voxelSize);
+    save_nii(nii,'ESHARP/sus_esharp.nii');
+end
+
+
 
 
 % LBV

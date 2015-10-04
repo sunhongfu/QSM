@@ -12,6 +12,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'laplacian'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
+%	options: 'pdf','sharp','resharp','esharp','lbv'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
 %    .tik_reg   - Tikhonov regularization for resharp       : 5e-4
 %    .lbv_layer - LBV layers to be stripped off             : 2
@@ -386,10 +387,11 @@ if sum(strcmpi('esharp',bkg_rm))
     backgroundField = extendedBackgroundField + reducedBackgroundField ;
     localField      = totalField - backgroundField ;
 
-
+    lfs_esharp      = localField;
+    mask_esharp     = mask;  
 
     % 3D 2nd order polyfit to remove any residual background
-    lfs_esharp = poly3d(localField,mask);
+    lfs_esharp = poly3d(lfs_esharp,mask_esharp);
 
     % save nifti
     mkdir('ESHARP');
@@ -398,11 +400,11 @@ if sum(strcmpi('esharp',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on ESHARP...');
-    sus_esharp = tvdi(lfs_esharp, mask, voxelSize, tv_reg, ...
+    sus_esharp = tvdi(lfs_esharp, mask_esharp, voxelSize, tv_reg, ...
         weights, z_prjs, inv_num); 
    
     % save nifti
-    nii = make_nii(sus_esharp.*mask,voxelSize);
+    nii = make_nii(sus_esharp.*mask_esharp,voxelSize);
     save_nii(nii,'ESHARP/sus_esharp.nii');
 end
 

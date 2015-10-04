@@ -386,6 +386,69 @@ for i = 1:nr % all time series
 			sus_resharp_all(:,:,:,i) = sus_resharp;
 		end
 	end
+	
+	
+	if sum(strcmpi('esharp',bkg_rm))
+	    disp('--> E-SHARP to remove background field ...');
+	    Parameters.voxelSize             = voxelSize; % in mm
+	    Parameters.resharpRegularization = tik_reg ;
+	    Parameters.resharpKernelRadius   = smv_rad ; % in mm
+	    Parameters.radius                = [ 10 10 5 ] ;
+
+
+	    % taking off additional 3 voxels from edge - not sure the outermost 
+	    % phase data included in the original mask is reliable. 
+	    tfs        = tfs .* mask;
+	    mask       = shaver( ( tfs ~= 0 ), 1 ) ; % 1 voxel taken off
+	    totalField = mask .* tfs ;
+
+	    % resharp 
+	    [reducedLocalField, maskReduced] = ...
+		resharp( totalField, ...
+			 double(mask), ...
+			 Parameters.voxelSize, ...
+			 Parameters.resharpKernelRadius, ...
+			 Parameters.resharpRegularization ) ;
+
+	    % extrapolation ~ esharp 
+	    reducedBackgroundField = maskReduced .* ( totalField - reducedLocalField) ;
+
+	    extendedBackgroundField = extendharmonicfield( ...
+	       reducedBackgroundField, mask, maskReduced, Parameters) ;
+
+	    backgroundField = extendedBackgroundField + reducedBackgroundField ;
+	    localField      = totalField - backgroundField ;
+	   
+	    lfs_esharp      = localField;
+	    mask_esharp     = mask;
+
+
+	    % 3D 2nd order polyfit to remove any residual background
+	    lfs_esharp = poly3d(localField,mask_esharp);
+
+	    % save nifti
+	    mkdir('ESHARP');
+	    nii = make_nii(lfs_esharp,voxelSize);
+	    save_nii(nii,['ESHARP/lfs_esharp' num2str(i,'%03i') '.nii']);
+
+	    % inversion of susceptibility 
+	    disp('--> TV susceptibility inversion on RESHARP...');
+	    sus_esharp = tvdi(lfs_esharp, mask_esharp, voxelSize, tv_reg, ...
+	        abs(img_cmb), z_prjs, inv_num); 
+	   	
+	   	% demean susceptibility
+	   	sus_esharp = sus_esharp - mean(sus_esharp(logical(mask_esharp(:))));
+
+	    % save nifti
+	    nii = make_nii(sus_esharp.*mask_esharp,voxelSize);
+	    save_nii(nii,['ESHARP/sus_esharp' num2str(i,'%03i') '.nii']);
+
+	    if save_all
+			lfs_esharp_all(:,:,:,i) = lfs_esharp;
+			mask_esharp_all(:,:,:,i) = mask_esharp;
+			sus_esharp_all(:,:,:,i) = sus_esharp;
+		end
+	end
 
 
 	% LBV
