@@ -1,4 +1,4 @@
-function [lfs, mask_ero] = resharp(tfs,mask,vox,ker_rad,tik_reg)
+function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,vox,ker_rad,tik_reg)
 %   [LSF,MASK_ERO] = RESHARP(TFS,MASK,VOX,KER_RAD,TIK_REG)
 %
 %   LFS         : local field shift after background removal
@@ -37,7 +37,7 @@ ry = max(ry,2);
 rz = max(rz,2);
 % rz = ceil(ker_rad/vox(3));
 [X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
+h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 <= 1);
 ker = h/sum(h(:));
 
 % circularshift, linear conv to Fourier multiplication
@@ -81,9 +81,14 @@ b = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),
 b = b(:);
 
 % b = H'*(H*tfs(:));
-m = cgs(@Afun, b, 1e-4, 200);
+m = cgs(@Afun, b, 1e-10, 500);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
+
+data_fidelity = mask_ero.*circshift(ifftn(DKER.*fftn(tfs-reshape(m,imsize))),-csh);
+data_fidelity = norm(data_fidelity(:));
+
+regularization_term = norm(m);
 
 % nested function
 function y = Afun(x)

@@ -8,7 +8,7 @@ function qsm_swi47(path_in, path_out, options)
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.3
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'laplacian'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
@@ -49,7 +49,7 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 15;
+    options.eig_rad = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -94,9 +94,6 @@ if ~ isfield(options,'clean_all')
     options.clean_all = 1;
 end
 
-% if ~ isfield(options,'swi_ver')
-%     options.swi_ver = 'amir'; % or 'hongfu'
-% end
 
 ref_coil  = options.ref_coil;
 eig_rad   = options.eig_rad;
@@ -110,7 +107,6 @@ lbv_layer = options.lbv_layer;
 tv_reg    = options.tv_reg;
 inv_num   = options.inv_num;
 clean_all = options.clean_all;
-% swi_ver   = options.swi_ver;
 
 
 %%% define directories

@@ -15,7 +15,7 @@ function qsm_epi47(path_in, path_out, options)
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
-%    .lbv_layer - number of layers to be stripped off LBV   : 2
+%    .lbv_layer - number of layers to be stripped off LBV   : 1
 %    .tv_reg    - Total variation regularization parameter  : 5e-4
 %    .inv_num   - iteration number of TVDI (nlcg)           : 500
 %    .save_all  - save the entire workspace/variables       : 0
@@ -125,15 +125,14 @@ opt.rcvr_comb=0;
 opt.homod = 0;
 
 
-%%% define directories
-% if strcmpi(ph_unwrap,'prelude')
-%     path_qsm = [path_out '/QSM_EPI47_pre'];
-% elseif strcmpi(ph_unwrap,'laplacian')
-%     path_qsm = [path_out '/QSM_EPI47_lap'];
-% elseif strcmpi(ph_unwrap,'bestpath')
-%     path_qsm = [path_out '/QSM_EPI47_best'];
-% end
-path_qsm = [path_out '/QSM_EPI47'];
+%% define directories
+if strcmpi(ph_unwrap,'prelude')
+    path_qsm = [path_out '/QSM_EPI47_pre'];
+elseif strcmpi(ph_unwrap,'laplacian')
+    path_qsm = [path_out '/QSM_EPI47_lap'];
+elseif strcmpi(ph_unwrap,'bestpath')
+    path_qsm = [path_out '/QSM_EPI47_best'];
+end
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -157,14 +156,13 @@ save_nii(nii,'rawphase.nii');
 
 [nv np ns nr nrcvrs] = size(img_all);
 % nr is the number of runs
-img_cmb_all = zeros([nv np ns nr]);
 
-mkdir('combine');
 % recon combined magnitude
+mkdir('combine');
+disp('--> combine multiple channels ...');
 for i = 1:nr % all time series
 	img = squeeze(img_all(:,:,:,i,:));
     
-    disp('--> combine multiple channels ...');
 	if par.nrcvrs > 1
 		img_cmb = adaptive_cmb(img,voxelSize,ref_coil,eig_rad,0);
 	else

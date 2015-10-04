@@ -8,7 +8,7 @@ function qsm_r2s47(path_in, path_out, options)
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s47
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.5
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
 %    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
@@ -49,7 +49,7 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 15;
+    options.eig_rad = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -183,11 +183,13 @@ mask = double(nii.img);
 
 
 % combine phase using double-echo method
-if par.nrcvrs > 1
+% always use geme_cmb even for only 1 receiver
+% this function can properly remove offset
+% if par.nrcvrs > 1
     ph_cmb = geme_cmb(img,voxelSize,te);
-else
-    ph_cmb = angle(img);
-end
+% else
+%     ph_cmb = angle(img);
+% end
 
 
 % save niftis after coil combination
@@ -217,7 +219,7 @@ bash_command = sprintf(['for ph in combine/ph_cmb[1-$echo_num].nii\n' ...
 '	dir=`dirname $ph`;\n' ...
 '	mag=$dir/"mag"${base:2};\n' ...
 '	unph="unph"${base:2};\n' ...
-'	prelude -a $mag -p $ph -u $unph -m BET_mask.nii -n 8&\n' ...
+'	prelude -a $mag -p $ph -u $unph -m BET_mask.nii -n 12&\n' ...
 'done\n' ...
 'wait\n' ...
 'gunzip -f unph*.gz\n']);
@@ -234,17 +236,20 @@ end
 % check and correct for 2pi jump between echoes
 disp('--> correct for potential 2pi jumps between TEs ...')
 
-nii = load_nii('unph_cmb1.nii');
-unph1 = double(nii.img);
-nii = load_nii('unph_cmb2.nii');
-unph2 = double(nii.img);
-unph_diff = unph2 - unph1;
+% nii = load_nii('unph_cmb1.nii');
+% unph1 = double(nii.img);
+% nii = load_nii('unph_cmb2.nii');
+% unph2 = double(nii.img);
+% unph_diff = unph2 - unph1;
+
+nii = load_nii('unph_diff.nii');
+unph_diff = double(nii.img);
 
 for echo = 2:ne
     meandiff = unph_cmb(:,:,:,echo)-unph_cmb(:,:,:,1)-(echo-1)*unph_diff;
     meandiff = meandiff(mask==1);
-    meandiff = mean(meandiff(:));
-    njump = round(meandiff/(2*pi));
+    meandiff = mean(meandiff(:))
+    njump = round(meandiff/(2*pi))
     disp(['    ' num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
     unph_cmb(:,:,:,echo) = unph_cmb(:,:,:,echo) - njump*2*pi;
     unph_cmb(:,:,:,echo) = unph_cmb(:,:,:,echo).*mask;
