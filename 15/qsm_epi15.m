@@ -275,6 +275,7 @@ for i = 1:Nrn % all time series
     img_cmb = img_cmb_all(:,:,:,i);
     nii = make_nii(rmask(:,:,:,i),voxelSize);
     save_nii(nii,['BET' num2str(i,'%03i') '_mask.nii']);
+    mask = rmask(:,:,:,i);    
     
     % unwrap the phase
     if strcmpi('prelude',ph_unwrap)
