@@ -40,3 +40,5 @@ end
 offsets = repmat(offsets,[1,1,1,ne,1]);
 img = img./offsets;
 ph_cmb = angle(sum(img,5));
+
+ph_cmb(isnan(ph_cmb)) = 0;
