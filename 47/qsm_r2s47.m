@@ -359,6 +359,11 @@ if sum(strcmpi('esharp',bkg_rm))
     Parameters.resharpKernelRadius   = smv_rad ; % in mm
     Parameters.radius                = [ 10 10 5 ] ;
 
+% pad matrix size to even number
+    pad_size = mod(size(tfs),2);
+    tfs = double(padarray(tfs, pad_size, 'post'));
+    mask = double(padarray(mask, pad_size, 'post'));
+
     % taking off additional 3 voxels from edge - not sure the outermost 
     % phase data included in the original mask is reliable. 
     tfs        = tfs .* mask;
@@ -382,8 +387,8 @@ if sum(strcmpi('esharp',bkg_rm))
     backgroundField = extendedBackgroundField + reducedBackgroundField ;
     localField      = totalField - backgroundField ;
 
-    lfs_esharp      = localField;
-    mask_esharp     = mask;  
+    lfs_esharp      = localField(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);
+    mask_esharp     = mask(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);
 
     % save nifti
     mkdir('ESHARP');
@@ -393,7 +398,7 @@ if sum(strcmpi('esharp',bkg_rm))
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on ESHARP...');
     sus_esharp = tvdi(lfs_esharp, mask_esharp, voxelSize, tv_reg, ...
-        weights, z_prjs, inv_num);
+        abs(img_cmb(:,:,:,echo_num)), z_prjs, inv_num);
 
     % save nifti
     nii = make_nii(sus_esharp.*mask_esharp,voxelSize);

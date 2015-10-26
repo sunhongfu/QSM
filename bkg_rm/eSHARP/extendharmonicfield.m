@@ -100,6 +100,8 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 %   
 %   User must first BUILD the mapip2ep executable from mapipto2ep.cpp
 %
+%   NOTE THAT mapipto2ep must be executable by running 'chmod +x mapiptoep'
+%
 %   User is free to put the resulting mapip2ep binary anywhere but must
 %   inform Matlab of its location by changing the following local variable
 %   within extendharmonicfield.m: 
@@ -109,7 +111,7 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 % =========================================================================
 % =========================================================================
 
-pathToBinaries = '~/Projects/General/bin/' ;
+pathToBinaries = '/home/hongfu/Documents/MATLAB/qsm_testing/bkg_rm/eSHARP'; 
 
 % =========================================================================
 % =========================================================================
