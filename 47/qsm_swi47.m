@@ -363,6 +363,10 @@ if sum(strcmpi('esharp',bkg_rm))
     Parameters.resharpKernelRadius   = smv_rad ; % in mm
     Parameters.radius                = [ 10 10 5 ] ;
 
+% pad matrix size to even number
+    pad_size = mod(size(tfs),2);
+    tfs = padarray(tfs, pad_size, 'post');
+    mask = padarray(mask, pad_size, 'post');
 
     % taking off additional 3 voxels from edge - not sure the outermost 
     % phase data included in the original mask is reliable. 
@@ -387,8 +391,8 @@ if sum(strcmpi('esharp',bkg_rm))
     backgroundField = extendedBackgroundField + reducedBackgroundField ;
     localField      = totalField - backgroundField ;
 
-    lfs_esharp      = localField;
-    mask_esharp     = mask;  
+    lfs_esharp      = localField(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);
+    mask_esharp     = mask(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);  
 
     % 3D 2nd order polyfit to remove any residual background
     lfs_esharp = poly3d(lfs_esharp,mask_esharp);
