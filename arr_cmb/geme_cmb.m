@@ -15,6 +15,7 @@ TE2 = te(2);
 img_diff = img(:,:,:,2,:)./img(:,:,:,1,:);
 ph_diff = img_diff./abs(img_diff);
 ph_diff_cmb = sum(abs(img(:,:,:,1,:)).*ph_diff,5);
+ph_diff_cmb(isnan(ph_diff_cmb)) = 0;
 
 nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
@@ -29,12 +30,15 @@ unph_diff_cmb = double(nii.img);
 unph_te1_cmb = unph_diff_cmb*TE1/(TE2-TE1);
 offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
 offsets = offsets./abs(offsets);
-
+offsets(isnan(offsets)) = 0;
 
 for chan = 1:nrcvrs
-    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(6./vox/2)*2+1); 
+    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(10./vox/2)*2+1); 
     offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
 end
+
+%nii = make_nii(angle(offsets),vox);
+%save_nii(nii,'offsets.nii');
 
 % combine phase according to complex summation
 offsets = repmat(offsets,[1,1,1,ne,1]);
