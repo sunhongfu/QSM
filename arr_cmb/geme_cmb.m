@@ -40,6 +40,11 @@ fid = fopen(['wrapped_phase_diff.dat'],'w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
 
+mask_unwrp = uint8(abs(mask)*255);
+fid = fopen('mask_unwrp.dat','w');
+fwrite(fid,mask_unwrp,'uchar');
+fclose(fid);
+
 bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
     'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
 unix(bash_script) ;
