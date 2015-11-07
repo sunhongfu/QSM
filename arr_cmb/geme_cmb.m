@@ -28,7 +28,10 @@ save_nii(nii,'ph_diff.nii');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % best path unwrapping
-unix('cp /home/hsun/Documents/MATLAB/3DSRNCP 3DSRNCP');
+% to locate the 3DSRNCP
+[pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
+setenv('pathstr',pathstr);
+% unix('cp /home/hsun/Documents/MATLAB/3DSRNCP 3DSRNCP');
 setenv('nv',num2str(imsize(1)));
 setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
@@ -37,7 +40,7 @@ fid = fopen(['wrapped_phase_diff.dat'],'w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
 
-bash_script = ['./3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
+bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
     'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
 unix(bash_script) ;
 
