@@ -16,7 +16,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .tik_reg   - Tikhonov regularization for RESHARP       : 0.0005
 %    .t_svd     - truncation of SVD for SHARP               : 0.05
 %    .tv_reg    - Total variation regularization parameter  : 0.0005
-%    .inv_num   - iteration number of TVDI (nlcg)           : 200
+%    .inv_num   - iteration number of TVDI (nlcg)           : 500
 %    .echo_num  - keep only the first 'echo_num' echoes     : 5
 %    .fit_thr   - truncation level on fitting residual      : 10
 %    .clean_all - clean all the temp nifti results          : 1
@@ -91,7 +91,7 @@ if ~ isfield(options,'tv_reg')
 end
 
 if ~ isfield(options,'inv_num')
-    options.inv_num = 200;
+    options.inv_num = 500;
 end
 
 if ~ isfield(options,'clean_all')
@@ -200,7 +200,7 @@ for echo = 1:size(ph_cmb,4)
 end
 
 img_cmb = mag_cmb.*exp(1j.*ph_cmb);
-clear mag_cmb ph_cmb
+% clear mag_cmb ph_cmb
 
 
 % keep only the first 'echo_num' echoes

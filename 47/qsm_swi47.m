@@ -178,7 +178,7 @@ if Pars.RCVRS_ > 1
     disp('--> combine RF rcvrs ...');
     img_cmb = adaptive_cmb(img_corr,voxelSize,ref_coil,eig_rad);
 else  % single channel  
-    img_cmb = img;
+    img_cmb = img_corr;
 end
 
 % save nifti
@@ -247,7 +247,8 @@ elseif strcmpi('bestpath',ph_unwrap)
 
     fid = fopen('unwrapped_phase.dat','r');
     unph = fread(fid,'float');
-    unph = reshape(unph - unph(1) ,[nv,np,ns]);
+    % unph = reshape(unph - unph(1) ,[nv,np,ns]);
+    unph = reshape(unph,[nv,np,ns]);
     fclose(fid);
     nii = make_nii(unph,voxelSize);
     save_nii(nii,'unph.nii');

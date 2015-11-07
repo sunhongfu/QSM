@@ -1,4 +1,4 @@
-function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,vox,ker_rad,tik_reg)
+function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,vox,ker_rad,tik_reg,cgs_num)
 %   [LSF,MASK_ERO] = RESHARP(TFS,MASK,VOX,KER_RAD,TIK_REG)
 %
 %   LFS         : local field shift after background removal
@@ -8,6 +8,7 @@ function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
 %   KER_RAD     : radius of convolution kernel (mm), e.g. 4
 %   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-3
+%	CGS_NUM     : Number of CGS times of iteration
 %
 %Method is described in the paper:
 %Sun, H. and Wilman, A. H. (2013), 
@@ -24,6 +25,10 @@ end
 
 if ~ exist('tik_reg','var') || isempty(tik_reg)
     tik_reg = 1e-3;
+end
+
+if ~ exist('cgs_num','var') || isempty(cgs_num)
+    cgs_num = 500;
 end
 
 imsize = size(tfs);
@@ -81,7 +86,7 @@ b = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),
 b = b(:);
 
 % b = H'*(H*tfs(:));
-m = cgs(@Afun, b, 1e-10, 200);
+m = cgs(@Afun, b, 1e-10, cgs_num);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
 
