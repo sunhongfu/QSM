@@ -1,14 +1,15 @@
-function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm)
+function [sus,res] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm)
 %TVDI Total variation dipole inversion.
-
+%
 % Method is similar to Appendix in the following paper
 % Lustig, M., Donoho, D. and Pauly, J. M. (2007), 
 % Sparse MRI: The application of compressed sensing for rapid MR imaging. 
 % Magn Reson Med, 58: 1182–1195. doi: 10.1002/mrm.21391
-
-%   SUS = TVDI(LFS,MASK,VOX,TV_REG,WEIGHTS,THETA)
+%
+%   [SUS,RES] = TVDI(LFS,MASK,VOX,TV_REG,WEIGHTS,THETA)
 %
 %   SUS    : susceptibility distribution after dipole inversion
+%   RES    : residual field after QSM fitting
 %   LFS    : local field shift (field perturbation map)
 %   MASK   : binary mask defining ROI
 %   VOX    : voxel size, e.g. [1 1 1] for isotropic resolution
@@ -16,6 +17,8 @@ function [sus,residual_field] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, It
 %   WEIGHTS: weights for the data consistancy term
 %   Z_PRJS : normal vector of the imaging plane
 %   ITNLIM : interation numbers of nlcg
+%   PNORM  : L1 or L2 norm regularization
+
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
     z_prjs = [0, 0, 1]; % PURE axial slices
@@ -80,27 +83,16 @@ param.data = lfs;
 param.wt = W; % weighting matrix
 
 
-tmp = fftn(lfs)./D;
-T = 0.2; % truncation level
-tmp(abs(D)<T) = 0;
-sus_dc = real(mask.*ifftn(tmp));
-nii = make_nii(sus_dc, vox);
-save_nii(nii,'sus_dc.nii');
 
 % non-linear conjugate gradient method
 sus = nlcg(zeros(Nx,Ny,Nz), param);
-% sus = nlcg(sus_dc, param);
 
-% sus = real(sus).*mask;
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
+% sus = real(sus).*mask;
 sus = real(sus);
 
-residual_field = lfs - real(ifftn(D.*fftn(sus)));
+% residual difference between fowardly calculated field and lfs
+res = lfs - real(ifftn(D.*fftn(sus)));
 
-% nii = make_nii(real(ifftn(D.*fftn(sus))));
-% save_nii(nii,'fit.nii');
-
-% nii = make_nii(lfs,vox);
-% save_nii(nii,'lfs.nii');
 end

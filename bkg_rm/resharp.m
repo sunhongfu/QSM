@@ -6,7 +6,7 @@ function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,
 %   TFS         : input total field shift
 %   MASK        : binary mask defining the brain ROI
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
-%   KER_RAD     : radius of convolution kernel (mm), e.g. 4
+%   KER_RAD     : radius of convolution kernel (mm), e.g. 3
 %   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-3
 %	CGS_NUM     : Number of CGS times of iteration
 %
@@ -20,7 +20,7 @@ if ~ exist('vox','var') || isempty(vox)
 end
 
 if ~ exist('ker_rad','var') || isempty(ker_rad)
-    ker_rad = 4;
+    ker_rad = 3;
 end
 
 if ~ exist('tik_reg','var') || isempty(tik_reg)
@@ -86,7 +86,7 @@ b = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),
 b = b(:);
 
 % b = H'*(H*tfs(:));
-m = cgs(@Afun, b, 1e-10, cgs_num);
+m = cgs(@Afun, b, 1e-6, cgs_num);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
 
