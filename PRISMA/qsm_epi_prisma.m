@@ -450,9 +450,11 @@ if sum(strcmpi('pdf',bkg_rm))
 
     % align sus_pdf_all
     unix('cp mag_all.mat PDF/spm_realign/sus_pdf_all.mat');
-    P = spm_select('ExtList', 'PDF/spm_realign', '^sus_pdf_all.nii',Inf);
+    cd('PDF/spm_realign');
+    P = spm_select('ExtList', pwd, '^sus_pdf_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
+    cd ../..
 end
 
 if sum(strcmpi('sharp',bkg_rm))
@@ -467,9 +469,11 @@ if sum(strcmpi('sharp',bkg_rm))
 
     % align sus_sharp_all
     unix('cp mag_all.mat SHARP/spm_realign/sus_sharp_all.mat');
+    cd('SHARP/spm_realign');
     P = spm_select('ExtList', 'SHARP/spm_realign', '^sus_sharp_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
+    cd .../..
 end
 
 if sum(strcmpi('resharp',bkg_rm))
@@ -484,9 +488,11 @@ if sum(strcmpi('resharp',bkg_rm))
 
     % align sus_resharp_all
     unix('cp mag_all.mat RESHARP/spm_realign/sus_resharp_all.mat');
-    P = spm_select('ExtList', 'RESHARP/spm_realign', '^sus_resharp_all.nii',Inf);
+    cd('RESHARP/spm_realign');
+    P = spm_select('ExtList', pwd, '^sus_resharp_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
+    cd ../..
 end
 
 if sum(strcmpi('esharp',bkg_rm))
@@ -501,9 +507,11 @@ if sum(strcmpi('esharp',bkg_rm))
 
     % align sus_esharp_all
     unix('cp mag_all.mat ESHARP/spm_realign/sus_esharp_all.mat');
+    cd('ESHARP/spm_realign');
     P = spm_select('ExtList', 'ESHARP/spm_realign', '^sus_esharp_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
+    cd ../..
 end
 
 if sum(strcmpi('lbv',bkg_rm))
@@ -518,9 +526,11 @@ if sum(strcmpi('lbv',bkg_rm))
 
     % align sus_lbv_all
     unix('cp mag_all.mat LBV/spm_realign/sus_lbv_all.mat');
+    cd('LBV/spm_realign');
     P = spm_select('ExtList', 'LBV/spm_realign', '^sus_lbv_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
+    cd ../..
 end
 
 
