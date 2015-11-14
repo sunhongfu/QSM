@@ -203,6 +203,7 @@ for i = 1:imsize(4) % all time series
     save_nii(nii,['BET' num2str(i,'%03i') '_mask.nii']);
     mask = mask_all(:,:,:,i);
     mag = mag_all(:,:,:,i);
+    ph = ph_all(:,:,:,i);
     
     % unwrap the phase
     disp('--> unwrap aliasing phase using prelude...');
@@ -214,6 +215,60 @@ for i = 1:imsize(4) % all time series
     unix('gunzip -f unph${time_series}.nii.gz');
     nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
     unph = double(nii.img);
+
+
+    % unwrap the phase
+    if strcmpi('prelude',ph_unwrap)
+        % unwrap phase with PRELUDE
+        disp('--> unwrap aliasing phase ...');
+        setenv('time_series',num2str(i,'%03i'));
+        bash_script = ['prelude -a src/mag${time_series}.nii ' ...
+            '-p src/ph${time_series}.nii -u unph${time_series}.nii ' ...
+            '-m BET${time_series}_mask.nii -n 8'];
+        unix(bash_script);
+        unix('gunzip -f unph${time_series}.nii.gz');
+        nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
+        unph = double(nii.img);
+
+    elseif strcmpi('laplacian',ph_unwrap)
+        % Ryan Topfer's Laplacian unwrapping
+        disp('--> unwrap aliasing phase using laplacian...');
+        Options.voxelSize = vox;
+        unph = lapunwrap(ph, Options);
+        nii = make_nii(unph, vox);
+        save_nii(nii,['unph_lap' num2str(i,'%03i') '.nii']);
+
+    elseif strcmpi('bestpath',ph_unwrap)
+        % unwrap the phase using best path
+        disp('--> unwrap aliasing phase using bestpath...');
+            [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
+        setenv('pathstr',pathstr);
+        setenv('nv',num2str(imsize(1)));
+        setenv('np',num2str(imsize(2)));
+        setenv('ns',num2str(imsize(3)));
+
+        fid = fopen('wrapped_phase.dat','w');
+        fwrite(fid,ph,'float');
+        fclose(fid);
+        % mask_unwrp = uint8(hemo_mask.*255);
+        mask_unwrp = uint8(abs(mask)*255);
+        fid = fopen('mask_unwrp.dat','w');
+        fwrite(fid,mask_unwrp,'uchar');
+        fclose(fid);
+
+        bash_script = ['${pathstr}/3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
+            '$nv $np $ns reliability.dat'];
+        unix(bash_script);
+
+        fid = fopen('unwrapped_phase.dat','r');
+        unph = fread(fid,'float');
+        tmp = fread(fid,'float');
+        unph = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi,imsize(1:3)).*mask;
+        fclose(fid);
+
+        nii = make_nii(unph, vox);
+        save_nii(nii,['unph_bestpath' num2str(i,'%03i') '.nii']);
+    end
 
 	% normalize to ppm unit
 	tfs = unph/(2.675e8*dicom_info.EchoTime*dicom_info.MagneticFieldStrength)*1e9; % unit ppm
@@ -377,7 +432,6 @@ for i = 1:imsize(4) % all time series
         nii = make_nii(sus_lbv.*mask_lbv,vox);
         save_nii(nii,['LBV/sus_lbv' num2str(i,'%03i') '.nii']);
     end
-
 
 end
 

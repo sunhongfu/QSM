@@ -205,13 +205,7 @@ elseif strcmpi('bestpath',ph_unwrap)
     fclose(fid);
 
     nii = make_nii(reliability_raw.*mask,vox);
-    save_nii(nii,'reliability_raw.nii');   
-    % reliability = 1./reliability.*mask;
-    % % reliability_smooth = smooth3(reliability,'gaussian',[7,7,3],1);
-    % reliability(reliability <= 0.1) = 0;
-    % reliability(reliability > 0.1) = 1;
-    % nii = make_nii(reliability,vox);
-    % save_nii(nii,'reliability.nii');
+    save_nii(nii,'reliability_raw.nii');
 
 else
     error('what unwrapping methods to use? prelude or laplacian or bestpath?')
