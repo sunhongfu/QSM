@@ -187,7 +187,7 @@ mask = double(nii.img);
 % always use geme_cmb even for only 1 receiver
 % this function can properly remove offset
 % if par.nrcvrs > 1
-    ph_cmb = geme_cmb(img,voxelSize,te);
+    ph_cmb = geme_cmb(img,voxelSize,te,mask);
 % else
 %     ph_cmb = angle(img);
 % end
