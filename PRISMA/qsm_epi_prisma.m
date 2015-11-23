@@ -100,8 +100,9 @@ inv_num   = options.inv_num;
 % read in DICOMs of both magnitude and raw unfiltered phase images
 path_mag = cd(cd(path_mag));
 path_ph = cd(cd(path_ph));
+path_out = cd(cd(path_out));
 mag_list = dir(path_mag);
-
+cd(path_out);
 
 % mosaic form to 4D nifti
 % use the program dcm2nii from MRIcron
@@ -473,7 +474,7 @@ if sum(strcmpi('sharp',bkg_rm))
     P = spm_select('ExtList', pwd, '^sus_sharp_all.nii',Inf);
     flags.mask=0;
     spm_reslice(P,flags);
-    cd .../..
+    cd ../..
 end
 
 if sum(strcmpi('resharp',bkg_rm))
