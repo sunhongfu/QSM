@@ -228,45 +228,50 @@ elseif strcmpi('laplacian',ph_unwrap)
 elseif strcmpi('bestpath',ph_unwrap)
     % unwrap the phase using best path
     disp('--> unwrap aliasing phase using bestpath...');
+        [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
+    setenv('pathstr',pathstr);
+    setenv('nv',num2str(nv));
+    setenv('np',num2str(np));
+    setenv('ns',num2str(ns));
+
     fid = fopen('wrapped_phase.dat','w');
     fwrite(fid,angle(img_cmb),'float');
     fclose(fid);
-    % mask_unwrp = uint8(hemo_mask.*255);
     mask_unwrp = uint8(abs(mask)*255);
     fid = fopen('mask_unwrp.dat','w');
     fwrite(fid,mask_unwrp,'uchar');
     fclose(fid);
 
-    unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
-    setenv('nv',num2str(nv));
-    setenv('np',num2str(np));
-    setenv('ns',num2str(ns));
-    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat ' ...
-        'unwrapped_phase.dat $nv $np $ns reliability.dat'];
-    unix(bash_script) ;
+    bash_script = ['${pathstr}/3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
+        '$nv $np $ns reliability.dat'];
+    unix(bash_script);
 
     fid = fopen('unwrapped_phase.dat','r');
-    unph = fread(fid,'float');
-    % unph = reshape(unph - unph(1) ,[nv,np,ns]);
-    unph = reshape(unph,[nv,np,ns]);
+    tmp = fread(fid,'float');
+    unph = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi,[nv,np,ns]).*mask;
     fclose(fid);
+
     nii = make_nii(unph,voxelSize);
-    save_nii(nii,'unph.nii');
+    save_nii(nii,'unph_bestpath.nii');
 
     fid = fopen('reliability.dat','r');
     reliability_raw = fread(fid,'float');
-    fclose(fid);
     reliability_raw = reshape(reliability_raw,[nv,np,ns]);
-    reliability = mask;
-    reliability(reliability_raw >= 20) = 0;
-    % reliability(reliability > 0.1) = 1;
-    nii = make_nii(reliability,voxelSize);
-    save_nii(nii,'reliability.nii');
-    weights = abs(img_cmb)./max(abs(img_cmb(:))).*mask.*reliability;
-    weights = smooth3(weights,'gaussian',[7,7,3],1);
-    % weights = smooth3(weights,'gaussian',[7,7,3],0.5);
-    nii = make_nii(weights,voxelSize);
-    save_nii(nii,'weights.nii');
+    fclose(fid);
+
+    nii = make_nii(reliability_raw.*mask,voxelSize);
+    save_nii(nii,'reliability_raw.nii');
+    
+    % reliability = mask;
+    % reliability(reliability_raw >= 20) = 0;
+    % % reliability(reliability > 0.1) = 1;
+    % nii = make_nii(reliability,voxelSize);
+    % save_nii(nii,'reliability.nii');
+    % weights = abs(img_cmb)./max(abs(img_cmb(:))).*mask.*reliability;
+    % weights = smooth3(weights,'gaussian',[7,7,3],1);
+    % % weights = smooth3(weights,'gaussian',[7,7,3],0.5);
+    % nii = make_nii(weights,voxelSize);
+    % save_nii(nii,'weights.nii');
 else
     error('what unwrapping methods to use? prelude or laplacian or bestpath?')
 end
