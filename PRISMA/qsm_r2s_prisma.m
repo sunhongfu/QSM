@@ -449,7 +449,7 @@ end
 % LBV
 if sum(strcmpi('lbv',bkg_rm))
     disp('--> LBV to remove background field ...');
-    lfs_lbv = LBV(tfs,mask.*R,imsize,vox,lbv_tol,lbv_peel); % strip 2 layers
+    lfs_lbv = LBV(tfs,mask.*R,imsize(1:3),vox,lbv_tol,lbv_peel); % strip 2 layers
     mask_lbv = ones(imsize(1:3));
     mask_lbv(lfs_lbv==0) = 0;
     % 3D 2nd order polyfit to remove any residual background
