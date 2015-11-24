@@ -4,26 +4,27 @@ function qsm_r2s_prisma(path_mag, path_ph, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_MAG    - directory of magnitude dicoms
-%   PATH_PH     - directory of unfiltered phase dicoms
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI_PRISMA
-%   OPTIONS     - parameter structure including fields below
-%    .readout   - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
-%    .r_mask    - whether to enable the extra masking       : 1
-%    .fit_thr   - extra filtering based on the fit residual : 40
-%    .bet_thr   - threshold for BET brain mask              : 0.4
-%    .ph_unwrap - 'prelude' or 'bestpath'                   : 'prelude'
-%    .bkg_rm    - background field removal method(s)        : 'resharp'
-%                 options: 'pdf','sharp','resharp','esharp','lbv'
-%                 to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
-%    .t_svd     - truncation of SVD for SHARP               : 0.1
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 3
-%    .tik_reg   - Tikhonov regularization for resharp       : 1e-3
-%    .cgs_num   - max interation number for RESHARP         : 500
-%    .lbv_peel  - LBV layers to be peeled off               : 2
-%    .lbv_tol   - LBV interation error tolerance            : 0.01
-%    .tv_reg    - Total variation regularization parameter  : 5e-4
-%    .tvdi_n    - iteration number of TVDI (nlcg)           : 500
+%   PATH_MAG     - directory of magnitude dicoms
+%   PATH_PH      - directory of unfiltered phase dicoms
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SWI_PRISMA
+%   OPTIONS      - parameter structure including fields below
+%    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
+%    .r_mask     - whether to enable the extra masking       : 1
+%    .fit_thr    - extra filtering based on the fit residual : 40
+%    .bet_thr    - threshold for BET brain mask              : 0.4
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
+%    .bkg_rm     - background field removal method(s)        : 'resharp'
+%                  options: 'pdf','sharp','resharp','esharp','lbv'
+%                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
+%    .t_svd      - truncation of SVD for SHARP               : 0.1
+%    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
+%    .tik_reg    - Tikhonov regularization for resharp       : 1e-3
+%    .cgs_num    - max interation number for RESHARP         : 500
+%    .lbv_peel   - LBV layers to be peeled off               : 2
+%    .lbv_tol    - LBV interation error tolerance            : 0.01
+%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 
 if ~ exist('path_mag','var') || isempty(path_mag)
     error('Please input the directory of magnitude DICOMs')
@@ -56,6 +57,10 @@ end
 
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.4;
+end
+
+if ~ isfield(options,'bet_smooth')
+    options.bet_smooth = 2;
 end
 
 if ~ isfield(options,'ph_unwrap')
@@ -101,20 +106,21 @@ end
 
 
 
-readout   = options.readout;
-r_mask    = options.r_mask;
-fit_thr   = options.fit_thr;
-bet_thr   = options.bet_thr;
-ph_unwrap = options.ph_unwrap;
-bkg_rm    = options.bkg_rm;
-t_svd     = options.t_svd;
-smv_rad   = options.smv_rad;
-tik_reg   = options.tik_reg;
-cgs_num   = options.cgs_num;
-lbv_tol   = options.lbv_tol;
-lbv_peel  = options.lbv_peel;
-tv_reg    = options.tv_reg;
-inv_num   = options.inv_num;
+readout    = options.readout;
+r_mask     = options.r_mask;
+fit_thr    = options.fit_thr;
+bet_thr    = options.bet_thr;
+bet_smooth = options.bet_smooth;
+ph_unwrap  = options.ph_unwrap;
+bkg_rm     = options.bkg_rm;
+t_svd      = options.t_svd;
+smv_rad    = options.smv_rad;
+tik_reg    = options.tik_reg;
+cgs_num    = options.cgs_num;
+lbv_tol    = options.lbv_tol;
+lbv_peel   = options.lbv_peel;
+tv_reg     = options.tv_reg;
+inv_num    = options.inv_num;
 
 
 % read in DICOMs of both magnitude and raw unfiltered phase images
@@ -176,8 +182,9 @@ end
 % generate mask from magnitude of the 1th echo
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
+setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet src/mag1.nii BET -f ${bet_thr} -m -R');
+unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
