@@ -129,6 +129,13 @@ imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info
 			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
+% angles!!!
+Xz = dicom_info.ImageOrientationPatient(3);
+Yz = dicom_info.ImageOrientationPatient(6);
+Zz = sqrt(1 - Xz^2 - Yz^2);
+z_prjs = [Xz, Yz, Zz];
+
+
 
 chopper = double(mod(1:imsize(3),2)) ;
 chopper( chopper < 1 ) = -1 ;
