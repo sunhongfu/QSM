@@ -214,18 +214,6 @@ for i = 1:imsize(4) % all time series
     ph = ph_all(:,:,:,i);
     
     % unwrap the phase
-    disp('--> unwrap aliasing phase using prelude...');
-    setenv('time_series',num2str(i,'%03i'));
-    bash_script = ['prelude -a src/mag${time_series}.nii ' ...
-        '-p src/ph${time_series}.nii -u unph${time_series}.nii ' ...
-        '-m BET${time_series}_mask.nii -n 8'];
-    unix(bash_script);
-    unix('gunzip -f unph${time_series}.nii.gz');
-    nii = load_nii(['unph' num2str(i,'%03i') '.nii']);
-    unph = double(nii.img);
-
-
-    % unwrap the phase
     if strcmpi('prelude',ph_unwrap)
         % unwrap phase with PRELUDE
         disp('--> unwrap aliasing phase ...');
