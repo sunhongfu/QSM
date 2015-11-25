@@ -36,4 +36,7 @@ for i = 1:ns
 	polyfit_i = reshape(polyfit_i,[np,nv]);
 
 	polyfit(:,:,i) = polyfit_i;
+
+	polyfit(isnan(polyfit)) = 0;
+	polyfit(isinf(polyfit)) = 0;
 end
