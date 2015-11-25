@@ -342,7 +342,7 @@ end
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-tfs = tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
 
 nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
