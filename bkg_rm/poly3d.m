@@ -45,3 +45,7 @@ residual = I - P*coeff; % residual after polyfit
 polyfit = zeros(np*nv*nv2,1);
 polyfit(logical(mask(:))) = residual;
 polyfit = reshape(polyfit,[np,nv,nv2]);
+
+
+polyfit(isnan(polyfit)) = 0;
+polyfit(isinf(polyfit)) = 0;
