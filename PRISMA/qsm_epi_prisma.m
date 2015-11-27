@@ -204,6 +204,9 @@ if nVol > 1
     nii = make_nii(mask_rep,vox);
     save_nii(nii,'mask_rep.nii');
 
+    nii = make_nii(mag_all,vox);
+    save_nii(nii,'mag_all.nii');
+    
     % spm to align all volumes
     P = spm_select('ExtList', pwd, '^mag_all.nii',Inf);
     flags.mask=0;
