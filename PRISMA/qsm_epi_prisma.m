@@ -102,36 +102,53 @@ path_mag = cd(cd(path_mag));
 path_ph = cd(cd(path_ph));
 path_out = cd(cd(path_out));
 mag_list = dir(path_mag);
-cd(path_out);
+ph_list = dir(path_ph);
 
 % mosaic form to 4D nifti
-% use the program dcm2nii from MRIcron
-setenv('path_mag',path_mag);
-setenv('path_ph',path_ph);
-setenv('path_out',path_out);
-unix('dcm2nii -o ${path_out} ${path_mag}');
-unix('mv *.nii.gz mag.nii.gz');
-unix('gunzip *.nii.gz');
+for i = 3:length(mag_list)
+    mag_mosaic(:,:,i-2) = single(dicomread([path_mag,filesep,mag_list(i).name]));
+end
+for i = 3:length(ph_list)
+    ph_mosaic(:,:,i-2) = single(dicomread([path_ph,filesep,ph_list(i).name]));
+    ph_mosaic(:,:,i-2) = ph_mosaic(:,:,i-2)/4095*2*pi - pi;
+end
 
-unix('dcm2nii -o ${path_out} ${path_ph}');
-unix('mv *.nii.gz ph.nii.gz');
-unix('gunzip *.nii.gz');
+% crop mosaic into individual images
+dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
+AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
+wRow = str2num(AcqMatrix{1});
+wCol = str2num(AcqMatrix{2});
+nCol = double(dicom_info.Width/wCol);
+nRow = double(dicom_info.Height/wRow);
 
+mag_all = zeros(wRow,wCol,nRow*nCol,size(mag_mosaic,3));
+ph_all = mag_all;
+for i = 1:size(mag_mosaic,3)
+    for x = 1:wRow
+        for y = 1:wCol
+            for z = 1:nRow*nCol
+                X = floor((z-1)/nCol)*wRow + x;
+                Y = mod(z-1,nCol)*wCol + y;
+                mag_all(x,y,z,i) = mag_mosaic(X,Y,i);
+                ph_all(x,y,z,i) = ph_mosaic(X,Y,i);
+            end
+        end
+    end
+end
 
-% read in the magnitude and phase niftis
-nii = load_nii([path_out,filesep,'mag.nii']);
-mag_all = double(nii.img);
-mag_all = flipdim(flipdim(mag_all,1),2);
+% remove zero slices
+ind = find(sum(sum(sum(mag_all,1),2),4)==0, 1)
+mag_all = mag_all(:,:,1:ind,:);
+ph_all = ph_all(:,:,1:ind,:);
 
-nii = load_nii([path_out,filesep,'ph.nii']);
-ph_all = double(nii.img);
-ph_all = flipdim(flipdim(ph_all,1),2);
-% covert phase range to [-pi, pi]
-ph_all = (ph_all - min(ph_all(:)))/(max(ph_all(:)) - min(ph_all(:)))*2*pi - pi;
-
+% permute the images to 
+% x:right-to-left
+% y:anterior-to-posterior
+% z:inferior-to-superior
+mag_all = permute(mag_all,[2 1 3 4]);
+ph_all = permute(ph_all,[2 1 3 4]);
 
 % get the sequence parameters
-dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 imsize = size(mag_all);
 
