@@ -4,22 +4,23 @@ function qsm_r2s47(path_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_IN     - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
-%   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_R2s47
-%   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 2
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
-%    .bet_thr   - threshold for BET brain mask              : 0.5
-%    .bkg_rm    - background field removal method(s)        : 'resharp'
-%	choices: 'pdf','sharp','resharp','esharp','lbv'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 4
-%    .tik_reg   - Tikhonov regularization for RESHARP       : 0.0005
-%    .t_svd     - truncation of SVD for SHARP               : 0.05
-%    .tv_reg    - Total variation regularization parameter  : 0.0005
-%    .inv_num   - iteration number of TVDI (nlcg)           : 500
-%    .echo_num  - keep only the first 'echo_num' echoes     : 5
-%    .fit_thr   - truncation level on fitting residual      : 10
-%    .clean_all - clean all the temp nifti results          : 1
+%   PATH_IN      - directory of .fid from gemsme3d sequence  : gemsme3d_R2s_01.fid
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_R2s47
+%   OPTIONS      - parameter structure including fields below
+%    .ref_coil   - reference coil to use for phase combine   : 2
+%    .eig_rad    - radius (mm) of eig decomp kernel          : 5
+%    .bet_thr    - threshold for BET brain mask              : 0.5
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .bkg_rm     - background field removal method(s)        : 'resharp'
+%	               choices: 'pdf','sharp','resharp','esharp','lbv'
+%    .smv_rad    - radius (mm) of SMV convolution kernel     : 4
+%    .tik_reg    - Tikhonov regularization for RESHARP       : 0.0005
+%    .t_svd      - truncation of SVD for SHARP               : 0.05
+%    .tv_reg     - Total variation regularization parameter  : 0.0005
+%    .inv_num    - iteration number of TVDI (nlcg)           : 500
+%    .echo_num   - keep only the first 'echo_num' echoes     : 5
+%    .fit_thr    - truncation level on fitting residual      : 10
+%    .clean_all  - clean all the temp nifti results          : 1
 
 
 % default settings
@@ -55,6 +56,10 @@ end
 
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.5;
+end
+
+if ~ isfield(options,'bet_smooth')
+    options.bet_smooth = 2;
 end
 
 if ~ isfield(options,'echo_num')
@@ -99,19 +104,20 @@ if ~ isfield(options,'clean_all')
 end
 
 
-ref_coil  = options.ref_coil;
-eig_rad   = options.eig_rad;
-bet_thr   = options.bet_thr;
-echo_num  = options.echo_num;
-r_mask    = options.r_mask; 
-fit_thr   = options.fit_thr;
-bkg_rm    = options.bkg_rm;
-smv_rad   = options.smv_rad;
-tik_reg   = options.tik_reg;
-t_svd     = options.t_svd;
-tv_reg    = options.tv_reg;
-inv_num   = options.inv_num;
-clean_all = options.clean_all;
+ref_coil   = options.ref_coil;
+eig_rad    = options.eig_rad;
+bet_thr    = options.bet_thr;
+bet_smooth = options.bet_smooth;
+echo_num   = options.echo_num;
+r_mask     = options.r_mask; 
+fit_thr    = options.fit_thr;
+bkg_rm     = options.bkg_rm;
+smv_rad    = options.smv_rad;
+tik_reg    = options.tik_reg;
+t_svd      = options.t_svd;
+tv_reg     = options.tv_reg;
+inv_num    = options.inv_num;
+clean_all  = options.clean_all;
 
 
 % define directories
@@ -174,8 +180,9 @@ end
 % generate mask from combined magnitude of the 1th echo
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
+setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet combine/mag_cmb1.nii BET -f ${bet_thr} -m -R');
+unix('bet2 combine/mag_cmb1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');

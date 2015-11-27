@@ -1,18 +1,18 @@
-function qsm_r2s_prisma(path_mag, path_ph, path_out, options)
-%QSM_R2S_PRISMA Quantitative susceptibility mapping from R2s sequence at PRISMA (3T).
-%   QSM_R2S_PRISMA(PATH_MAG, PATH_PH, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
+
+function qsm_spgr_ge(path_dicom, path_out, options)
+%QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
+%   SM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_MAG     - directory of magnitude dicoms
-%   PATH_PH      - directory of unfiltered phase dicoms
+%   PATH_DICOM   - directory for input GE dicoms
 %   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SWI_PRISMA
 %   OPTIONS      - parameter structure including fields below
 %    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
 %    .r_mask     - whether to enable the extra masking       : 1
-%    .fit_thr    - extra filtering based on the fit residual : 40
+%    .fit_thr    - extra filtering based on the fit residual : 10
 %    .bet_thr    - threshold for BET brain mask              : 0.4
-%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .bet_smooth - smoothness of BET brain mask at edges     : 3
 %    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
 %    .bkg_rm     - background field removal method(s)        : 'resharp'
 %                  options: 'pdf','sharp','resharp','esharp','lbv'
@@ -25,13 +25,10 @@ function qsm_r2s_prisma(path_mag, path_ph, path_out, options)
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
 %    .tv_reg     - Total variation regularization parameter  : 5e-4
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
+%    .interp     - interpolate the image to the double size  : 0
 
-if ~ exist('path_mag','var') || isempty(path_mag)
-    error('Please input the directory of magnitude DICOMs')
-end
-
-if ~ exist('path_ph','var') || isempty(path_ph)
-    error('Please input the directory of unfiltered phase DICOMs')
+if ~ exist('path_dicom','var') || isempty(path_dicom)
+    error('Please input the directory of DICOMs')
 end
 
 if ~ exist('path_out','var') || isempty(path_out)
@@ -52,7 +49,7 @@ if ~ isfield(options,'r_mask')
 end
 
 if ~ isfield(options,'fit_thr')
-    options.fit_thr = 40;
+    options.fit_thr = 10;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -60,7 +57,7 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'bet_smooth')
-    options.bet_smooth = 2;
+    options.bet_smooth = 3;
 end
 
 if ~ isfield(options,'ph_unwrap')
@@ -104,7 +101,9 @@ if ~ isfield(options,'inv_num')
     options.inv_num = 500;
 end
 
-
+if ~ isfield(options,'interp')
+    options.interp = 0;
+end
 
 readout    = options.readout;
 r_mask     = options.r_mask;
@@ -121,51 +120,81 @@ lbv_tol    = options.lbv_tol;
 lbv_peel   = options.lbv_peel;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
+interp     = options.interp;
 
+% read in MESPGR dicoms (multi-echo gradient-echo)
+path_dicom = cd(cd(path_dicom));
+list_dicom = dir(path_dicom);
 
-% read in DICOMs of both magnitude and raw unfiltered phase images
-% read in magnitude DICOMs
-path_mag = cd(cd(path_mag));
-mag_list = dir(path_mag);
+dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
+dicom_info.EchoTrainLength = 8;
 
-% get the sequence parameters
-dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
-EchoTrainLength = dicom_info.EchoTrainLength;
-for i = 1:EchoTrainLength % read in TEs
-    dicom_info = dicominfo([path_mag,filesep,mag_list(3+(i-1)*(length(mag_list)-2)./EchoTrainLength).name]);
-    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
-end
+imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/4, ...
+			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
-% angles!!! (z projections)
+% angles!!!
 Xz = dicom_info.ImageOrientationPatient(3);
 Yz = dicom_info.ImageOrientationPatient(6);
 Zz = sqrt(1 - Xz^2 - Yz^2);
 z_prjs = [Xz, Yz, Zz];
 
-for i = 3:length(mag_list)
-    [NS,NE] = ind2sub([(length(mag_list)-2)./EchoTrainLength,EchoTrainLength],i-2);
-    mag(:,:,NS,NE) = permute(single(dicomread([path_mag,filesep,mag_list(i).name])),[2,1]);
-end
-% size of matrix
-imsize = size(mag);
 
-% read in phase DICOMs
-path_ph = cd(cd(path_ph));
-ph_list = dir(path_ph);
 
-for i = 3:length(ph_list)
-    [NS,NE] = ind2sub([(length(ph_list)-2)./EchoTrainLength,EchoTrainLength],i-2);
-    ph(:,:,NS,NE) = permute(single(dicomread([path_ph,filesep,ph_list(i).name])),[2,1]);    % covert to [-pi pi] range
-    ph(:,:,NS,NE) = ph(:,:,NS,NE)/4095*2*pi - pi;
+chopper = double(mod(1:imsize(3),2)) ;
+chopper( chopper < 1 ) = -1 ;
+
+Counter = 1;
+for zCount = 1 : imsize(3)
+    for echoCount = 1 : imsize(4)
+
+		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        Counter = Counter + 1 ;
+        
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        Counter = Counter + 1 ;
+        
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        theReal = ...
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
+        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
+	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+		Counter = Counter + 1 ;
+        
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        theImag = ...
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;    
+        Counter = Counter + 1 ;
+        
+        img(:,:,zCount,echoCount) = theReal + 1j * theImag ;
+
+	end
+
 end
+
+% interpolate the images to the double size
+if interp
+    img = single(img);
+    % zero padding the k-space
+    k = fftshift(fftshift(fftshift(fft(fft(fft(img,[],1),[],2),[],3),1),2),3);
+    k = padarray(k,double(imsize(1:3)/2));
+    img = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
+    clear k;
+    imsize = size(img);
+    vox = vox/2;
+end
+
+mag = abs(img);
+ph = angle(img);
+clear img
 
 
 % define output directories
-path_qsm = [path_out '/QSM_R2S_PRISMA'];
+path_qsm = [path_out '/QSM_SPGR_GE'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
+
 
 
 % save magnitude and raw phase niftis for each echo
@@ -217,11 +246,11 @@ if strcmpi('prelude',ph_unwrap)
     setenv('echo_num',num2str(imsize(4)));
     bash_command = sprintf(['for ph in src/ph_corr[1-$echo_num].nii\n' ...
     'do\n' ...
-    '	base=`basename $ph`;\n' ...
-    '	dir=`dirname $ph`;\n' ...
-    '	mag=$dir/"mag"${base:7};\n' ...
-    '	unph="unph"${base:7};\n' ...
-    '	prelude -a $mag -p $ph -u $unph -m BET_mask.nii -n 12&\n' ...
+    '   base=`basename $ph`;\n' ...
+    '   dir=`dirname $ph`;\n' ...
+    '   mag=$dir/"mag"${base:7};\n' ...
+    '   unph="unph"${base:7};\n' ...
+    '   prelude -a $mag -p $ph -u $unph -m BET_mask.nii -n 12&\n' ...
     'done\n' ...
     'wait\n' ...
     'gunzip -f unph*.gz\n']);
@@ -328,13 +357,13 @@ end
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-tfs = tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
 
 nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
 
 
-% background field removal
+% background field removal and dipole inversion
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
@@ -353,7 +382,7 @@ if sum(strcmpi('pdf',bkg_rm))
 
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,vox);
-    save_nii(nii,'PDF/sus_pdf.nii');
+    save_nii(nii,['PDF/sus_pdf_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % SHARP (t_svd: truncation threthold for t_svd)
@@ -374,7 +403,7 @@ if sum(strcmpi('sharp',bkg_rm))
    
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,vox);
-    save_nii(nii,'SHARP/sus_sharp.nii');
+    save_nii(nii,['SHARP/sus_sharp_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % RE-SHARP (tik_reg: Tikhonov regularization parameter)
@@ -395,7 +424,7 @@ if sum(strcmpi('resharp',bkg_rm))
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,'RESHARP/sus_resharp.nii');
+    save_nii(nii,['RESHARP/sus_resharp_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % E-SHARP (SHARP edge extension)
@@ -450,7 +479,7 @@ if sum(strcmpi('esharp',bkg_rm))
    
     % save nifti
     nii = make_nii(sus_esharp.*mask_esharp,vox);
-    save_nii(nii,'ESHARP/sus_esharp.nii');
+    save_nii(nii,['ESHARP/sus_esharp_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % LBV
@@ -473,7 +502,7 @@ if sum(strcmpi('lbv',bkg_rm))
 
     % save nifti
     nii = make_nii(sus_lbv.*mask_lbv,vox);
-    save_nii(nii,'LBV/sus_lbv.nii');
+    save_nii(nii,['LBV/sus_lbv_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 
