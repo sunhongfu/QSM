@@ -157,6 +157,7 @@ ph_all = permute(ph_all,[2 1 3 4]);
 % get the sequence parameters
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 imsize = size(mag_all);
+[~,~,~,nVol] = size(mag_all)
 
 % angles!!! (z projections)
 Xz = dicom_info.ImageOrientationPatient(3);
@@ -196,34 +197,38 @@ unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii(['BET_mask.nii']);
 mask = double(nii.img);
 
-% generate masks for all volumes
-mask_rep = repmat(mask,[1 1 1 size(mag_all,4)]);
-nii = make_nii(mask_rep,vox);
-save_nii(nii,'mask_rep.nii');
 
-% spm to align all volumes
-P = spm_select('ExtList', pwd, '^mag_all.nii',Inf);
-flags.mask=0;
-spm_realign(P);
-load mag_all.mat
-m=[vox(1) 0 0 0; 0 vox(2) 0 0; 0 0 vox(3) 0; 0 0 0 1];
-for i = 2:size(mat,3)
-    % mat(:,:,i) = inv(inv(m)*mat(:,:,i))*m;
-        mat(:,:,i) = m\(mat(:,:,i))*m;
+if nVol > 1
+    % generate masks for all volumes
+    mask_rep = repmat(mask,[1 1 1 size(mag_all,4)]);
+    nii = make_nii(mask_rep,vox);
+    save_nii(nii,'mask_rep.nii');
+
+    % spm to align all volumes
+    P = spm_select('ExtList', pwd, '^mag_all.nii',Inf);
+    flags.mask=0;
+    spm_realign(P);
+    load mag_all.mat
+    m=[vox(1) 0 0 0; 0 vox(2) 0 0; 0 0 vox(3) 0; 0 0 0 1];
+    for i = 2:size(mat,3)
+        % mat(:,:,i) = inv(inv(m)*mat(:,:,i))*m;
+            mat(:,:,i) = m\(mat(:,:,i))*m;
+    end
+    save('mask_rep.mat','mat');
+    P = spm_select('ExtList', pwd, '^mask_rep.nii',Inf);
+    flags.mask=0;
+    spm_reslice(P,flags);
+
+    nii = load_nii('rmask_rep.nii');
+    mask_all = nii.img;
+    mask_all(isnan(mask_all)) = 0;
+    mask_all(isinf(mask_all)) = 0;
+else
+    mask_all = mask;
 end
-save('mask_rep.mat','mat');
-P = spm_select('ExtList', pwd, '^mask_rep.nii',Inf);
-flags.mask=0;
-spm_reslice(P,flags);
-
-nii = load_nii('rmask_rep.nii');
-mask_all = nii.img;
-mask_all(isnan(mask_all)) = 0;
-mask_all(isinf(mask_all)) = 0;
-
 
 % do the remaining QSM steps individually for each volume
-for i = 1:imsize(4) % all time series
+for i = 1:nVol % all time series
     nii = make_nii(mask_all(:,:,:,i),vox);
     save_nii(nii,['BET' num2str(i,'%03i') '_mask.nii']);
     mask = mask_all(:,:,:,i);
@@ -449,103 +454,104 @@ for i = 1:imsize(4) % all time series
 end
 
 
-% align all susceptiblity maps using the matrix from magnitude
-% read in all susceptiblity nii into 4D
-if sum(strcmpi('pdf',bkg_rm))
-    mkdir('PDF/spm_realign')
-    listing=dir('PDF/sus_pdf*.nii');
-    for j = 1:length(listing)
-        nii = load_nii(['PDF',filesep,listing(j).name]);
-        sus_pdf_all(:,:,:,j) = double(nii.img);
+if nVol > 1
+    % align all susceptiblity maps using the matrix from magnitude
+    % read in all susceptiblity nii into 4D
+    if sum(strcmpi('pdf',bkg_rm))
+        mkdir('PDF/spm_realign')
+        listing=dir('PDF/sus_pdf*.nii');
+        for j = 1:length(listing)
+            nii = load_nii(['PDF',filesep,listing(j).name]);
+            sus_pdf_all(:,:,:,j) = double(nii.img);
+        end
+        nii = make_nii(sus_pdf_all,vox);
+        save_nii(nii,'PDF/spm_realign/sus_pdf_all.nii');
+
+        % align sus_pdf_all
+        unix('cp mag_all.mat PDF/spm_realign/sus_pdf_all.mat');
+        cd('PDF/spm_realign');
+        P = spm_select('ExtList', pwd, '^sus_pdf_all.nii',Inf);
+        flags.mask=0;
+        spm_reslice(P,flags);
+        cd ../..
     end
-    nii = make_nii(sus_pdf_all,vox);
-    save_nii(nii,'PDF/spm_realign/sus_pdf_all.nii');
 
-    % align sus_pdf_all
-    unix('cp mag_all.mat PDF/spm_realign/sus_pdf_all.mat');
-    cd('PDF/spm_realign');
-    P = spm_select('ExtList', pwd, '^sus_pdf_all.nii',Inf);
-    flags.mask=0;
-    spm_reslice(P,flags);
-    cd ../..
-end
+    if sum(strcmpi('sharp',bkg_rm))
+        mkdir('SHARP/spm_realign')
+        listing=dir('SHARP/sus_sharp*.nii');
+        for j = 1:length(listing)
+            nii = load_nii(['SHARP',filesep,listing(j).name]);
+            sus_sharp_all(:,:,:,j) = double(nii.img);
+        end
+        nii = make_nii(sus_sharp_all,vox);
+        save_nii(nii,'SHARP/spm_realign/sus_sharp_all.nii');
 
-if sum(strcmpi('sharp',bkg_rm))
-    mkdir('SHARP/spm_realign')
-    listing=dir('SHARP/sus_sharp*.nii');
-    for j = 1:length(listing)
-        nii = load_nii(['SHARP',filesep,listing(j).name]);
-        sus_sharp_all(:,:,:,j) = double(nii.img);
+        % align sus_sharp_all
+        unix('cp mag_all.mat SHARP/spm_realign/sus_sharp_all.mat');
+        cd('SHARP/spm_realign');
+        P = spm_select('ExtList', pwd, '^sus_sharp_all.nii',Inf);
+        flags.mask=0;
+        spm_reslice(P,flags);
+        cd ../..
     end
-    nii = make_nii(sus_sharp_all,vox);
-    save_nii(nii,'SHARP/spm_realign/sus_sharp_all.nii');
 
-    % align sus_sharp_all
-    unix('cp mag_all.mat SHARP/spm_realign/sus_sharp_all.mat');
-    cd('SHARP/spm_realign');
-    P = spm_select('ExtList', pwd, '^sus_sharp_all.nii',Inf);
-    flags.mask=0;
-    spm_reslice(P,flags);
-    cd ../..
-end
+    if sum(strcmpi('resharp',bkg_rm))
+        mkdir('RESHARP/spm_realign')
+        listing=dir('RESHARP/sus_resharp*.nii');
+        for j = 1:length(listing)
+            nii = load_nii(['RESHARP',filesep,listing(j).name]);
+            sus_resharp_all(:,:,:,j) = double(nii.img);
+        end
+        nii = make_nii(sus_resharp_all,vox);
+        save_nii(nii,'RESHARP/spm_realign/sus_resharp_all.nii');
 
-if sum(strcmpi('resharp',bkg_rm))
-    mkdir('RESHARP/spm_realign')
-    listing=dir('RESHARP/sus_resharp*.nii');
-    for j = 1:length(listing)
-        nii = load_nii(['RESHARP',filesep,listing(j).name]);
-        sus_resharp_all(:,:,:,j) = double(nii.img);
+        % align sus_resharp_all
+        unix('cp mag_all.mat RESHARP/spm_realign/sus_resharp_all.mat');
+        cd('RESHARP/spm_realign');
+        P = spm_select('ExtList', pwd, '^sus_resharp_all.nii',Inf);
+        flags.mask=0;
+        spm_reslice(P,flags);
+        cd ../..
     end
-    nii = make_nii(sus_resharp_all,vox);
-    save_nii(nii,'RESHARP/spm_realign/sus_resharp_all.nii');
 
-    % align sus_resharp_all
-    unix('cp mag_all.mat RESHARP/spm_realign/sus_resharp_all.mat');
-    cd('RESHARP/spm_realign');
-    P = spm_select('ExtList', pwd, '^sus_resharp_all.nii',Inf);
-    flags.mask=0;
-    spm_reslice(P,flags);
-    cd ../..
-end
+    if sum(strcmpi('esharp',bkg_rm))
+        mkdir('ESHARP/spm_realign')
+        listing=dir('ESHARP/sus_esharp*.nii');
+        for j = 1:length(listing)
+            nii = load_nii(['ESHARP',filesep,listing(j).name]);
+            sus_esharp_all(:,:,:,j) = double(nii.img);
+        end
+        nii = make_nii(sus_esharp_all,vox);
+        save_nii(nii,'ESHARP/spm_realign/sus_esharp_all.nii');
 
-if sum(strcmpi('esharp',bkg_rm))
-    mkdir('ESHARP/spm_realign')
-    listing=dir('ESHARP/sus_esharp*.nii');
-    for j = 1:length(listing)
-        nii = load_nii(['ESHARP',filesep,listing(j).name]);
-        sus_esharp_all(:,:,:,j) = double(nii.img);
+        % align sus_esharp_all
+        unix('cp mag_all.mat ESHARP/spm_realign/sus_esharp_all.mat');
+        cd('ESHARP/spm_realign');
+        P = spm_select('ExtList', pwd, '^sus_esharp_all.nii',Inf);
+        flags.mask=0;
+        spm_reslice(P,flags);
+        cd ../..
     end
-    nii = make_nii(sus_esharp_all,vox);
-    save_nii(nii,'ESHARP/spm_realign/sus_esharp_all.nii');
 
-    % align sus_esharp_all
-    unix('cp mag_all.mat ESHARP/spm_realign/sus_esharp_all.mat');
-    cd('ESHARP/spm_realign');
-    P = spm_select('ExtList', pwd, '^sus_esharp_all.nii',Inf);
-    flags.mask=0;
-    spm_reslice(P,flags);
-    cd ../..
-end
+    if sum(strcmpi('lbv',bkg_rm))
+        mkdir('LBV/spm_realign')
+        listing=dir('LBV/sus_lbv*.nii');
+        for j = 1:length(listing)
+            nii = load_nii(['LBV',filesep,listing(j).name]);
+            sus_lbv_all(:,:,:,j) = double(nii.img);
+        end
+        nii = make_nii(sus_lbv_all,vox);
+        save_nii(nii,'LBV/spm_realign/sus_lbv_all.nii');
 
-if sum(strcmpi('lbv',bkg_rm))
-    mkdir('LBV/spm_realign')
-    listing=dir('LBV/sus_lbv*.nii');
-    for j = 1:length(listing)
-        nii = load_nii(['LBV',filesep,listing(j).name]);
-        sus_lbv_all(:,:,:,j) = double(nii.img);
+        % align sus_lbv_all
+        unix('cp mag_all.mat LBV/spm_realign/sus_lbv_all.mat');
+        cd('LBV/spm_realign');
+        P = spm_select('ExtList', pwd, '^sus_lbv_all.nii',Inf);
+        flags.mask=0;
+        spm_reslice(P,flags);
+        cd ../..
     end
-    nii = make_nii(sus_lbv_all,vox);
-    save_nii(nii,'LBV/spm_realign/sus_lbv_all.nii');
-
-    % align sus_lbv_all
-    unix('cp mag_all.mat LBV/spm_realign/sus_lbv_all.mat');
-    cd('LBV/spm_realign');
-    P = spm_select('ExtList', pwd, '^sus_lbv_all.nii',Inf);
-    flags.mask=0;
-    spm_reslice(P,flags);
-    cd ../..
 end
-
 
 save('all.mat','-v7.3');
 cd(init_dir);
