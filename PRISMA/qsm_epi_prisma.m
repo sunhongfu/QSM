@@ -144,8 +144,10 @@ end
 
 % remove zero slices
 ind = find(sum(sum(sum(mag_all,1),2),4)==0, 1)
-mag_all = mag_all(:,:,1:ind,:);
-ph_all = ph_all(:,:,1:ind,:);
+if ~ isempty(ind)
+    mag_all = mag_all(:,:,1:ind,:);
+    ph_all = ph_all(:,:,1:ind,:);
+end
 
 % permute the images to 
 % x:right-to-left
@@ -157,7 +159,7 @@ ph_all = permute(ph_all,[2 1 3 4]);
 % get the sequence parameters
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 imsize = size(mag_all);
-[~,~,~,nVol] = size(mag_all)
+[~,~,~,nVol] = size(mag_all);
 
 % angles!!! (z projections)
 Xz = dicom_info.ImageOrientationPatient(3);
@@ -180,8 +182,6 @@ for i = 1:size(mag_all,4) % all time series
     nii = make_nii(ph_all(:,:,:,i),vox);
     save_nii(nii,['src/ph' num2str(i,'%03i') '.nii']);
 end
-nii = make_nii(mag_all,vox);
-save_nii(nii,'mag_all.nii');
 
 
 % generate BET on 1st volume
