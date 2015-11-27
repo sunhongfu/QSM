@@ -4,21 +4,22 @@ function qsm_epi47(path_in, path_out, options)
 %
 %   Re-define the following default settings if necessary
 %
-%   PATH_IN    - directory of .fid from gemsme3d sequence  : se_epi_dw***.fid
-%   PATH_OUT   - directory to save nifti and/or matrixes   : QSM_EPI
-%   OPTIONS     - parameter structure including fields below
-%    .ref_coil  - reference coil to use for phase combine   : 3
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
-%    .bet_thr   - threshold for BET brain mask              : 0.35
-%    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
-%    .bkg_rm    - background field removal method(s)        : 'resharp'
-%    .smv_rad   - radius (mm) of SMV convolution kernel     : 5
-%    .tik_reg   - Tikhonov regularization for RESHARP       : 5e-4
-%    .t_svd     - truncation of SVD for SHARP               : 0.05
-%    .lbv_layer - number of layers to be stripped off LBV   : 1
-%    .tv_reg    - Total variation regularization parameter  : 5e-4
-%    .inv_num   - iteration number of TVDI (nlcg)           : 500
-%    .save_all  - save the entire workspace/variables       : 0
+%   PATH_IN      - directory of .fid from gemsme3d sequence  : se_epi_dw***.fid
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_EPI
+%   OPTIONS      - parameter structure including fields below
+%    .ref_coil   - reference coil to use for phase combine   : 3
+%    .eig_rad    - radius (mm) of eig decomp kernel          : 5
+%    .bet_thr    - threshold for BET brain mask              : 0.35
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .ph_unwrap  - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
+%    .bkg_rm     - background field removal method(s)        : 'resharp'
+%    .smv_rad    - radius (mm) of SMV convolution kernel     : 5
+%    .tik_reg    - Tikhonov regularization for RESHARP       : 5e-4
+%    .t_svd      - truncation of SVD for SHARP               : 0.05
+%    .lbv_layer  - number of layers to be stripped off LBV   : 1
+%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .inv_num    - iteration number of TVDI (nlcg)           : 500
+%    .save_all   - save the entire workspace/variables       : 0
 
 % default settings
 if ~ exist('path_in','var') || isempty(path_in)
@@ -53,6 +54,10 @@ end
 
 if ~ isfield(options,'bet_thr')
     options.bet_thr = 0.35;
+end
+
+if ~ isfield(options,'bet_smooth')
+    options.bet_smooth = 2;
 end
 
 if ~ isfield(options,'ph_unwrap')
@@ -99,18 +104,19 @@ if ~ isfield(options,'save_all')
 end
 
 
-ref_coil  = options.ref_coil;
-eig_rad   = options.eig_rad;
-bet_thr   = options.bet_thr;
-ph_unwrap = options.ph_unwrap;
-bkg_rm    = options.bkg_rm;
-t_svd     = options.t_svd;
-smv_rad   = options.smv_rad;
-tik_reg   = options.tik_reg;
-lbv_layer = options.lbv_layer;
-tv_reg    = options.tv_reg;
-inv_num   = options.inv_num;
-save_all  = options.save_all;
+ref_coil   = options.ref_coil;
+eig_rad    = options.eig_rad;
+bet_thr    = options.bet_thr;
+bet_smooth = options.bet_smooth;
+ph_unwrap  = options.ph_unwrap;
+bkg_rm     = options.bkg_rm;
+t_svd      = options.t_svd;
+smv_rad    = options.smv_rad;
+tik_reg    = options.tik_reg;
+lbv_layer  = options.lbv_layer;
+tv_reg     = options.tv_reg;
+inv_num    = options.inv_num;
+save_all   = options.save_all;
 
 
 % 4.7T corey's EPI parameters
@@ -183,8 +189,9 @@ save_nii(nii,'all_mag_cmb.nii');
 [status,cmdout] = unix('rm BET*');
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
-bash_script = ['bet combine/mag_cmb001.nii BET ' ...
-	'-f ${bet_thr} -m -Z -R'];
+setenv('bet_smooth',num2str(bet_smooth));
+bash_script = ['bet2 combine/mag_cmb001.nii BET ' ...
+	'-f ${bet_thr} -m -w ${bet_smooth}'];
 unix(bash_script);
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
