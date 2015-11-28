@@ -284,7 +284,6 @@ for i = 1:nVol % all time series
         unix(bash_script);
 
         fid = fopen('unwrapped_phase.dat','r');
-        unph = fread(fid,'float');
         tmp = fread(fid,'float');
         unph = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi,imsize(1:3)).*mask;
         fclose(fid);
