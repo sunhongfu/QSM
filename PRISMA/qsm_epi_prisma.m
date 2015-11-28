@@ -122,17 +122,26 @@ end
 % crop mosaic into individual images
 dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
 AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
-wRow = str2num(AcqMatrix{1});
-wCol = str2num(AcqMatrix{2});
-nCol = double(dicom_info.Width/wCol);
-nRow = double(dicom_info.Height/wRow);
 
-mag_all = zeros(wRow,wCol,nRow*nCol,size(mag_mosaic,3));
+if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL')
+% phase encoding along column
+    wRow = str2num(AcqMatrix{1})/dicom_info.PercentSampling;
+    wCol = str2num(AcqMatrix{2});
+else
+    wCol = str2num(AcqMatrix{1})/dicom_info.PercentSampling;
+    wRow = str2num(AcqMatrix{2});
+end
+
+nCol = double(dicom_info.Columns/wCol);
+nRow = double(dicom_info.Rows/wRow);
+nSL = double(dicom_info.Private_0019_100a);
+
+mag_all = zeros(wRow,wCol,nSL,size(mag_mosaic,3));
 ph_all = mag_all;
 for i = 1:size(mag_mosaic,3)
     for x = 1:wRow
         for y = 1:wCol
-            for z = 1:nRow*nCol
+            for z = 1:nSL
                 X = floor((z-1)/nCol)*wRow + x;
                 Y = mod(z-1,nCol)*wCol + y;
                 mag_all(x,y,z,i) = mag_mosaic(X,Y,i);
@@ -140,13 +149,6 @@ for i = 1:size(mag_mosaic,3)
             end
         end
     end
-end
-
-% remove zero slices
-ind = find(sum(sum(sum(mag_all,1),2),4)==0, 1)
-if ~ isempty(ind)
-    mag_all = mag_all(:,:,1:ind,:);
-    ph_all = ph_all(:,:,1:ind,:);
 end
 
 % permute the images to 
