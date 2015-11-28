@@ -125,10 +125,10 @@ AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
 
 if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL')
 % phase encoding along column
-    wRow = str2num(AcqMatrix{1})/dicom_info.PercentSampling;
+    wRow = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
     wCol = str2num(AcqMatrix{2});
 else
-    wCol = str2num(AcqMatrix{1})/dicom_info.PercentSampling;
+    wCol = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
     wRow = str2num(AcqMatrix{2});
 end
 
