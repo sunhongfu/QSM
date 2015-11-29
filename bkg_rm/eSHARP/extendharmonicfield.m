@@ -111,24 +111,26 @@ function[ harmonicFieldExtended, A, M ] = extendharmonicfield ...
 % =========================================================================
 % =========================================================================
 
-pathToBinaries = '/home/hongfu/Documents/MATLAB/qsm_testing/bkg_rm/eSHARP'; 
+% pathToBinaries = '/home/hongfu/Documents/MATLAB/qsm_testing/bkg_rm/eSHARP'; 
 
-% =========================================================================
-% =========================================================================
+% % =========================================================================
+% % =========================================================================
 
 
-% -------------------------------------------------------------------------
-% Add mapip2ep to the path
-setenv('PATH', [getenv('PATH') ':' pathToBinaries]) ;
+% % -------------------------------------------------------------------------
+% % Add mapip2ep to the path
+% setenv('PATH', [getenv('PATH') ':' pathToBinaries]) ;
 
-% -------
-% Check mapip2ep is within the path
-[returnedStatus,~] = system('mapip2ep ') ;
-if returnedStatus ~= 1
-    disp('Error: see *NB in function HELP:')
-    help(mfilename);
-    return;
-end
+% % -------
+% % Check mapip2ep is within the path
+% [returnedStatus,~] = system('mapip2ep ') ;
+% if returnedStatus ~= 1
+%     disp('Error: see *NB in function HELP:')
+%     help(mfilename);
+%     return;
+% end
+
+
 
 % -------------------------------------------------------------------------
 % Examine input arguments 
@@ -325,7 +327,10 @@ mapip2epArguments = [ ...
                   '  ' [Parameters.tmpSaveFldr 'maskEp.bin ' ] ...
                   '  ' Parameters.tmpSaveFldr ] 
 
-system([ 'mapip2ep ' mapip2epArguments]) ;
+[pathstr, ~, ~] = fileparts(which('mapip2ep.m'));
+setenv('pathstr',pathstr);
+
+system([ '${pathstr}/mapip2ep ' mapip2epArguments]) ;
 % -------------------------------------------------------------------------
 
 % -------------------------------------------------------------------------
