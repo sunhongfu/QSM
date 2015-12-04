@@ -20,6 +20,12 @@ function [sus,res] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm
 %   PNORM  : L1 or L2 norm regularization
 
 
+% pad extra 10 slices on both sides
+lfs = padarray(lfs,[0 0 10]);
+mask = padarray(mask,[0 0 10]);
+weights = padarray(weights,[0 0 10]);
+
+
 if ~ exist('z_prjs','var') || isempty(z_prjs)
     z_prjs = [0, 0, 1]; % PURE axial slices
 end
@@ -94,5 +100,10 @@ sus = real(sus);
 
 % residual difference between fowardly calculated field and lfs
 res = lfs - real(ifftn(D.*fftn(sus)));
+
+
+% remove the extra padding slices
+sus = sus(:,:,11:end-10);
+res = res(:,:,11:end-10);
 
 end
