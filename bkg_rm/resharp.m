@@ -86,7 +86,7 @@ b = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),
 b = b(:);
 
 % b = H'*(H*tfs(:));
-m = cgs(@Afun, b, 1e-6, cgs_num);
+m = cgs(@Afun, b, 0, cgs_num);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
 
