@@ -416,7 +416,7 @@ if sum(strcmpi('resharp',bkg_rm))
     % save nifti
     mkdir('RESHARP');
     nii = make_nii(lfs_resharp,vox);
-    save_nii(nii,'RESHARP/lfs_resharp.nii');
+    save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
