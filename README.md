@@ -1,21 +1,29 @@
-Release Note
-============
+# Welcome to QSM
+The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) images from MRI. The codes cover image recons for single-echo or multiple-echo GRE sequence as well as gradient EPI sequence.
 
-- QSM 1.0 (2015-11-23)
-	- Recon codes for 1.5T, 3T and 4.7T QSM, including sequences such as SWI, R2s and EPI.
+## Recon flow
+1. Extract complex img 
+2. combine coils 
+3. extract brain mask 
+4. unwrap phase maps 
+5. linearly fit unwrapped phase with TE if multiple echo 
+6. background field removal 
+7. dipole inversion
+	
+## Release Note
+1. QSM 1.0 (2015-11-23)
+  * Recon codes for 1.5T, 3T and 4.7T QSM, including sequences such as SWI, R2s and EPI.
 	
 
-Manual
-======
+## Manual
+* Codes location:
+  * stable (master) branch:
+  <\\129.128.117.89\hongfu\Documents\MATLAB\qsm_stable>
+  * testing (develop) brach:
+  <\\129.128.117.89\hongfu\Documents\MATLAB\qsm_testing>
 
-- Codes location:
-	- stable (master) branch:
-		\\129.128.117.89\hongfu\Documents\MATLAB\qsm_stable
-	- testing (develop) brach:
-		\\129.128.117.89\hongfu\Documents\MATLAB\qsm_testing
-
-- Directory structure:
-	- 15: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
+* Directory structure:
+  * 15: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
 		- qsm_epi15.m
 		- qsm_swi15.m
 	- 47: recon codes for 4.7T sequences, e.g. EPI (fMRI), SWI and R2*
@@ -41,7 +49,7 @@ Manual
 		- tvdi.m: total variation dipole inversion
 	- Misc: other functions including NIFTI and Ryan's small functions
 
-- Usage:
+* Usage:
 	- Call the main QSM function corresponding to the sequence, e.g. "qsm_r2s47" is the function for QSM recon of R2* at 4.7T.
 	- Function inputs are 
 		- Directory of the raw data for 1.5T/4.7T or directories of both magnitude and unfiltered phase DICOMs for PRISMA 3T)
@@ -53,7 +61,7 @@ Manual
 		qsm_swi47('FID_DIR','OUTPUT_DIR',options);
 	- For other advanced usage, see help, e.g. "help qsm_swi_prisma"
 
-- Common user-changed options:
+* Common user-changed options:
 	- bet_thr :threshold level for BET extracting the brain mask, by default is 0.3-0.5 depending on the sequence, smaller threshold keeps more region of the brain
 	- ph_unwrap :phase unwrapping methods, can be 'prelude', 'laplacian' or 'bestpath'
 	- bkg_rm :background field removal methods, can be 'sharp', 'pdf','resharp','esharp' or 'lbv', can pick multiple methods to compare, e.g. options.bkg_rm={'resharp','lbv'} 
@@ -62,12 +70,5 @@ Manual
 	- tv_reg :total variation regularization, by default 5e-4, bigger value gives smoother result                                                                  
 	- For more options, seek "help" of the specific function
 
-- Recon flow:
-	--> Extract complex img 
-	--> combine coils 
-	--> extract brain mask 
-	--> unwrap phase maps 
-	--> linearly fit unwrapped phase with TE if multiple echo 
-	--> background field removal 
-	--> dipole inversion
+
 
