@@ -57,9 +57,9 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + User specified parameters "options"
   - Examples:
     ```Matlab
-    options.bkg_rm='resharp';
-    options.ph_unwrap='laplacian';
-    qsm_swi47('FID_DIR','OUTPUT_DIR',options);
+        options.bkg_rm='resharp';
+        options.ph_unwrap='laplacian';
+        qsm_swi47('FID_DIR','OUTPUT_DIR',options);
     ```
   - For other advanced usage, see help, e.g. `help qsm_swi_prisma`
 
