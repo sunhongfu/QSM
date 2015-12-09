@@ -50,23 +50,23 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
   - *Misc*: other functions including NIFTI and Ryan's small functions
 
 * Usage
-  - Call the main QSM function corresponding to the sequence, e.g. ```qsm_r2s47``` is the function for QSM recon of R2* at 4.7T.
+  - Call the main QSM function corresponding to the sequence, e.g. `qsm_r2s47` is the function for QSM recon of R2* at 4.7T.
   - Function inputs are 
     + Directory of the raw data for 1.5T/4.7T or directories of both magnitude and unfiltered phase DICOMs for PRISMA/GE 3T)
     + User defined directory for QSM output results
     + User specified parameters "options"
   - Examples:
-```
+```Matlab
 options.bkg_rm='resharp';
 options.ph_unwrap='laplacian';
 qsm_swi47('FID_DIR','OUTPUT_DIR',options);
 ```
-  - For other advanced usage, see help, e.g. ```help qsm_swi_prisma```
+  - For other advanced usage, see help, e.g. `help qsm_swi_prisma`
 
 * Common user-changed options:
   - **bet_thr**: threshold level for BET extracting the brain mask, by default is *0.3-0.5* depending on the sequence, smaller threshold keeps more region of the brain
   - **ph_unwrap**: phase unwrapping methods, can be *'prelude'*, *'laplacian'* or *'bestpath'*
-  - **bkg_rm**: background field removal methods, can be *'sharp'*, *'pdf'*,*'resharp'*,*'esharp'* or *'lbv'*, can pick multiple methods to compare, e.g. ```options.bkg_rm={'resharp','lbv'}```
+  - **bkg_rm**: background field removal methods, can be *'sharp'*, *'pdf'*,*'resharp'*,*'esharp'* or *'lbv'*, can pick multiple methods to compare, e.g. `options.bkg_rm={'resharp','lbv'}`
   - **smv_rad**: radius in mm of SHARP/RESHARP/ESHARP kernel (erosion size, ESHARP recovers some)
   - **tik_reg**: tikhonov regularization for RESHARP, by default *1e-3*, bigger value more regularization
   - **tv_reg**: total variation regularization, by default *5e-4*, bigger value gives smoother result
