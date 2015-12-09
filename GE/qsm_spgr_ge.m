@@ -1,4 +1,3 @@
-
 function qsm_spgr_ge(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   SM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
@@ -10,7 +9,7 @@ function qsm_spgr_ge(path_dicom, path_out, options)
 %   OPTIONS      - parameter structure including fields below
 %    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
 %    .r_mask     - whether to enable the extra masking       : 1
-%    .fit_thr    - extra filtering based on the fit residual : 10
+%    .fit_thr    - extra filtering based on the fit residual : 20
 %    .bet_thr    - threshold for BET brain mask              : 0.4
 %    .bet_smooth - smoothness of BET brain mask at edges     : 3
 %    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
@@ -19,7 +18,7 @@ function qsm_spgr_ge(path_dicom, path_out, options)
 %                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
 %    .t_svd      - truncation of SVD for SHARP               : 0.1
 %    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
-%    .tik_reg    - Tikhonov regularization for resharp       : 1e-3
+%    .tik_reg    - Tikhonov regularization for resharp       : 1e-4
 %    .cgs_num    - max interation number for RESHARP         : 500
 %    .lbv_peel   - LBV layers to be peeled off               : 2
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
@@ -49,7 +48,7 @@ if ~ isfield(options,'r_mask')
 end
 
 if ~ isfield(options,'fit_thr')
-    options.fit_thr = 10;
+    options.fit_thr = 20;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -78,7 +77,7 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-3;
+    options.tik_reg = 1e-4;
 end
 
 if ~ isfield(options,'cgs_num')
