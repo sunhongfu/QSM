@@ -17,12 +17,10 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
 
 ## Manual
 * Codes location:
-  + stable (master) branch:
-  \129.128.117.89\hongfu\Documents\MATLAB\qsm_stable
-  + testing (develop) brach:
-  \129.128.117.89\hongfu\Documents\MATLAB\qsm_testing
+  + stable (master) branch: \129.128.117.89\hongfu\Documents\MATLAB\qsm_stable
+  + testing (develop) brach: \129.128.117.89\hongfu\Documents\MATLAB\qsm_testing
 
-* Directory structure:
+* Directory structure
   - *15*: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
     + **qsm_epi15.m**
     + **qsm_swi15.m**
@@ -51,7 +49,7 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + **tvdi.m**: total variation dipole inversion
   - *Misc*: other functions including NIFTI and Ryan's small functions
 
-* Usage:
+* Usage
   - Call the main QSM function corresponding to the sequence, e.g. ```qsm_r2s47``` is the function for QSM recon of R2* at 4.7T.
   - Function inputs are 
     + Directory of the raw data for 1.5T/4.7T or directories of both magnitude and unfiltered phase DICOMs for PRISMA/GE 3T)
@@ -59,9 +57,9 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + User specified parameters "options"
   - Examples:
 ```
-    options.bkg_rm='resharp';
-    options.ph_unwrap='laplacian';
-    qsm_swi47('FID_DIR','OUTPUT_DIR',options);
+options.bkg_rm='resharp';
+options.ph_unwrap='laplacian';
+qsm_swi47('FID_DIR','OUTPUT_DIR',options);
 ```
   - For other advanced usage, see help, e.g. ```help qsm_swi_prisma```
 
