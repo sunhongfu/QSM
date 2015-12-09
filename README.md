@@ -18,9 +18,9 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
 ## Manual
 * Codes location:
   + stable (master) branch:
-  "\\129.128.117.89\hongfu\Documents\MATLAB\qsm_stable"
+  \129.128.117.89\hongfu\Documents\MATLAB\qsm_stable
   + testing (develop) brach:
-  "\\129.128.117.89\hongfu\Documents\MATLAB\qsm_testing"
+  \129.128.117.89\hongfu\Documents\MATLAB\qsm_testing
 
 * Directory structure:
   - *15*: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
