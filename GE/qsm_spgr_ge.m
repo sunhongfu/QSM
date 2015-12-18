@@ -423,7 +423,7 @@ if sum(strcmpi('resharp',bkg_rm))
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,['RESHARP/sus_resharp_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+    save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % E-SHARP (SHARP edge extension)
