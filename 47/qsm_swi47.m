@@ -173,9 +173,9 @@ ph_ramp2 = exp(-sqrt(-1)*2*pi*pix2*(-1/2:1/nv:1/2-1/nv));
 img_corr = img.* repmat((ph_ramp),[nv 1 ns nrcvrs]);
 img_corr = img_corr.* repmat(transpose(ph_ramp2),[1 np ns nrcvrs]);
 
-% have a peak of the raw phase
-nii = make_nii(angle(img_corr),voxelSize);
-save_nii(nii,'rawphase.nii');
+% % have a peak of the raw phase
+% nii = make_nii(angle(img_corr),voxelSize);
+% save_nii(nii,'rawphase.nii');
 
 
 % combine receivers
@@ -201,7 +201,8 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+%unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -356,6 +357,8 @@ if sum(strcmpi('resharp',bkg_rm))
     mkdir('RESHARP');
     nii = make_nii(lfs_resharp,voxelSize);
     save_nii(nii,'RESHARP/lfs_resharp.nii');
+    nii = make_nii(tfs-lfs_resharp,voxelSize);
+    save_nii(nii,'RESHARP/bkg_resharp.nii');
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
@@ -454,7 +457,7 @@ end
 % clean the directory
 if clean_all
     disp('--> clean temp nifti files ...');
-    unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
+    unix('ls | grep -v "combine\|RESHARP\|unph" | xargs rm -rf');
 else
     % save all variables for future reference
     clear nii;
@@ -464,6 +467,21 @@ end
 
 % save parameters used in the recon
 save('parameters.mat','options','-v7.3')
+
+% save all the NIFTIs in LPS orientation
+% originally in scanner coordinates LAI
+mkdir('LPS');
+[status, list] = unix('find . -name "*.nii"');
+expression = '\n';
+splitStr = regexp(strtrim(list),expression,'split');
+for i = 1:size(splitStr,2)
+    [pathstr,name,ext] = fileparts(splitStr{i});
+    nii = load_nii(splitStr{i});
+    tmp = double(nii.img);
+    tmp = flipdim(flipdim(tmp,2),3);
+    nii = make_nii(tmp,voxelSize);
+    save_nii(nii,['LPS/',name,ext]);
+end
 
 % go back to the initial directory
 cd(init_dir);
