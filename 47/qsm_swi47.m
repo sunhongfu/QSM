@@ -144,6 +144,11 @@ img = flipdim(flipdim(img,2),3);
 voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 
+% have a peak of the raw phase
+nii = make_nii(angle(img),voxelSize);
+save_nii(nii,'rawphase.nii');
+
+
 % intrinsic euler angles 
 % z-x-z convention, psi first, then theta, lastly phi
 % psi and theta are left-handed, while gamma is right-handed!
@@ -172,10 +177,6 @@ ph_ramp2 = exp(-sqrt(-1)*2*pi*pix2*(-1/2:1/nv:1/2-1/nv));
 
 img_corr = img.* repmat((ph_ramp),[nv 1 ns nrcvrs]);
 img_corr = img_corr.* repmat(transpose(ph_ramp2),[1 np ns nrcvrs]);
-
-% % have a peak of the raw phase
-% nii = make_nii(angle(img_corr),voxelSize);
-% save_nii(nii,'rawphase.nii');
 
 
 % combine receivers
