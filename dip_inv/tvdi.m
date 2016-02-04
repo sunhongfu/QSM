@@ -6,7 +6,7 @@ function [sus,res] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm
 % Sparse MRI: The application of compressed sensing for rapid MR imaging. 
 % Magn Reson Med, 58: 1182–1195. doi: 10.1002/mrm.21391
 %
-%   [SUS,RES] = TVDI(LFS,MASK,VOX,TV_REG,WEIGHTS,THETA)
+%   [SUS,RES] = TVDI(LFS,MASK,VOX,TV_REG,WEIGHTS,Z_PRJS,ITNLIM,PNORM)
 %
 %   SUS    : susceptibility distribution after dipole inversion
 %   RES    : residual field after QSM fitting
