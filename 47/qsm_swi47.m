@@ -202,7 +202,7 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-%unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+% unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');

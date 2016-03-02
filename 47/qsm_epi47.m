@@ -190,8 +190,10 @@ save_nii(nii,'all_mag_cmb.nii');
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
+% bash_script = ['bet2 combine/mag_cmb001.nii BET ' ...
+% 	'-f ${bet_thr} -m -w ${bet_smooth}'];
 bash_script = ['bet2 combine/mag_cmb001.nii BET ' ...
-	'-f ${bet_thr} -m -w ${bet_smooth}'];
+	'-f ${bet_thr} -m'];
 unix(bash_script);
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
