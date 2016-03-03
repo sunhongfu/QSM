@@ -22,16 +22,9 @@ nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
 % % perform unwrapping
-% unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
-% unix('gunzip -f unph_diff.nii.gz');
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% best path unwrapping
-% to locate the 3DSRNCP
+% try 3DSRNCP first, if not working then prelude
 [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
 setenv('pathstr',pathstr);
-% unix('cp /home/hsun/Documents/MATLAB/3DSRNCP 3DSRNCP');
 setenv('nv',num2str(imsize(1)));
 setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
@@ -47,23 +40,24 @@ fclose(fid);
 
 bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
     'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
-unix(bash_script) ;
+[status, info] = unix(bash_script) ;
 
-fid = fopen(['unwrapped_phase_diff.dat'],'r');
-tmp = fread(fid,'float');
-% tmp = tmp - tmp(1);
-unph_diff_cmb = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
-fclose(fid);
+if ~status
+    fid = fopen(['unwrapped_phase_diff.dat'],'r');
+    tmp = fread(fid,'float');
+    unph_diff_cmb = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
+    fclose(fid);
+    
+    nii = make_nii(unph_diff_cmb,vox);
+    save_nii(nii,'unph_diff.nii');
 
-nii = make_nii(unph_diff_cmb,vox);
-save_nii(nii,'unph_diff.nii');
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% nii = load_nii('unph_diff.nii');
-% unph_diff_cmb = double(nii.img);
+else
+    unix('rm *.dat');
+    unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
+    unix('gunzip -f unph_diff.nii.gz');
+    nii = load_nii('unph_diff.nii');
+    unph_diff_cmb = double(nii.img);
+end
 
 unph_te1_cmb = unph_diff_cmb*TE1/(TE2-TE1);
 offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
