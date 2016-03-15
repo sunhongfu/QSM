@@ -8,7 +8,7 @@ function qsm_swi15(meas_in, path_out, options)
 %   PATH_OUT    - directory to save nifti and/or matrixes   : QSM_SWI15
 %   OPTIONS     - parameter structure including fields below
 %    .ref_coil  - reference coil to use for phase combine   : 1
-%    .eig_rad   - radius (mm) of eig decomp kernel          : 15
+%    .eig_rad   - radius (mm) of eig decomp kernel          : 5
 %    .bet_thr   - threshold for BET brain mask              : 0.4
 %    .ph_unwrap - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm    - background field removal method(s)        : 'resharp'
@@ -62,7 +62,11 @@ if ~ isfield(options,'ref_coil')
 end
 
 if ~ isfield(options,'eig_rad')
-    options.eig_rad = 15;
+    options.eig_rad = 5;
+end
+
+if ~ isfield(options,'bet_smooth')
+    options.bet_smooth = 2;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -70,12 +74,8 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
-    % % another option is
-    % options.ph_unwrap = 'laplacian';
-    % % prelude is preferred, unless there's sigularities
-    % % in that case, have to use laplacian
-    % another option is 'bestpath'
+    options.ph_unwrap = 'bestpath';
+    % other options are 'prelude' and 'laplacian'
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -88,11 +88,11 @@ if ~ isfield(options,'t_svd')
 end
 
 if ~ isfield(options,'smv_rad')
-    options.smv_rad = 5;
+    options.smv_rad = 4;
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 5e-4;
+    options.tik_reg = 1e-4;
 end
 
 if ~ isfield(options,'lbv_layer')
@@ -128,6 +128,7 @@ end
 
 ref_coil  = options.ref_coil;
 eig_rad   = options.eig_rad;
+bet_smooth= options.bet_smooth;
 bet_thr   = options.bet_thr;
 ph_unwrap = options.ph_unwrap;
 bkg_rm    = options.bkg_rm;
@@ -141,14 +142,7 @@ save_all  = options.save_all;
 
 
 % define directories
-[~,name] = fileparts(filename);
-if strcmpi(ph_unwrap,'prelude')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_' name];
-elseif strcmpi(ph_unwrap,'laplacian')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_lap_' name];
-elseif strcmpi(ph_unwrap,'bestpath')
-    path_qsm = [path_out, filesep, 'QSM_SWI15_best_' name];
-end
+path_qsm = [path_out, filesep, 'QSM_SWI15'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -232,8 +226,9 @@ save_nii(nii,'combine/ph_cmb.nii');
 
 % generate brain mask
 setenv('bet_thr',num2str(bet_thr));
+setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet combine/mag_cmb.nii BET -f ${bet_thr} -m -R');
+unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -w ${bet_smooth} -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -270,6 +265,12 @@ elseif strcmpi('laplacian',ph_unwrap)
 elseif strcmpi('bestpath',ph_unwrap)
     % unwrap the phase using best path
     fid = fopen('wrapped_phase.dat','w');
+    [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
+    setenv('pathstr',pathstr);
+    setenv('nv',num2str(nv));
+    setenv('np',num2str(np));
+    setenv('ns',num2str(ns));
+
     fwrite(fid,angle(img_cmb),'float');
     fclose(fid);
     % mask_unwrp = uint8(hemo_mask.*255);
@@ -277,17 +278,16 @@ elseif strcmpi('bestpath',ph_unwrap)
     fid = fopen('mask_unwrp.dat','w');
     fwrite(fid,mask_unwrp,'uchar');
     fclose(fid);
-    unix('cp /home/hongfu/Documents/MATLAB/3DSRNCP 3DSRNCP');
-    setenv('nv',num2str(nv));
-    setenv('np',num2str(np));
-    setenv('ns',num2str(ns));
-    bash_script = ['./3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
+
+    bash_script = ['${pathstr}/3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
         '$nv $np $ns reliability.dat'];
-    unix(bash_script) ;
+    unix(bash_script);
+
     fid = fopen('unwrapped_phase.dat','r');
-    unph = fread(fid,'float');
-    unph = reshape(unph - unph(1) ,[nv,np,ns]);
+    tmp = fread(fid,'float');
+    unph = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi,[nv np ns]).*mask;
     fclose(fid);
+
     nii = make_nii(unph,voxelSize);
     save_nii(nii,'unph_best.nii');
 
