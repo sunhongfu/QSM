@@ -56,7 +56,7 @@ if ~ isfield(options,'bet_thr')
 end
 
 if ~ isfield(options,'bet_smooth')
-    options.bet_smooth = 3;
+    options.bet_smooth = 2;
 end
 
 if ~ isfield(options,'ph_unwrap')
