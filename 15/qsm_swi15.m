@@ -223,6 +223,57 @@ save_nii(nii,'combine/ph_cmb.nii');
 % nii = make_nii(angle(img_cmb),voxelSize);
 % save_nii(nii,'ph_cmb.nii');
 
+% generate SWI
+
+% conpert img to frequency domain
+k = fftshift(fftshift(fft( fft(img_cmb,[],1), [], 2),1),2);
+
+choice = 'hann';
+fw = 0.25;
+
+% generate a 2d hamming low-pass filter
+if strcmp(choice, 'hamming')
+	x = hamming(round(fw*nv));
+	x = [zeros(round((nv-round(fw*nv))/2),1); x; zeros(nv-round(fw*nv)-round((nv-round(fw*nv))/2),1)];
+	y = hamming(round(fw*np));
+	y = [zeros(round((np-round(fw*np))/2),1); y; zeros(np-round(fw*np)-round((np-round(fw*np))/2),1)];
+elseif strcmp(choice, 'gausswin')
+  	x = gausswin(round(fw*nv));
+	x = [zeros(round((nv-round(fw*nv))/2),1); x; zeros(nv-round(fw*nv)-round((nv-round(fw*nv))/2),1)];
+	y = gausswin(round(fw*np));
+	y = [zeros(round((np-round(fw*np))/2),1); y; zeros(np-round(fw*np)-round((np-round(fw*np))/2),1)];
+elseif strcmp(choice, 'hann')
+	x = hann(round(fw*nv));
+	x = [zeros(round((nv-round(fw*nv))/2),1); x; zeros(nv-round(fw*nv)-round((nv-round(fw*nv))/2),1)];
+	y = hann(round(fw*np));
+	y = [zeros(round((np-round(fw*np))/2),1); y; zeros(np-round(fw*np)-round((np-round(fw*np))/2),1)];
+end
+[X,Y] = meshgrid(y,x);
+Z = X.*Y;
+Z = repmat(Z,[1 1 ns]);
+clear x y X Y;
+
+% apply 'highpass' filter and generate phase
+k = k.*Z;
+k_lowpass = k;
+clear k Z;
+k_lowpass = ifft(ifft(ifftshift(ifftshift(k_lowpass,1),2),[],1),[],2);
+img_lowpass = k_lowpass;
+clear k_lowpass;
+phase = angle(img_cmb./img_lowpass);
+
+
+%% Generate phase masks and SWI
+disp('Generating and Applying masks');
+mask = phase;
+mask(mask>0) = 1;
+mask(mask<0) = 1+mask(mask<0)/pi;
+mask = mask.^4;
+swi = abs(img_cmb).*mask;
+
+nii = make_nii(swi,voxelSize);
+save_nii(nii,'combine/SWI.nii');
+
 
 % generate brain mask
 setenv('bet_thr',num2str(bet_thr));
