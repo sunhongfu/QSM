@@ -414,6 +414,7 @@ save_nii(nii,'tfs.nii');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 disp('--> LBV to remove background field ...');
+mkdir('LBV');
 lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,lbv_layer); % strip 2 layers
 mask_lbv = ones(size(mask));
 mask_lbv(lfs_lbv==0) = 0;
@@ -495,25 +496,25 @@ mask_noHemo_lbv(lfs_noHemo_lbv == 0) = 0;
 
 % lfs_noHemo_lbv = poly3d(lfs_noHemo_lbv,mask_noHemo_lbv);
 
-nii = make_nii(lfs_noHemo_lbv,voxelSize);
-save_nii(nii,'lfs_noHemo_lbv.nii');
+% nii = make_nii(lfs_noHemo_lbv,voxelSize);
+% save_nii(nii,'lfs_noHemo_lbv.nii');
 
-nii = make_nii(mask_noHemo_lbv,voxelSize);
-save_nii(nii,'mask_noHemo_lbv.nii');
+% nii = make_nii(mask_noHemo_lbv,voxelSize);
+% save_nii(nii,'mask_noHemo_lbv.nii');
 
 
 
 % inversion on remaining part (noHemo) of the brain
 weights = abs(img_cmb).*mask_lbv.*mask_noHemo_lbv;
 sus_noHemo_lbv = tvdi(lfs_noHemo_lbv,mask_lbv.*mask_noHemo_lbv,voxelSize,tv_reg,weights,z_prjs); 
-nii = make_nii(sus_noHemo_lbv.*mask_lbv.*mask_noHemo_lbv,voxelSize);
-save_nii(nii,['sus_noHemo_lbv.nii']);
+% nii = make_nii(sus_noHemo_lbv.*mask_lbv.*mask_noHemo_lbv,voxelSize);
+% save_nii(nii,['sus_noHemo_lbv.nii']);
 
 
 % super add together
 sus_super_lbv = sus_noHemo_lbv.*mask_lbv.*mask_noHemo_lbv + sus_lbv.*(mask_lbv - mask_noHemo_lbv);
-nii = make_nii(sus_super_lbv,voxelSize);
-save_nii(nii,'sus_super_lbv.nii');
+% nii = make_nii(sus_super_lbv,voxelSize);
+% save_nii(nii,'sus_super_lbv.nii');
 
 
 
@@ -545,7 +546,7 @@ o = real(x1'*x2/(x1'*x1))
 
 sus_super_fix_lbv = sus_super_lbv + o*(mask_lbv - mask_noHemo_lbv);
 nii = make_nii(sus_super_fix_lbv,voxelSize);
-save_nii(nii,'sus_super_fix_lbv.nii');
+save_nii(nii,'LBV/sus_super_fix_lbv.nii');
 
 
 

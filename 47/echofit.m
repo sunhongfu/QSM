@@ -49,14 +49,26 @@ else
 	x = [TE(:), ones(length(TE),1)];
 	beta = zeros(2, np*nv*ns);
 	res = zeros([np nv ns]);
-	matlabpool open
+	
+	if exist('parpool')
+		poolobj=parpool;
+	else
+		matlabpool open
+	end
+
 	parfor i = 1:np*nv*ns
 		y = ph(:,i);
 		w = mag(:,i);
 		beta(:,i) = (x'*diag(w)*x)\(x'*diag(w)*y);
 		res(i) = (y-x*beta(:,i))'*diag(w)*(y-x*beta(:,i))/sum(w)*ne;
 	end
-	matlabpool close
+	
+	if exist('parpool')
+		delete(poolobj);
+	else
+		matlabpool close
+	end
+
 	beta(isnan(beta)) = 0;
 	beta(isinf(beta)) = 0;
 	res(isnan(res)) = 0;
