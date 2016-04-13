@@ -1,4 +1,4 @@
-function qsm_spgr_ge(path_dicom, path_out, options)
+function qsm_spgr_ge_edm(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -127,8 +127,9 @@ list_dicom = dir(path_dicom);
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
 dicom_info.EchoTrainLength = 8;
+dicom_info.SliceThickness = 1;
 
-imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/4, ...
+imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/2, ...
 			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
@@ -148,10 +149,10 @@ for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
 		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-        Counter = Counter + 1 ;
+%        Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-        Counter = Counter + 1 ;
+%        Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theReal = ...
@@ -324,7 +325,7 @@ nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
 if strcmpi('bipolar',readout)
     unph_diff = unph_diff/2;
-end
+end 
 
 for echo = 2:imsize(4)
     meandiff = unph(:,:,:,echo)-unph(:,:,:,1)-double(echo-1)*unph_diff;
