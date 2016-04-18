@@ -1,4 +1,4 @@
-function ph_cmb = geme_cmb(img,vox,te, mask)
+function ph_cmb = geme_cmb(img, vox, te, mask, smooth_method)
 %Gradient-echo multi-echo combination (for phase).
 %   PH_CMB = GEME_CMB(IMG,PAR) combines phase from multiple receivers
 %
@@ -6,7 +6,11 @@ function ph_cmb = geme_cmb(img,vox,te, mask)
 %   TE :    echo times
 %   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
 %   PH_CMB: phase after combination
+%   SMOOTH: smooth method (1) smooth3, (2) poly3
 
+if ~ exist('smooth_method','var') || isempty(smooth_method)
+    smooth_method = 'poly3';
+end
 
 [~,~,~,ne,nrcvrs] = size(img);
 TE1 = te(1);
@@ -22,13 +26,15 @@ nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
 % % perform unwrapping
+% method (1)
 % unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
 % unix('gunzip -f unph_diff.nii.gz');
+% nii = load_nii('unph_diff.nii');
+% unph_diff_cmb = double(nii.img);
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% method (2)
 % best path unwrapping
-% to locate the 3DSRNCP
 [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
 setenv('pathstr',pathstr);
 % unix('cp /home/hsun/Documents/MATLAB/3DSRNCP 3DSRNCP');
@@ -59,24 +65,40 @@ nii = make_nii(unph_diff_cmb,vox);
 save_nii(nii,'unph_diff.nii');
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% nii = load_nii('unph_diff.nii');
-% unph_diff_cmb = double(nii.img);
-
+% calculate initial phase offsets
 unph_te1_cmb = unph_diff_cmb*TE1/(TE2-TE1);
 offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
-offsets = offsets./abs(offsets);
+offsets = offsets./abs(offsets); % complex phase offset
 offsets(isnan(offsets)) = 0;
 
-for chan = 1:nrcvrs
-    offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(10./vox/2)*2+1); 
-    offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
+% smooth offsets
+if strcmpi('smooth3',smooth_method)
+    for chan = 1:nrcvrs
+        offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(10./vox/2)*2+1); 
+        offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
+    end
+elseif strcmpi('poly3',smooth_method)
+    for chan = 1:nrcvrs
+        fid = fopen(['wrapped_offsets_chan' num2str(chan) '.dat'],'w');
+        fwrite(fid,angle(offsets(:,:,:,chan)),'float');
+        fclose(fid);
+        setenv('chan',num2str(chan));
+        bash_script = ['${pathstr}/3DSRNCP wrapped_offsets_chan${chan}.dat mask_unwrp.dat ' ...
+        'unwrapped_offsets_chan${chan}.dat $nv $np $ns reliability_diff.dat'];
+        unix(bash_script) ;
+        fid = fopen(['unwrapped_offsets_chan' num2str(chan) '.dat'],'r');
+        tmp = fread(fid,'float');
+        unph_offsets(:,:,:,chan) = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
+        fclose(fid);
+        offsets(:,:,:,chan) = unph_offsets(:,:,:,chan) - poly3d(unph_offsets(:,:,:,chan),mask,2);
+    end
+    offsets = exp(1j*offsets);
+else
+    error('what method to use for smoothing? smooth3 or poly3')
 end
-
 nii = make_nii(angle(offsets),vox);
 save_nii(nii,'offsets.nii');
+
 
 % combine phase according to complex summation
 offsets = repmat(offsets,[1,1,1,ne,1]);
