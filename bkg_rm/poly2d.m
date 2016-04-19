@@ -28,7 +28,8 @@ for i = 1:ns
 
 	I = lfs_i(logical(mask_i)); % measurements of non-zero region
 	I = I(:);
-	coeff = P\I; % polynomial coefficients
+%	coeff = P\I; % polynomial coefficients
+	coeff = (P'*P)\(P'*I);
 	residual = I - P*coeff; % residual after polyfit
 
 	polyfit_i = zeros(np*nv,1);

@@ -6,10 +6,10 @@ function ph_cmb = geme_cmb(img, vox, te, mask, smooth_method)
 %   TE :    echo times
 %   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
 %   PH_CMB: phase after combination
-%   SMOOTH: smooth method (1) smooth3, (2) poly3
+%   SMOOTH: smooth method (1) smooth3, (2) poly3, (3) poly3_nlcg
 
 if ~ exist('smooth_method','var') || isempty(smooth_method)
-    smooth_method = 'poly3';
+    smooth_method = 'smooth3';
 end
 
 [~,~,~,ne,nrcvrs] = size(img);
@@ -37,7 +37,6 @@ save_nii(nii,'ph_diff.nii');
 % best path unwrapping
 [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
 setenv('pathstr',pathstr);
-% unix('cp /home/hsun/Documents/MATLAB/3DSRNCP 3DSRNCP');
 setenv('nv',num2str(imsize(1)));
 setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
@@ -57,7 +56,6 @@ unix(bash_script) ;
 
 fid = fopen(['unwrapped_phase_diff.dat'],'r');
 tmp = fread(fid,'float');
-% tmp = tmp - tmp(1);
 unph_diff_cmb = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
 fclose(fid);
 
@@ -90,11 +88,15 @@ elseif strcmpi('poly3',smooth_method)
         tmp = fread(fid,'float');
         unph_offsets(:,:,:,chan) = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
         fclose(fid);
-        offsets(:,:,:,chan) = unph_offsets(:,:,:,chan) - poly3d(unph_offsets(:,:,:,chan),mask,2);
+        offsets(:,:,:,chan) = unph_offsets(:,:,:,chan) - poly3d(unph_offsets(:,:,:,chan),mask,3);
     end
     offsets = exp(1j*offsets);
+elseif strcmpi('poly3_nlcg',smooth_method)
+    for chan = 1:nrcvrs
+        offsets(:,:,:,:,chan) = poly3d_nonlinear(offsets(:,:,:,:,chan),mask,1);
+    end
 else
-    error('what method to use for smoothing? smooth3 or poly3')
+    error('what method to use for smoothing? smooth3 or poly3 or poly3_nlcg')
 end
 nii = make_nii(angle(offsets),vox);
 save_nii(nii,'offsets.nii');

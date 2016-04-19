@@ -38,7 +38,8 @@ end
 
 I = lfs(logical(mask)); % measurements of non-zero region
 I = I(:);
-coeff = P\I; % polynomial coefficients
+% coeff = P\I; % polynomial coefficients
+coeff = (P'*P)\(P'*I);
 residual = I - P*coeff; % residual after polyfit
 
 % name the phase result after polyfit as tfs (total field shift)
