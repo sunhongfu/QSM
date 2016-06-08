@@ -1,4 +1,4 @@
-% function qsm_hemo15(meas_in, path_out, options)
+function qsm_hemo15(meas_in, path_out, options)
 %QSM_HEMO15 Quantitative susceptibility mapping from SWI sequence at 1.5T for hemorrhage.
 %   QSM_HEMO15(MEAS_IN, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
