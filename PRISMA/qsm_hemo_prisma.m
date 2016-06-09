@@ -207,12 +207,15 @@ elseif strcmpi('bestpath',ph_unwrap)
     save_nii(nii,'unph_bestpath.nii');
 
     fid = fopen('reliability.dat','r');
+    reliability = fread(fid,'float');
+    fclose(fid);
+
     % reliability_raw = fread(fid,'float');
     % reliability_raw = reshape(reliability_raw,imsize(1:3));
+    reliability = reshape(reliability,imsize(1:3));
     reliability = 1./reliability.*mask;
     reliability(reliability <= 0.1) = 0;
     reliability(reliability > 0.1) = 1;
-    fclose(fid);
 
     nii = make_nii(reliability,vox);
     save_nii(nii,'reliability.nii');
@@ -458,7 +461,7 @@ mask_noHemo_lbv(lfs_noHemo_lbv == 0) = 0;
 
 
 % inversion on remaining part (noHemo) of the brain
-weights = abs(img_cmb).*mask_lbv.*mask_noHemo_lbv;
+weights = mag.*mask_lbv.*mask_noHemo_lbv;
 sus_noHemo_lbv = tvdi(lfs_noHemo_lbv,mask_lbv.*mask_noHemo_lbv,vox,tv_reg,weights,z_prjs); 
 
 
