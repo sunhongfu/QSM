@@ -166,7 +166,9 @@ imsize = size(mag_all);
 % angles!!! (z projections)
 Xz = dicom_info.ImageOrientationPatient(3);
 Yz = dicom_info.ImageOrientationPatient(6);
-Zz = sqrt(1 - Xz^2 - Yz^2);
+Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientationPatient(4:6));
+Zz = Zxyz(3);
+%Zz = sqrt(1 - Xz^2 - Yz^2);
 z_prjs = [Xz, Yz, Zz];
 
 

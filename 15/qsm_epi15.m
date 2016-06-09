@@ -183,7 +183,9 @@ if ~ isempty(dicomfile)
     info = dicominfo(dicomfile);
     Xz = info.ImageOrientationPatient(3);
     Yz = info.ImageOrientationPatient(6);
-    Zz = sqrt(1 - Xz^2 - Yz^2);
+    %Zz = sqrt(1 - Xz^2 - Yz^2);
+    Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientationPatient(4:6));
+    Zz = Zxyz(3);    
     disp('find the dicom');
     dicomfile
     z_prjs = [Xz, Yz, Zz]
