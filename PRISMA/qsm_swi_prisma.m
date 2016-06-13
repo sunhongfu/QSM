@@ -107,13 +107,15 @@ inv_num    = options.inv_num;
 % read in magnitude DICOMs
 path_mag = cd(cd(path_mag));
 mag_list = dir(path_mag);
+mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
 
-for i = 3:length(mag_list)
-    mag(:,:,i-2) = permute(single(dicomread([path_mag,filesep,mag_list(i).name])),[2,1]);
+
+for i = 1:length(mag_list)
+    mag(:,:,i) = permute(single(dicomread([path_mag,filesep,mag_list(i).name])),[2,1]);
 end
 
 % get the sequence parameters
-dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
+dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 imsize = size(mag);
 
@@ -128,11 +130,12 @@ z_prjs = [Xz, Yz, Zz];
 % read in phase DICOMs
 path_ph = cd(cd(path_ph));
 ph_list = dir(path_ph);
+ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
 
-for i = 3:length(ph_list)
-	ph(:,:,i-2) = permute(single(dicomread([path_ph,filesep,ph_list(i).name])),[2,1]);
+for i = 1:length(ph_list)
+	ph(:,:,i) = permute(single(dicomread([path_ph,filesep,ph_list(i).name])),[2,1]);
 	% covert to [-pi pi] range
-	ph(:,:,i-2) = ph(:,:,i-2)/4095*2*pi - pi;
+	ph(:,:,i) = ph(:,:,i-2)/4095*2*pi - pi;
 end
 
 

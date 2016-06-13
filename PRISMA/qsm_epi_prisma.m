@@ -109,18 +109,20 @@ path_ph = cd(cd(path_ph));
 path_out = cd(cd(path_out));
 mag_list = dir(path_mag);
 ph_list = dir(path_ph);
+mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
+ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
 
 % mosaic form to 4D nifti
-for i = 3:length(mag_list)
-    mag_mosaic(:,:,i-2) = single(dicomread([path_mag,filesep,mag_list(i).name]));
+for i = 1:length(mag_list)
+    mag_mosaic(:,:,i) = single(dicomread([path_mag,filesep,mag_list(i).name]));
 end
-for i = 3:length(ph_list)
-    ph_mosaic(:,:,i-2) = single(dicomread([path_ph,filesep,ph_list(i).name]));
-    ph_mosaic(:,:,i-2) = ph_mosaic(:,:,i-2)/4095*2*pi - pi;
+for i = 1:length(ph_list)
+    ph_mosaic(:,:,i) = single(dicomread([path_ph,filesep,ph_list(i).name]));
+    ph_mosaic(:,:,i) = ph_mosaic(:,:,i)/4095*2*pi - pi;
 end
 
 % crop mosaic into individual images
-dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
+dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
 AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
 
 if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL')

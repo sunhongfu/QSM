@@ -127,12 +127,13 @@ inv_num    = options.inv_num;
 % read in magnitude DICOMs
 path_mag = cd(cd(path_mag));
 mag_list = dir(path_mag);
+mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
 
 % get the sequence parameters
-dicom_info = dicominfo([path_mag,filesep,mag_list(3).name]);
+dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
 EchoTrainLength = dicom_info.EchoTrainLength;
 for i = 1:EchoTrainLength % read in TEs
-    dicom_info = dicominfo([path_mag,filesep,mag_list(3+(i-1)*(length(mag_list)-2)./EchoTrainLength).name]);
+    dicom_info = dicominfo([path_mag,filesep,mag_list(1+(i-1)*(length(mag_list)-2)./EchoTrainLength).name]);
     TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
 end
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
@@ -145,8 +146,8 @@ Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientation
 Zz = Zxyz(3);
 z_prjs = [Xz, Yz, Zz];
 
-for i = 3:length(mag_list)
-    [NS,NE] = ind2sub([(length(mag_list)-2)./EchoTrainLength,EchoTrainLength],i-2);
+for i = 1:length(mag_list)
+    [NS,NE] = ind2sub([(length(mag_list)./EchoTrainLength,EchoTrainLength],i);
     mag(:,:,NS,NE) = permute(single(dicomread([path_mag,filesep,mag_list(i).name])),[2,1]);
 end
 % size of matrix
@@ -155,9 +156,10 @@ imsize = size(mag);
 % read in phase DICOMs
 path_ph = cd(cd(path_ph));
 ph_list = dir(path_ph);
+ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
 
-for i = 3:length(ph_list)
-    [NS,NE] = ind2sub([(length(ph_list)-2)./EchoTrainLength,EchoTrainLength],i-2);
+for i = 1:length(ph_list)
+    [NS,NE] = ind2sub([(length(ph_list))./EchoTrainLength,EchoTrainLength],i);
     ph(:,:,NS,NE) = permute(single(dicomread([path_ph,filesep,ph_list(i).name])),[2,1]);    % covert to [-pi pi] range
     ph(:,:,NS,NE) = ph(:,:,NS,NE)/4095*2*pi - pi;
 end

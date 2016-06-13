@@ -124,11 +124,13 @@ interp     = options.interp;
 % read in MESPGR dicoms (multi-echo gradient-echo)
 path_dicom = cd(cd(path_dicom));
 list_dicom = dir(path_dicom);
+list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
-dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
+
+dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
 dicom_info.EchoTrainLength = 8;
 
-imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/4, ...
+imsize = [dicom_info.Width, dicom_info.Height, length(list_dicom)/dicom_info.EchoTrainLength/4, ...
 			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
@@ -157,14 +159,14 @@ for zCount = 1 : imsize(3)
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theReal = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
-        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
+        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
 	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theImag = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;    
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;    
         Counter = Counter + 1 ;
         
         img(:,:,zCount,echoCount) = theReal + 1j * theImag ;
