@@ -112,3 +112,15 @@ chi_cosmos = real( ifftn( sum(kernel .* lfs_k, 4) ./ (eps + kernel_sum) ) ) .* m
 nii = make_nii(chi_cosmos,vox);
 save_nii(nii,'cosmos_5.nii');
 
+
+%%%% inversion of each orientation on registered LFS
+nii = load_nii('/media/data/QSM_data/COSMOS_renzo/sorted/patient/9175/QSM_SPGRE_CENTER/QSM_SPGR_GE/src/mag1.nii');
+mag = double(nii.img);
+for i = 1:5
+    disp('--> TV susceptibility inversion on RESHARP...');
+    sus_resharp(:,:,:,i) = tvdi(lfs(:,:,:,i),mask,vox,tv_reg,mag,z_prjs_c(:,i),inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_resharp(:,:,:,i).*mask,vox);
+    save_nii(nii,['sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '_orien_' num2str(i) '.nii']);
+end
