@@ -456,7 +456,10 @@ else
 end
 
 % save parameters used in the recon
-save('parameters.mat','options','-v7.3')
+save('parameters.mat','options','-v7.3');
+
+% save the git log for future tracking
+unix('git log --branches --decorate --color --abbrev-commit --graph --no-merges --tags > git_log');
 
 % go back to the initial directory
 cd(init_dir);
