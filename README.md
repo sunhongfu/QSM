@@ -24,6 +24,7 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
   - *15*: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
     + **qsm_epi15.m**
     + **qsm_swi15.m**
+    + **qsm_hemo15.m**
   - *47*: recon codes for 4.7T sequences, e.g. EPI (fMRI), SWI and R2*
     + **qsm_epi47.m**
     + **qsm_swi47.m**

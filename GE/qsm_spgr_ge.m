@@ -1,6 +1,6 @@
 function qsm_spgr_ge(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
-%   SM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
+%   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
 %   Re-define the following default settings if necessary
 %
@@ -423,7 +423,7 @@ if sum(strcmpi('resharp',bkg_rm))
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,['RESHARP/sus_resharp_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+    save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
 % E-SHARP (SHARP edge extension)
