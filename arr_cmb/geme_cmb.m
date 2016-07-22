@@ -29,6 +29,8 @@ setenv('nv',num2str(imsize(1)));
 setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
 
+[status, cmdout] = unix('rm *.dat');
+
 fid = fopen(['wrapped_phase_diff.dat'],'w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
@@ -40,9 +42,9 @@ fclose(fid);
 
 bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
     'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
-[status, info] = unix(bash_script) ;
+[status, cmdout] = unix(bash_script) ;
 
-if ~status
+if exist('unwrapped_phase_diff.dat','file')
     fid = fopen(['unwrapped_phase_diff.dat'],'r');
     tmp = fread(fid,'float');
     unph_diff_cmb = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
@@ -52,9 +54,9 @@ if ~status
     save_nii(nii,'unph_diff.nii');
 
 else
-    unix('rm *.dat');
-    unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
-    unix('gunzip -f unph_diff.nii.gz');
+    [status, cmdout] = unix('rm *.dat');
+    [status, cmdout] = unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
+    [status, cmdout] = unix('gunzip -f unph_diff.nii.gz');
     nii = load_nii('unph_diff.nii');
     unph_diff_cmb = double(nii.img);
 end
