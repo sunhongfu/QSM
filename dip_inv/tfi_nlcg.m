@@ -1,8 +1,7 @@
-function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, L2_sus_weight, L2_lfs_weight, TV_weight,mag)
+function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, Tik_weight, TV_weight, weights)
 
 
 [Nx,Ny,Nz] = size(tfs);
-imsize = size(tfs);
 
 % create K-space filter kernel D
 %%%%% make this a seperate function in the future
@@ -38,16 +37,12 @@ params.lineSearchAlpha = 0.01;
 params.lineSearchBeta = 0.6;
 params.lineSearchT0 = 1 ; % step size to start with
 
-params.L2_sus_weight = L2_sus_weight; 
-params.L2_lfs_weight = L2_lfs_weight; 
+params.Tik_weight = Tik_weight; 
 params.TV_weight = TV_weight; % TV penalty 
 params.mask = mask; %%% not used in nlcg
-params.data = tfs;
-params.D = D;
-% params.wt = mask.*mag(:,:,:,end); % weighting matrix
 %params.wt = mask; % weighting matrix
-params.wt = mag;
-
+params.wt = weights;
+params.data = tfs;
 
 % non-linear conjugate gradient method
 chi = nlcg_singlestep(zeros(Nx,Ny,Nz), params);

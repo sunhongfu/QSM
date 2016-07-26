@@ -1,4 +1,4 @@
-function [m,RES,TVterm] = nlcg_singlestep(m0,params)
+function [m,Res_term,TV_term] = nlcg_singlestep(m0,params)
 % Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
 % m: susceptibility
 % W: weighting matrix derived from magnitude intensities
@@ -28,7 +28,7 @@ g0 = wGradient(m,params);
 dm = -g0;
 
 f = 0;
-RES0 = 0;
+Res_term0 = 0;
 count =0;
 
 % iterations
@@ -37,11 +37,11 @@ while(k <= params.Itnlim)
     % backtracking line-search
     t = t0;
     f0 = objFunc(m,dm,0,params);
-    [f1, RES, TVterm] = objFunc(m,dm,t,params);
+    [f1, Res_term, TV_term] = objFunc(m,dm,t,params);
     lsiter = 0;
     while (f1 > f0 + alpha*t*(g0(:)'*dm(:))) && (lsiter<maxlsiter)
         t = t* beta;
-        [f1, RES, TVterm] = objFunc(m,dm,t,params);
+        [f1, Res_term, TV_term] = objFunc(m,dm,t,params);
         lsiter = lsiter + 1;
     end
     % control the number of line searches by adapting the initial step search
@@ -62,9 +62,9 @@ while(k <= params.Itnlim)
      
     % outputs for debugging purpose
     % fprintf('%d , relative residual: %f\n',...
-    %         k, abs(RES-RES0)/RES);
+    %         k, abs(Res_term-Res_term0)/Res_term);
     
-    % if (abs(RES-RES0)/RES <= gradToll); 
+    % if (abs(Res_term-Res_term0)/Res_term <= gradToll); 
     %     count = count + 1;
     % else
     %     count = 0;
@@ -82,30 +82,27 @@ while(k <= params.Itnlim)
     end
 
     f = f1;
-    RES0 = RES;
+    Res_term0 = Res_term;
 end
 
 return;
 
 
 
-function [obj,RES,TVterm,L2_sus,L2_lfs] = objFunc(m, dm, t, params)
+function [obj,Res_term,TV_term,Tik_term] = objFunc(m, dm, t, params)
 p = params.pNorm;
 w1 = m+t*dm;
 
 w2 = params.TV*(w1.*params.mask);
 TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
-TVterm = sum(params.TV_weight(:).*TV(:));
+TV_term = sum(params.TV_weight(:).*TV(:));
 
-RES = params.FT*w1 - params.data;
-RES = (params.wt(:).*RES(:))'*(params.wt(:).*RES(:));
+Res_term = params.FT*w1 - params.data;
+Res_term = (params.wt(:).*Res_term(:))'*(params.wt(:).*Res_term(:));
 
-L2_sus = params.L2_sus_weight*((params.mask(:).*w1(:))'*((params.mask(:).*w1(:))));
+Tik_term = params.Tik_weight*((params.mask(:).*w1(:))'*((params.mask(:).*w1(:))));
 
-L2_lfs = ifftn(params.D.*fftn(params.mask.*w1));
-L2_lfs = params.L2_lfs_weight*(L2_lfs(:)'*L2_lfs(:));
-
-obj = RES + L2_sus + L2_lfs + TVterm;
+obj = Res_term + Tik_term + TV_term;
 
 
 
@@ -113,13 +110,11 @@ function grad = wGradient(m,params)
 p = params.pNorm;
 w1 = params.TV*(m.*params.mask);
 
-gradTV = params.mask.*(params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1)));
+grad_TV = params.mask.*(params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1)));
 
-gradRES = params.FT'*((params.wt.^2).*((params.FT*m)-params.data));
+grad_Res = params.FT'*((params.wt.^2).*((params.FT*m)-params.data));
 
-gradL2_sus = params.mask.*m;
+gradTik = params.mask.*m;
 
-gradL2_lfs = params.mask.*ifftn(params.D.*params.D.*fftn(params.mask.*m));
-
-grad = 2*gradRES + gradTV.*params.TV_weight + 2*params.L2_sus_weight.*gradL2_sus + 2*params.L2_lfs_weight.*gradL2_lfs;
+grad = 2*grad_Res + params.TV_weight*grad_TV + 2*params.Tik_weight.*grad_Tik;
 
