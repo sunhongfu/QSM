@@ -1,4 +1,4 @@
-function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, L2_sus_weight, L2_lfs_weight, TV_weight)
+function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, L2_sus_weight, L2_lfs_weight, TV_weight,mag)
 
 
 [Nx,Ny,Nz] = size(tfs);
@@ -29,7 +29,7 @@ D = fftshift(D);
 params.FT = cls_dipconv([Nx,Ny,Nz],D);
 params.TV = cls_tv;
 
-params.Itnlim = 500; % interations numbers (adjust accordingly!)
+params.Itnlim = 1000; % interations numbers (adjust accordingly!)
 params.gradToll = 1e-6; % step size tolerance stopping criterea
 params.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
 params.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
@@ -45,8 +45,8 @@ params.mask = mask; %%% not used in nlcg
 params.data = tfs;
 params.D = D;
 % params.wt = mask.*mag(:,:,:,end); % weighting matrix
-params.wt = mask; % weighting matrix
-
+%params.wt = mask; % weighting matrix
+params.wt = mag;
 
 
 % non-linear conjugate gradient method
