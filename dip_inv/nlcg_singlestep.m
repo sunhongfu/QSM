@@ -114,7 +114,7 @@ grad_TV = params.mask.*(params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1
 
 grad_Res = params.FT'*((params.wt.^2).*((params.FT*m)-params.data));
 
-gradTik = params.mask.*m;
+grad_Tik = params.mask.*m;
 
 grad = 2*grad_Res + params.TV_weight*grad_TV + 2*params.Tik_weight.*grad_Tik;
 
