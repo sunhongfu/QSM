@@ -1,5 +1,13 @@
 function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, Tik_weight, TV_weight, weights)
 
+if ~ exist('weights','var') || isempty(weights)
+    weights = mask;
+end
+
+% normalize the weights
+wt = mask.*weights;
+wt = wt/sum(wt(:))*sum(mask(:));
+
 
 [Nx,Ny,Nz] = size(tfs);
 
@@ -41,7 +49,7 @@ params.Tik_weight = Tik_weight;
 params.TV_weight = TV_weight; % TV penalty 
 params.mask = mask; %%% not used in nlcg
 %params.wt = mask; % weighting matrix
-params.wt = weights;
+params.wt = wt;
 params.data = tfs;
 
 % non-linear conjugate gradient method
