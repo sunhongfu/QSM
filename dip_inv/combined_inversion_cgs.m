@@ -1,7 +1,7 @@
-% || m * F_{-1} * C * D * F * chi - m * F_{-1} * C * F * B_t|| + lambda * ||F_{-1} * D * F * chi||
+% || m * F_{-1} * C * D * F * chi - m * F_{-1} * C * F * B_t|| + alpha * ||chi|| + beta * ||F_{-1} * D * F * chi||
 
 % combined inversion (RESHARP + INV) using CGS
-function chi = combined_inversion_cgs(tfs, mask, vox, z_prjs, ker_rad, L2_lfs_weight)
+function chi = combined_inversion_cgs(tfs, mask, vox, z_prjs, ker_rad, alpha, beta)
 
 
 if ~ exist('vox','var') || isempty(vox)
@@ -12,8 +12,8 @@ if ~ exist('ker_rad','var') || isempty(ker_rad)
     ker_rad = 3;
 end
 
-if ~ exist('L2_lfs_weight','var') || isempty(L2_lfs_weight)
-    L2_lfs_weight = 1e-3;
+if ~ exist('beta','var') || isempty(beta)
+    beta = 1e-3;
 end
 
 if ~ exist('cgs_num','var') || isempty(cgs_num)
@@ -89,11 +89,11 @@ regularization_term = norm(m);
 
 % nested function
 function y = Afun(x)
-    % y = H'*(H*x) + L2_lfs_weight*x;
+    % y = H'*(H*x) + beta*x;
     x = reshape(x,imsize);
-    % y = mask.*ifftn(D.*conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*D.*fftn(mask.*x)),-csh),csh))) + L2_lfs_weight*mask.*ifftn(D.*D.*fftn(mask.*x));
-    % y = mask.*ifftn(D.*conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*D.*fftn(mask.*x)),-csh),csh))) + L2_lfs_weight*mask.*x;
-    y = ifftn(D.*conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*D.*fftn(x)),-csh),csh))) + L2_lfs_weight*mask.*x;
+
+    y = ifftn(D.*conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*D.*fftn(x)),-csh),csh))) ...
+     + alpha.*x +beta.*ifftn(D.*D.*fftn(x));
 
     y = y(:);
 end
