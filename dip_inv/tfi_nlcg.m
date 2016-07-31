@@ -1,4 +1,4 @@
-function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, Tik_weight, TV_weight, weights)
+function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, Tik_weight, TV_weight, Itnlim, weights)
 
 if ~ exist('weights','var') || isempty(weights)
     weights = mask;
@@ -36,7 +36,7 @@ D = fftshift(D);
 params.FT = cls_dipconv([Nx,Ny,Nz],D);
 params.TV = cls_tv;
 
-params.Itnlim = 1000; % interations numbers (adjust accordingly!)
+params.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
 params.gradToll = 1e-6; % step size tolerance stopping criterea
 params.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
 params.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
