@@ -31,7 +31,9 @@ save_nii(nii,'ph_diff.nii');
 % unix('gunzip -f unph_diff.nii.gz');
 % nii = load_nii('unph_diff.nii');
 % unph_diff_cmb = double(nii.img);
-
+if ~ exist('mask','var') || isempty(mask)
+    mask = (sqrt(sum(sum(abs(img.^2),5),4))>300);
+end
 
 % method (2)
 % best path unwrapping
@@ -45,7 +47,7 @@ fid = fopen(['wrapped_phase_diff.dat'],'w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
 
-mask_unwrp = uint8(abs(mask)*255);
+mask_unwrp = uint8(mask*255);
 fid = fopen('mask_unwrp.dat','w');
 fwrite(fid,mask_unwrp,'uchar');
 fclose(fid);
