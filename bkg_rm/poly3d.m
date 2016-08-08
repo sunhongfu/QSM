@@ -14,22 +14,26 @@ pz = repmat((1:nv2),[np*nv,1]);
 pz = pz(:);
 
 % fit only the non-zero region
-px = px(logical(mask(:)));
-py = py(logical(mask(:)));
-pz = pz(logical(mask(:)));
+px_nz = px(logical(mask(:)));
+py_nz = py(logical(mask(:)));
+pz_nz = pz(logical(mask(:)));
 
 if poly_order == 1
 % first order polyfit
-P = [px, py, pz, ones(length(px),1)]; % polynomials
+P = [px, py, pz, ones(length(px),1)];
+P_nz = [px_nz, py_nz, pz_nz, ones(length(px_nz),1)]; % polynomials
 
 elseif poly_order == 2	
 % second order
 P = [px.^2, py.^2, pz.^2, px.*py, px.*pz, py.*pz, px, py, pz, ones(length(px),1)]; % polynomials
+P_nz = [px_nz.^2, py_nz.^2, pz_nz.^2, px_nz.*py_nz, px_nz.*pz_nz, py_nz.*pz_nz, px_nz, py_nz, pz_nz, ones(length(px_nz),1)]; % polynomials
 
 elseif poly_order == 3
 % third order
 P = [px.^3, py.^3, pz.^3, px.*py.^2, px.*pz.^2, px.*py.*pz, py.*px.^2, py.*pz.^2, pz.*px.^2, pz.*py.^2 ...
 	px.^2, py.^2, pz.^2, px.*py, px.*pz, py.*pz, px, py, pz, ones(length(px),1)]; % polynomials
+P_nz = [px_nz.^3, py_nz.^3, pz_nz.^3, px_nz.*py_nz.^2, px_nz.*pz_nz.^2, px_nz.*py_nz.*pz_nz, py_nz.*px_nz.^2, py_nz.*pz_nz.^2, pz_nz.*px_nz.^2, pz_nz.*py_nz.^2 ...
+	px_nz.^2, py_nz.^2, pz_nz.^2, px_nz.*py_nz, px_nz.*pz_nz, py_nz.*pz_nz, px_nz, py_nz, pz_nz, ones(length(px_nz),1)]; % polynomials
 
 else
 	error('cannot do higher than 3rd order');
@@ -38,13 +42,15 @@ end
 
 I = lfs(logical(mask)); % measurements of non-zero region
 I = I(:);
-% coeff = P\I; % polynomial coefficients
-coeff = (P'*P)\(P'*I);
-residual = I - P*coeff; % residual after polyfit
+% coeff = P_nz\I; % polynomial coefficients
+coeff = (P_nz'*P_nz)\(P_nz'*I);
+polyfit = P*coeff;
+
+% residual = I - P_nz*coeff; % residual after polyfit
 
 % name the phase result after polyfit as tfs (total field shift)
-polyfit = zeros(np*nv*nv2,1);
-polyfit(logical(mask(:))) = residual;
+% polyfit = zeros(np*nv*nv2,1);
+% polyfit(logical(mask(:))) = residual;
 polyfit = reshape(polyfit,[np,nv,nv2]);
 
 
