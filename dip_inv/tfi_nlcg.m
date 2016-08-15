@@ -1,12 +1,12 @@
-function [chi, res] = tfi_nlcg(tfs, mask, vox, z_prjs, Tik_weight, TV_weight, weights)
+function [chi, res] = tfi_nlcg(tfs, mask_b, mask_h, weights, vox, z_prjs, Tik_weight, TV_weight, Itnlim)
 
 if ~ exist('weights','var') || isempty(weights)
-    weights = mask;
+    weights = mask_b;
 end
 
 % normalize the weights
-wt = mask.*weights;
-wt = wt/sum(wt(:))*sum(mask(:));
+wt = mask_b.*weights;
+wt = wt/sum(wt(:))*sum(mask_b(:));
 
 
 [Nx,Ny,Nz] = size(tfs);
@@ -36,7 +36,7 @@ D = fftshift(D);
 params.FT = cls_dipconv([Nx,Ny,Nz],D);
 params.TV = cls_tv;
 
-params.Itnlim = 1000; % interations numbers (adjust accordingly!)
+params.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
 params.gradToll = 1e-6; % step size tolerance stopping criterea
 params.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
 params.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
@@ -47,10 +47,11 @@ params.lineSearchT0 = 1 ; % step size to start with
 
 params.Tik_weight = Tik_weight; 
 params.TV_weight = TV_weight; % TV penalty 
-params.mask = mask; %%% not used in nlcg
+params.mask_b = mask_b; % brain mask: tissue + eyes + skulls etc.
+params.mask_h = mask_h; % the whole head, filled in the air cavities
 %params.wt = mask; % weighting matrix
 params.wt = wt;
-params.data = tfs;
+params.data = tfs.*mask_b;
 
 % non-linear conjugate gradient method
 chi = nlcg_singlestep(zeros(Nx,Ny,Nz), params);
