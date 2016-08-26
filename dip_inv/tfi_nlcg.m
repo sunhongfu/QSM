@@ -1,5 +1,8 @@
 function [chi, res] = tfi_nlcg(tfs, Res_wt, sus_mask, Tik_mask, TV_mask, Tik_reg, TV_reg, vox, z_prjs, Itnlim)
 
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + Tik_reg*||Tik_mask * chi|| + TV_reg*TV(TV_mask * chi)
+
+
 % if ~ exist('weights','var') || isempty(weights)
 %     weights = mask_b;
 % end

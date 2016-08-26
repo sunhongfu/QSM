@@ -83,7 +83,7 @@ param.lineSearchBeta = 0.6;
 param.lineSearchT0 = 1 ; % step size to start with
 
 param.TVWeight = tv_reg; % TV penalty 
-param.mask = mask; %%% not used in nlcg
+% param.mask = mask; %%% not used in nlcg
 param.data = lfs;
 
 param.wt = W; % weighting matrix
