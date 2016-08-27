@@ -1,4 +1,4 @@
-function [m,Res_term,TV_term] = nlcg_singlestep(m0,params)
+function [m,Res_term,TV_term,Tik_term] = nlcg_singlestep(m0,params)
 % Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
 % m: susceptibility
 % W: weighting matrix derived from magnitude intensities
@@ -27,8 +27,8 @@ k         = 0;
 g0 = wGradient(m,params);
 dm = -g0;
 
-f = 0;
-Res_term0 = 0;
+% f = 0;
+% Res_term0 = 0;
 count =0;
 
 % iterations
@@ -37,11 +37,11 @@ while(k <= params.Itnlim)
     % backtracking line-search
     t = t0;
     f0 = objFunc(m,dm,0,params);
-    [f1, Res_term, TV_term] = objFunc(m,dm,t,params);
+    [f1, Res_term, TV_term, Tik_term] = objFunc(m,dm,t,params);
     lsiter = 0;
     while (f1 > f0 + alpha*t*(g0(:)'*dm(:))) && (lsiter<maxlsiter)
         t = t* beta;
-        [f1, Res_term, TV_term] = objFunc(m,dm,t,params);
+        f1 = objFunc(m,dm,t,params);
         lsiter = lsiter + 1;
     end
     % control the number of line searches by adapting the initial step search
@@ -83,8 +83,8 @@ while(k <= params.Itnlim)
         break;
     end
 
-    f = f1;
-    Res_term0 = Res_term;
+    % f = f1;
+    % Res_term0 = Res_term;
 end
 
 return;
@@ -97,14 +97,14 @@ w1 = m+t*dm;
 
 w2 = params.TV*(w1.*params.TV_mask);
 TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
-TV_term = sum(params.TV_reg(:).*TV(:));
+TV_term = sum(TV(:));
 
 Res_term = params.FT*(w1.*params.sus_mask) - params.data;
 Res_term = (params.Res_wt(:).*Res_term(:))'*(params.Res_wt(:).*Res_term(:));
 
-Tik_term = params.Tik_reg*((params.Tik_mask(:).*w1(:))'*((params.Tik_mask(:).*w1(:))));
+Tik_term = (params.Tik_mask(:).*w1(:))'*(params.Tik_mask(:).*w1(:));
 
-obj = Res_term + Tik_term + TV_term;
+obj = Res_term + params.Tik_reg*Tik_term + params.TV_reg*TV_term;
 
 
 
