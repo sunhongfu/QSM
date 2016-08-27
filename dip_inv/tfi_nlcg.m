@@ -56,7 +56,7 @@ params.Res_wt = Res_wt;
 params.data = tfs;
 
 % non-linear conjugate gradient method
-chi = nlcg_singlestep(zeros(Nx,Ny,Nz), params);
+[chi, Res_term, TV_term, Tik_term] = nlcg_singlestep(zeros(Nx,Ny,Nz), params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
