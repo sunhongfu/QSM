@@ -26,17 +26,17 @@ for i = 1:ns
 
 if poly_order == 1
 	% first order polyfit
-	% P = [px, py, ones(length(px),1)]; % polynomials
+	P = [px, py, ones(length(px),1)]; % polynomials
 	P_nz = [px_nz, py_nz, ones(length(px_nz),1)]; % polynomials
 
 elseif poly_order == 2
 	% second order polyfit
-	% P = [px.^2, py.^2, px.*py, px, py, ones(length(px),1)]; % polynomials
+	P = [px.^2, py.^2, px.*py, px, py, ones(length(px),1)]; % polynomials
 	P_nz = [px_nz.^2, py_nz.^2, px_nz.*py_nz, px_nz, py_nz, ones(length(px_nz),1)]; % polynomials
 
 elseif poly_order == 3
 	% third order
-	% P = [px.^3, py.^3, px.*py.^2, py.*px.^2, px.^2, py.^2, px.*py, px, py, ones(length(px),1)]; % polynomials
+	P = [px.^3, py.^3, px.*py.^2, py.*px.^2, px.^2, py.^2, px.*py, px, py, ones(length(px),1)]; % polynomials
 	P_nz = [px_nz.^3, py_nz.^3, px_nz.*py_nz.^2, py_nz.*px_nz.^2, px_nz.^2, py_nz.^2, px_nz.*py_nz, px_nz, py_nz, ones(length(px_nz),1)]; % polynomials
 
 else
