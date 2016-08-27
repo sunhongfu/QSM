@@ -63,8 +63,8 @@ csh = [rx,ry,rz];
 imsize = size(mask);
 mask_tmp = circshift(real(ifftn(fftn(mask).*fftn(ker,imsize))),-csh);
 mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-8/sum(h(:))) = 1; % no error tolerance
-lfs = lfs.*mask_ero;
+mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
+%lfs = lfs.*mask_ero;
 
 
 % remove added zero slices
