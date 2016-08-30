@@ -3,15 +3,6 @@ function [chi, res, Res_term, TV_term, Tik_term] = tfi_nlcg(tfs, Res_wt, sus_mas
 % argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + Tik_reg*||Tik_mask * chi|| + TV_reg*TV(TV_mask * chi)
 
 
-
-
-% pad extra 10 slices on both sides
-tfs = padarray(tfs,[0 0 10]);
-Res_wt = padarray(Res_wt,[0 0 10]);
-sus_mask = padarray(sus_mask,[0 0 10]);
-Tik_mask = padarray(Tik_mask,[0 0 10]);
-TV_mask = padarray(TV_mask,[0 0 10]);
-
 if ~ exist('z_prjs','var') || isempty(z_prjs)
     z_prjs = [0, 0, 1]; % PURE axial slices
 end
@@ -83,8 +74,5 @@ chi = real(chi);
 % residual difference between fowardly calculated field and lfs
 res = Res_wt.*(tfs - real(ifftn(D.*fftn(sus_mask.*chi))));
 
-% remove the extra padding slices
-chi = chi(:,:,11:end-10);
-res = res(:,:,11:end-10);
 
 end
