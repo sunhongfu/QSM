@@ -1,4 +1,4 @@
-function [chi, res] = tfi(tfs, Res_wt, sus_mask, Tik_mask, TV_mask, Tik_reg, TV_reg, vox, z_prjs, Itnlim)
+function [chi,polyfit,res] = tfi(tfs, Res_wt, sus_mask, Tik_mask, TV_mask, Tik_reg, TV_reg, vox, z_prjs, Itnlim)
 
 % argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi + V *p - tfs)|| + Tik_reg*||Tik_mask * chi|| + TV_reg*TV(TV_mask * chi)
 
@@ -84,15 +84,27 @@ params.Res_wt = Res_wt;
 params.data = tfs;
 params.imsize = [Nx,Ny,Nz];
 
+
+% initial estimate
+% (1) polyfit
+polyfit = poly3d(tfs,Tik_mask,2);
+coeff = P\polyfit(:);
+D0 = D;
+D0(abs(D)<0.25) = 0.25;
+chi0 = real(ifftn(fftn((tfs-polyfit).*Tik_mask)./D0)).*Tik_mask;
+nii = make_nii(chi0,vox);
+save_nii(nii,'chi0.nii');
+
 % non-linear conjugate gradient method
-[chi, Res_term, TV_term, Tik_term] = nlcg_dipconv_polyfit(zeros(Nx*Ny*Nz+size(P,2),1), params);
+[chi, coeff, Res_term, TV_term, Tik_term] = nlcg_dipconv_polyfit([zeros(Nx*Ny*Nz,1);coeff], params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
 % chi = real(chi).*mask;
 chi = real(chi);
 
+polyfit = reshape(P*coeff,[Nx,Ny,Nz]);
+
 % residual difference between fowardly calculated field and lfs
 res = tfs - real(ifftn(D.*fftn(chi)));
-
 

@@ -1,4 +1,4 @@
-function [m,Res_term,TV_term,Tik_term] = nlcg_dipconv_polyfit(m0,params)
+function [chi,coeff,Res_term,TV_term,Tik_term] = nlcg_dipconv_polyfit(m0,params)
 % Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
 % m: susceptibility
 % W: weighting matrix derived from magnitude intensities
@@ -87,6 +87,8 @@ while(k <= params.Itnlim)
     % Res_term0 = Res_term;
 end
 
+chi = reshape(m(1:prod(params.imsize)),params.imsize);
+coeff = m(prod(params.imsize)+1:end);
 return;
 
 
@@ -125,8 +127,5 @@ grad_Res = params.FT'*((params.Res_wt.^2).*(params.FT*m-params.data));
 grad_Tik = params.Tik_mask.*m_chi;
 grad_Tik = [grad_Tik(:); zeros(10,1)];
 
-size(grad_Tik)
-size(grad_TV)
-size(grad_Res)
 grad = 2*grad_Res + params.TV_reg*grad_TV + 2*params.Tik_reg.*grad_Tik;
 
