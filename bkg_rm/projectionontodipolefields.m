@@ -1,4 +1,4 @@
-function lfs = projectionontodipolefields(tfs,mask,vox,ker_rad,weight,z_prjs)
+function lfs = projectionontodipolefields(tfs,mask,vox,weight,z_prjs)
 
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
