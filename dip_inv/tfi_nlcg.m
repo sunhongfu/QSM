@@ -1,7 +1,15 @@
-function [chi, res] = tfi_nlcg(tfs, Res_wt, sus_mask, Tik_mask, TV_mask, Tik_reg, TV_reg, vox, z_prjs, Itnlim)
+function [chi, res, Res_term, TV_term, Tik_term] = tfi_nlcg(tfs, Res_wt, sus_mask, Tik_mask, TV_mask, Tik_reg, TV_reg, vox, z_prjs, Itnlim)
 
 % argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + Tik_reg*||Tik_mask * chi|| + TV_reg*TV(TV_mask * chi)
 
+
+if ~ exist('z_prjs','var') || isempty(z_prjs)
+    z_prjs = [0, 0, 1]; % PURE axial slices
+end
+
+if ~ exist('Itnlim','var') || isempty(Itnlim)
+    Itnlim = 500;
+end
 
 % if ~ exist('weights','var') || isempty(weights)
 %     weights = mask_b;
@@ -39,7 +47,7 @@ params.FT = cls_dipconv([Nx,Ny,Nz],D);
 params.TV = cls_tv;
 
 params.Itnlim = Itnlim; % interations numbers (adjust accordingly!)
-params.gradToll = 1e-6; % step size tolerance stopping criterea
+params.gradToll = 1e-4; % step size tolerance stopping criterea
 params.l1Smooth = eps; %1e-15; smoothing parameter of L1 norm
 params.pNorm = 1; % type of norm to use (i.e. L1 L2 etc)
 params.lineSearchItnlim = 100;
@@ -56,7 +64,7 @@ params.Res_wt = Res_wt;
 params.data = tfs;
 
 % non-linear conjugate gradient method
-[chi, Res_term, TV_term, Tik_term] = nlcg_singlestep(zeros(Nx,Ny,Nz), params);
+[chi, Res_term, TV_term, Tik_term] = nlcg_singlestep(zeros(size(tfs)), params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
@@ -64,6 +72,7 @@ params.data = tfs;
 chi = real(chi);
 
 % residual difference between fowardly calculated field and lfs
-res = tfs - real(ifftn(D.*fftn(chi)));
+res = Res_wt.*(tfs - real(ifftn(D.*fftn(sus_mask.*chi))));
 
 
+end

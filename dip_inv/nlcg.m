@@ -98,7 +98,7 @@ TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
 TVterm = sum(params.TVWeight(:).*TV(:));
 
 RES = params.FT*w1 - params.data;
-RES = RES(:)'*(params.wt(:).*RES(:));
+RES = (params.wt(:).*RES(:))'*(params.wt(:).*RES(:));
 
 obj = RES + TVterm;
 
@@ -109,7 +109,7 @@ w1 = params.TV*m;
 
 gradTV = params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1));
 
-gradRES = params.FT'*(params.wt.*((params.FT*m)-params.data));
+gradRES = params.FT'*((params.wt.^2).*((params.FT*m)-params.data));
 
 grad = 2*gradRES + gradTV.*params.TVWeight;
 

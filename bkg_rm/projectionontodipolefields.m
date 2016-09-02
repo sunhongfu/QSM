@@ -1,4 +1,4 @@
-function [lfs,mask_ero] = projectionontodipolefields(tfs,mask,vox,ker_rad,weight,z_prjs)
+function lfs = projectionontodipolefields(tfs,mask,vox,weight,z_prjs)
 
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
@@ -52,23 +52,8 @@ function y = Afun(x)
 end
 
 
-% erode the edge
-rx = round(ker_rad/vox(1));
-ry = round(ker_rad/vox(2));
-rz = round(ker_rad/vox(3));
-[X,Y,Z] = ndgrid(-rx:rx,-ry:ry,-rz:rz);
-h = (X.^2/rx^2 + Y.^2/ry^2 + Z.^2/rz^2 < 1);
-ker = h/sum(h(:));
-csh = [rx,ry,rz];
-imsize = size(mask);
-mask_tmp = circshift(real(ifftn(fftn(mask).*fftn(ker,imsize))),-csh);
-mask_ero = zeros(imsize);
-mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
-%lfs = lfs.*mask_ero;
-
 
 % remove added zero slices
 lfs = lfs(:,:,21:end-20);
-mask_ero = mask_ero(:,:,21:end-20);
 
 end
