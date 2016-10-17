@@ -9,7 +9,7 @@ function ph_cmb = geme_cmb(img, vox, te, mask, smooth_method)
 %   SMOOTH: smooth method (1) smooth3, (2) poly3, (3) poly3_nlcg
 
 if ~ exist('smooth_method','var') || isempty(smooth_method)
-    smooth_method = 'poly3';
+    smooth_method = 'smooth3';
 end
 
 [~,~,~,ne,nrcvrs] = size(img);
