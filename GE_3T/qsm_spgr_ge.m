@@ -1,4 +1,4 @@
-function qsm_spgr_ge_edm(path_dicom, path_out, options)
+function qsm_spgr_ge(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -22,9 +22,11 @@ function qsm_spgr_ge_edm(path_dicom, path_out, options)
 %    .cgs_num    - max interation number for RESHARP         : 500
 %    .lbv_peel   - LBV layers to be peeled off               : 2
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
-%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tv_reg     - Total variation regularization parameter  : 3e-3
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
+
+
 
 if ~ exist('path_dicom','var') || isempty(path_dicom)
     error('Please input the directory of DICOMs')
@@ -93,7 +95,7 @@ if ~ isfield(options,'lbv_peel')
 end
 
 if ~ isfield(options,'tv_reg')
-    options.tv_reg = 5e-4;
+    options.tv_reg = 3e-3;
 end
 
 if ~ isfield(options,'inv_num')
@@ -124,12 +126,13 @@ interp     = options.interp;
 % read in MESPGR dicoms (multi-echo gradient-echo)
 path_dicom = cd(cd(path_dicom));
 list_dicom = dir(path_dicom);
+list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
-dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
+
+dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
 dicom_info.EchoTrainLength = 8;
-dicom_info.SliceThickness = 1;
 
-imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/2, ...
+imsize = [dicom_info.Width, dicom_info.Height, length(list_dicom)/dicom_info.EchoTrainLength/4, ...
 			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
@@ -151,21 +154,21 @@ for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
 		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-%        Counter = Counter + 1 ;
+        Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-%        Counter = Counter + 1 ;
+        Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theReal = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
-        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
+        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
 	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theImag = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;    
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;    
         Counter = Counter + 1 ;
         
         img(:,:,zCount,echoCount) = theReal + 1j * theImag ;
@@ -193,14 +196,14 @@ clear img
 
 % define output directories
 path_qsm = [path_out '/QSM_SPGR_GE'];
-mkdir(path_qsm);
+[status,message,messageid] = mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
 
 
 % save magnitude and raw phase niftis for each echo
-mkdir('src')
+[status,message,messageid] = mkdir('src')
 for echo = 1:imsize(4)
     nii = make_nii(mag(:,:,:,echo),vox);
     save_nii(nii,['src/mag' num2str(echo) '.nii']);
@@ -286,9 +289,13 @@ elseif strcmpi('bestpath',ph_unwrap)
         fid = fopen(['wrapped_phase' num2str(echo_num) '.dat'],'w');
         fwrite(fid,ph_corr(:,:,:,echo_num),'float');
         fclose(fid);
-
-        bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+        if isdeployed
+            bash_script = ['~/bin/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
             'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+        else    
+            bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+            'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+        end
         unix(bash_script) ;
 
         fid = fopen(['unwrapped_phase' num2str(echo_num) '.dat'],'r');
@@ -327,7 +334,7 @@ nii = load_nii('unph_diff.nii');
 unph_diff = double(nii.img);
 if strcmpi('bipolar',readout)
     unph_diff = unph_diff/2;
-end 
+end
 
 for echo = 2:imsize(4)
     meandiff = unph(:,:,:,echo)-unph(:,:,:,1)-double(echo-1)*unph_diff;
@@ -374,10 +381,10 @@ if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask.*R,vox,smv_rad,mag(:,:,:,end),z_prjs);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
+    lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
-    mkdir('PDF');
+    [status,message,messageid] = mkdir('PDF');
     nii = make_nii(lfs_pdf,vox);
     save_nii(nii,'PDF/lfs_pdf.nii');
 
@@ -395,10 +402,10 @@ if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
     [lfs_sharp, mask_sharp] = sharp(tfs,mask.*R,vox,smv_rad,t_svd);
     % % 3D 2nd order polyfit to remove any residual background
-    % lfs_sharp= poly3d(lfs_sharp,mask_sharp);
+    % lfs_sharp= lfs_sharp - poly3d(lfs_sharp,mask_sharp);
 
     % save nifti
-    mkdir('SHARP');
+    [status,message,messageid] = mkdir('SHARP');
     nii = make_nii(lfs_sharp,vox);
     save_nii(nii,'SHARP/lfs_sharp.nii');
     
@@ -416,10 +423,10 @@ if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,vox,smv_rad,tik_reg,cgs_num);
     % % 3D 2nd order polyfit to remove any residual background
-    % lfs_resharp= poly3d(lfs_resharp,mask_resharp);
+    % lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
 
     % save nifti
-    mkdir('RESHARP');
+    [status,message,messageid] = mkdir('RESHARP');
     nii = make_nii(lfs_resharp,vox);
     save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
@@ -471,10 +478,10 @@ if sum(strcmpi('esharp',bkg_rm))
     mask_esharp     = mask_shaved(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);  
 
     % % 3D 2nd order polyfit to remove any residual background
-    % lfs_esharp = poly3d(lfs_esharp,mask_esharp);
+    % lfs_esharp = lfs_esharp - poly3d(lfs_esharp,mask_esharp);
 
     % save nifti
-    mkdir('ESHARP');
+    [status,message,messageid] = mkdir('ESHARP');
     nii = make_nii(lfs_esharp,vox);
     save_nii(nii,'ESHARP/lfs_esharp.nii');
 
@@ -489,27 +496,54 @@ end
 
 % LBV
 if sum(strcmpi('lbv',bkg_rm))
-    disp('--> LBV to remove background field ...');
-    lfs_lbv = LBV(tfs,mask.*R,imsize(1:3),vox,lbv_tol,lbv_peel); % strip 2 layers
-    mask_lbv = ones(imsize(1:3));
-    mask_lbv(lfs_lbv==0) = 0;
-    % 3D 2nd order polyfit to remove any residual background
-    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+   disp('--> LBV to remove background field ...');
+   lfs_lbv = LBV(tfs,mask.*R,imsize(1:3),vox,lbv_tol,lbv_peel); % strip 2 layers
+   mask_lbv = ones(imsize(1:3));
+   mask_lbv(lfs_lbv==0) = 0;
+   % 3D 2nd order polyfit to remove any residual background
+   lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
 
-    % save nifti
-    mkdir('LBV');
-    nii = make_nii(lfs_lbv,vox);
-    save_nii(nii,'LBV/lfs_lbv.nii');
+   % save nifti
+   [status,message,messageid] = mkdir('LBV');
+   nii = make_nii(lfs_lbv,vox);
+   save_nii(nii,'LBV/lfs_lbv.nii');
 
-    % inversion of susceptibility 
-    disp('--> TV susceptibility inversion on lbv...');
-    sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num);   
+   % inversion of susceptibility 
+   disp('--> TV susceptibility inversion on lbv...');
+   sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num);   
 
-    % save nifti
-    nii = make_nii(sus_lbv.*mask_lbv,vox);
-    save_nii(nii,['LBV/sus_lbv_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+   % save nifti
+   nii = make_nii(sus_lbv.*mask_lbv,vox);
+   save_nii(nii,['LBV/sus_lbv_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% tik-qsm
+
+% pad zeros
+tfs = padarray(tfs,[0 0 20]);
+mask = padarray(mask,[0 0 20]);
+R = padarray(R,[0 0 20]);
+
+for r = [1 2 3] 
+
+    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+    ker = h/sum(h(:));
+    imsize = size(mask);
+    mask_tmp = convn(mask.*R,ker,'same');
+    mask_ero = zeros(imsize);
+    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
+
+    % try total field inversion on regular mask, regular prelude
+    Tik_weight = 0.005;
+    TV_weight = 0.002;
+    [chi, res] = tfi_nlcg(tfs, mask_ero, 1, mask_ero, mask_ero, Tik_weight, TV_weight, vox, z_prjs, 2000);
+    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R(:,:,21:end-20),vox);
+    save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_Tik_' num2str(Tik_weight) '_TV_' num2str(TV_weight) '_2000.nii']);
+
+end
 
 save('all.mat','-v7.3');
 cd(init_dir);

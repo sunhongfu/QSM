@@ -9,11 +9,12 @@ end
 polyfit = zeros(size(lfs));
 
 % polyfit
-for i = 1:ns
 
-	px = repmat((1:np)',[nv,1]);
-	py = repmat((1:nv),[np,1]);
-	py = py(:);
+px = repmat((1:np)',[nv,1]);
+py = repmat((1:nv),[np,1]);
+py = py(:);
+
+for i = 1:ns
 
 
 	lfs_i = lfs(:,:,i);
