@@ -9,7 +9,7 @@ function ph_cmb = geme_cmb(img, vox, te, mask, smooth_method)
 %   SMOOTH: smooth method (1) smooth3, (2) poly3, (3) poly3_nlcg
 
 if ~ exist('smooth_method','var') || isempty(smooth_method)
-    smooth_method = 'poly3';
+    smooth_method = 'smooth3';
 end
 
 [~,~,~,ne,nrcvrs] = size(img);
@@ -53,8 +53,13 @@ fid = fopen('mask_unwrp.dat','w');
 fwrite(fid,mask_unwrp,'uchar');
 fclose(fid);
 
-bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
+if isdeployed
+    bash_script = ['~/bin/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
     'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
+else
+    bash_script = ['${pathstr}/3DSRNCP wrapped_phase_diff.dat mask_unwrp.dat ' ...
+    'unwrapped_phase_diff.dat $nv $np $ns reliability_diff.dat'];
+end
 unix(bash_script) ;
 
 fid = fopen(['unwrapped_phase_diff.dat'],'r');
@@ -84,8 +89,13 @@ elseif strcmpi('poly3',smooth_method)
         fwrite(fid,angle(offsets(:,:,:,chan)),'float');
         fclose(fid);
         setenv('chan',num2str(chan));
-        bash_script = ['${pathstr}/3DSRNCP wrapped_offsets_chan${chan}.dat mask_unwrp.dat ' ...
-        'unwrapped_offsets_chan${chan}.dat $nv $np $ns reliability_diff.dat'];
+        if isdeployed
+            bash_script = ['~/bin/3DSRNCP wrapped_offsets_chan${chan}.dat mask_unwrp.dat ' ...
+            'unwrapped_offsets_chan${chan}.dat $nv $np $ns reliability_diff.dat'];
+        else
+            bash_script = ['${pathstr}/3DSRNCP wrapped_offsets_chan${chan}.dat mask_unwrp.dat ' ...
+            'unwrapped_offsets_chan${chan}.dat $nv $np $ns reliability_diff.dat'];
+        end
         unix(bash_script) ;
         fid = fopen(['unwrapped_offsets_chan' num2str(chan) '.dat'],'r');
         tmp = fread(fid,'float');

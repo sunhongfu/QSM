@@ -13,7 +13,7 @@ function [sus,res] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm
 %   LFS    : local field shift (field perturbation map)
 %   MASK   : binary mask defining ROI
 %   VOX    : voxel size, e.g. [1 1 1] for isotropic resolution
-%   TV_REG : Total Variation regularization paramter, e.g. 5e-4
+%   TV_REG : Total Variation regularization paramter, e.g. 3e-3
 %   WEIGHTS: weights for the data consistancy term
 %   Z_PRJS : normal vector of the imaging plane
 %   ITNLIM : interation numbers of nlcg
@@ -86,7 +86,7 @@ param.lineSearchT0 = 1 ; % step size to start with
 
 param.TVWeight = tv_reg; % TV penalty 
 % param.mask = mask; %%% not used in nlcg
-param.data = lfs;
+param.data = lfs.*mask;
 
 param.wt = W; % weighting matrix
 
