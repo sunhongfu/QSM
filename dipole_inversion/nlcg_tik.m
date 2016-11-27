@@ -1,16 +1,19 @@
-function [m,Res_term,TV_term,Tik_term] = nlcg_singlestep(m0,params)
-% Phi(m) = ||W(Fu*m - y)||^2 + lamda1*|TV*m|_1
-% m: susceptibility
-% W: weighting matrix derived from magnitude intensities
-% Fu: F_{-1}*D*F forward calculates the field from susceptibility
-% y: measured field to be fitted (inversion)
-% lambda1: TV regularization parameter
-% TV: total variation operation
-% ||...||^2: L2 norm
-% |...|_1: L1 norm
-% note the TV term can also be L2 norm if set p=2,
-% then the term would be changed to ||TV*m||^2
-
+function [m, Res_term, TV_term, Tik_term] = nlcg_tik(m0, params)
+%
+% m: susceptibility chi of whole FOV or only local brain tissue
+% Res_term: norm of residual/fidelity term (L-curve purpose)
+% TV_term: norm of TV term
+% Tik_term: norm of Tik_term
+%
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| 
+%
+% tfs:      total field shift; can be local field shift if use this for local field inversion
+% Res_wt:   weighting matrix for the residual/fidelity term, usually brain mask
+% sus_mask: input 1 for total field inversion; input brain mask for local field inversion
+% TV_mask:  usually brain mask for TV regularization of the local tissue susceptiblity distribution
+% Tik_mask: usually brain mask for Tikhonov regularization of the local tissue susceptiblity distribution
+% TV_reg:   Regularization parameter for TV term
+% Tik_reg:  Regularization parameter for Tikhonov term
 
 
 m = m0;
@@ -60,18 +63,7 @@ while(k <= params.Itnlim)
     dm = -g1 + bk*dm;
     k = k + 1;
      
-    % outputs for debugging purpose
-    % fprintf('%d , relative residual: %f\n',...
-    %         k, abs(Res_term-Res_term0)/Res_term);
-    
-    % if (abs(Res_term-Res_term0)/Res_term <= gradToll); 
-    %     count = count + 1;
-    % else
-    %     count = 0;
-    % end 
-    
-    % fprintf('%d , relative changes: %f\n',...
-    %         k, norm(t*dm(:))/norm(m(:)));
+
     fprintf('.');
     
     if (norm(t*dm(:))/norm(m(:)) <= gradToll); 
@@ -79,12 +71,11 @@ while(k <= params.Itnlim)
     else
         count = 0;
     end 
-    if (count == 10)
+    if (count == 10) % under gradToll for continueous 10 times
         break;
     end
 
-    % f = f1;
-    % Res_term0 = Res_term;
+
 end
 
 return;
