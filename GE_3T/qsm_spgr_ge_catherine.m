@@ -194,12 +194,12 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% %%%%%%%%%%%%%%%%%%%%%% abandon the first echo from calculation
-% mag = mag(:,:,:,2:end);
-% ph = ph(:,:,:,2:end);
-% TE = TE(2:end);
-% imsize = size(mag);
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% abandon the first echo from calculation
+mag = mag(:,:,:,2:end);
+ph = ph(:,:,:,2:end);
+TE = TE(2:end);
+imsize = size(mag);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % interpolate the images to the double size
 if interp
@@ -342,8 +342,8 @@ for echo = 2:imsize(4)
     meandiff = mean(meandiff(:))
     njump = round(meandiff/(2*pi))
     disp(['    ' num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
-    % unph(:,:,:,echo) = unph(:,:,:,echo) - njump*2*pi;
-    % unph(:,:,:,echo) = unph(:,:,:,echo).*mask;
+    unph(:,:,:,echo) = unph(:,:,:,echo) - njump*2*pi;
+    unph(:,:,:,echo) = unph(:,:,:,echo).*mask;
 end
 
 
