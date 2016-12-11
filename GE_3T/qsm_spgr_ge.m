@@ -522,25 +522,25 @@ end
 % tik-qsm
 
 % pad zeros
-tfs = padarray(tfs,[0 0 20]);
-mask = padarray(mask,[0 0 20]);
-R = padarray(R,[0 0 20]);
+tfs_pad = padarray(tfs,[0 0 20]);
+mask_pad = padarray(mask,[0 0 20]);
+R_pad = padarray(R,[0 0 20]);
 
 for r = [1 2 3] 
 
     [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
     h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
     ker = h/sum(h(:));
-    imsize = size(mask);
-    mask_tmp = convn(mask.*R,ker,'same');
+    imsize = size(mask_pad);
+    mask_tmp = convn(mask_pad.*R_pad,ker,'same');
     mask_ero = zeros(imsize);
     mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
 
     % try total field inversion on regular mask, regular prelude
     Tik_weight = 0.005;
     TV_weight = 0.002;
-    [chi, res] = tikhonov_qsm(tfs, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
-    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R(:,:,21:end-20),vox);
+    [chi, res] = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
+    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R_pad(:,:,21:end-20),vox);
     save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);
 
 end
