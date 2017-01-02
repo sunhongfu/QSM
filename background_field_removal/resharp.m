@@ -1,14 +1,16 @@
-function [lfs, mask_ero, data_fidelity, regularization_term] = resharp(tfs,mask,vox,ker_rad,tik_reg,cgs_num)
-%   [LSF,MASK_ERO] = RESHARP(TFS,MASK,VOX,KER_RAD,TIK_REG)
+function [lfs, mask_ero, res_term, reg_term] = resharp(tfs,mask,vox,ker_rad,tik_reg,cgs_num)
+%   [LSF,MASK_ERO,RES_TERM,REG_TERM] = RESHARP(TFS,MASK,VOX,KER_RAD,TIK_REG)
 %
 %   LFS         : local field shift after background removal
 %   MASK_ERO    : eroded mask after convolution
+%   RES_TERM    : norm of data fidelity term
+%   REG_TERM    : norm of regularization term
 %   TFS         : input total field shift
 %   MASK        : binary mask defining the brain ROI
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
 %   KER_RAD     : radius of convolution kernel (mm), e.g. 3
-%   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-3
-%	CGS_NUM     : maximum number of CGS times of iteration
+%   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-4
+%	CGS_NUM     : maximum number of CGS times of iteration, e.g. 200
 %
 %Method is described in the paper:
 %Sun, H. and Wilman, A. H. (2013), 
@@ -24,7 +26,7 @@ if ~ exist('ker_rad','var') || isempty(ker_rad)
 end
 
 if ~ exist('tik_reg','var') || isempty(tik_reg)
-    tik_reg = 1e-3;
+    tik_reg = 1e-4;
 end
 
 if ~ exist('cgs_num','var') || isempty(cgs_num)
@@ -91,10 +93,10 @@ m = cgs(@Afun, b, 1e-6, cgs_num);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
 
-data_fidelity = mask_ero.*circshift(ifftn(DKER.*fftn(tfs-reshape(m,imsize))),-csh);
-data_fidelity = norm(data_fidelity(:));
+res_term = mask_ero.*circshift(ifftn(DKER.*fftn(tfs-reshape(m,imsize))),-csh);
+res_term = norm(res_term(:));
 
-regularization_term = norm(m);
+reg_term = norm(m);
 
 % remove the padding for outputs
 lfs = lfs(rx+1:end-rx,ry+1:end-ry,rz+1:end-rz);
