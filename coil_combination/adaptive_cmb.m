@@ -66,13 +66,19 @@ RS = reshape(permute(RS,[4 5 1 2 3]),nrcvrs,nrcvrs,np*nv,nv2);
 sen = zeros(nrcvrs,np*nv,nv2);
 % (1) using MATLAB POOL
 if flag_pool
-    % matlabpool open
-    poolobj = parpool
+    if exist('parpool')
+        poolobj=parpool;
+    else
+        matlabpool open
+    end
     parfor sl = 1:nv2
         sen(:,:,sl) = eig_fun(RS(:,:,:,sl));
     end
-    % matlabpool close
-    delete(poolobj)
+    if exist('parpool')
+        delete(poolobj);
+    else
+        matlabpool close
+    end
 else
 % (2) NOT using MATLAB POOL
     for sl = 1:nv2

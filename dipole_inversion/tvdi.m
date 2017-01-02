@@ -42,10 +42,10 @@ end
 imsize = size(lfs);
 
 % weights for data consistancy term (normalized)
-%W = mask.*weights;
-%W = W/sum(W(:))*sum(mask(:));
+W = mask.*weights;
+W = W/sum(W(:))*sum(mask(:));
 % to be consistent with tfi_nlcg.m
-W = weights/sqrt(sum(weights(:).^2)/numel(weights));
+% W = weights/sqrt(sum(weights(:).^2)/numel(weights));
 
 % % set the DC point of field in k-space to 0
 % % mean value of lfs to be 0

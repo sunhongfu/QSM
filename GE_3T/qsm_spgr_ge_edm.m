@@ -22,7 +22,7 @@ function qsm_spgr_ge_edm(path_dicom, path_out, options)
 %    .cgs_num    - max interation number for RESHARP         : 500
 %    .lbv_peel   - LBV layers to be peeled off               : 2
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
-%    .tv_reg     - Total variation regularization parameter  : 2e-3
+%    .tv_reg     - Total variation regularization parameter  : 5e-4
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
 
@@ -93,7 +93,7 @@ if ~ isfield(options,'lbv_peel')
 end
 
 if ~ isfield(options,'tv_reg')
-    options.tv_reg = 2e-3;
+    options.tv_reg = 5e-4;
 end
 
 if ~ isfield(options,'inv_num')
