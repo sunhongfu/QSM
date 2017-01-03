@@ -306,7 +306,7 @@ for i = 1:nVol % all time series
         disp('--> PDF to remove background field ...');
         [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask,vox,smv_rad,mag,z_prjs);
         % 2D 2nd order polyfit to remove any residual background
-        lfs_pdf= poly2d(lfs_pdf,mask_pdf);
+        lfs_pdf = lfs_pdf - poly2d(lfs_pdf,mask_pdf);
 
         % save nifti
         mkdir('PDF');
@@ -331,7 +331,7 @@ for i = 1:nVol % all time series
         disp('--> SHARP to remove background field ...');
         [lfs_sharp, mask_sharp] = sharp(tfs,mask,vox,smv_rad,t_svd);
         % 2D 2nd order polyfit to remove any residual background
-        lfs_sharp= poly2d(lfs_sharp,mask_sharp);
+        lfs_sharp = lfs_sharp - poly2d(lfs_sharp,mask_sharp);
 
         % save nifti
         mkdir('SHARP');
@@ -356,7 +356,7 @@ for i = 1:nVol % all time series
     	disp('--> RESHARP to remove background field ...');
         [lfs_resharp, mask_resharp] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
         % 2D 2nd order polyfit to remove any residual background
-        lfs_resharp= poly2d(lfs_resharp,mask_resharp);
+        lfs_resharp = lfs_resharp - poly2d(lfs_resharp,mask_resharp);
 
         % save nifti
         mkdir('RESHARP');
@@ -414,7 +414,7 @@ for i = 1:nVol % all time series
         mask_esharp     = mask_shaved(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);  
 
         % 2D 2nd order polyfit to remove any residual background
-        lfs_esharp = poly2d(lfs_esharp,mask_esharp);
+        lfs_esharp = lfs_esharp - poly2d(lfs_esharp,mask_esharp);
 
         % save nifti
         mkdir('ESHARP');
@@ -440,7 +440,7 @@ for i = 1:nVol % all time series
         mask_lbv = ones(size(mask));
         mask_lbv(lfs_lbv==0) = 0;
         % 2D 2nd order polyfit to remove any residual background
-        lfs_lbv= poly2d(lfs_lbv,mask_lbv);
+        lfs_lbv = lfs_lbv - poly2d(lfs_lbv,mask_lbv);
 
         % save nifti
         mkdir('LBV');
