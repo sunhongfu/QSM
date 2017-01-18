@@ -34,7 +34,7 @@ end
 
 if ~ exist('path_out','var') || isempty(path_out)
     path_out = pwd;
-    display('Current directory for output')
+    disp('Current directory for output')
 end
 
 if ~ exist('options','var') || isempty(options)
@@ -132,8 +132,10 @@ list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
 dicom_info.EchoTrainLength = 8;
 
-imsize = [dicom_info.Width, dicom_info.Height, length(list_dicom)/dicom_info.EchoTrainLength/4, ...
-			 dicom_info.EchoTrainLength];
+imsize = [dicom_info.Width, dicom_info.Height, ...
+            length(list_dicom)/dicom_info.EchoTrainLength/4, ...
+                dicom_info.EchoTrainLength];
+
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
 % angles!!!
@@ -145,6 +147,8 @@ Zz = Zxyz(3);
 z_prjs = [Xz, Yz, Zz];
 
 
+img = zeros(imsize);
+TE = zeros(1, imsize(4));
 
 chopper = double(mod(1:imsize(3),2)) ;
 chopper( chopper < 1 ) = -1 ;
@@ -172,9 +176,7 @@ for zCount = 1 : imsize(3)
         Counter = Counter + 1 ;
         
         img(:,:,zCount,echoCount) = theReal + 1j * theImag ;
-
-	end
-
+    end
 end
 
 % interpolate the images to the double size
@@ -196,14 +198,14 @@ clear img
 
 % define output directories
 path_qsm = [path_out '/QSM_SPGR_GE'];
-[status,message,messageid] = mkdir(path_qsm);
+[~,~,~] = mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
 
 
 % save magnitude and raw phase niftis for each echo
-[status,message,messageid] = mkdir('src')
+[~,~,~] = mkdir('src');
 for echo = 1:imsize(4)
     nii = make_nii(mag(:,:,:,echo),vox);
     save_nii(nii,['src/mag' num2str(echo) '.nii']);
@@ -217,7 +219,7 @@ end
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
-[status,cmdout] = unix('rm BET*');
+[~,~] = unix('rm BET*');
 unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -368,7 +370,7 @@ end
 % normalize to main field
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
-% units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
+% units: TE s, gamma 2.675e8 rad/(sT), B0 3T
 tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
 
 nii = make_nii(tfs,vox);
@@ -379,12 +381,12 @@ save_nii(nii,'tfs.nii');
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
-    [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask.*R,vox,smv_rad,mag(:,:,:,end),z_prjs);
+    [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask.*R,vox,mag(:,:,:,end),z_prjs);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
+    % lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
-    [status,message,messageid] = mkdir('PDF');
+    [~,~,~] = mkdir('PDF');
     nii = make_nii(lfs_pdf,vox);
     save_nii(nii,'PDF/lfs_pdf.nii');
 
@@ -405,7 +407,7 @@ if sum(strcmpi('sharp',bkg_rm))
     % lfs_sharp= lfs_sharp - poly3d(lfs_sharp,mask_sharp);
 
     % save nifti
-    [status,message,messageid] = mkdir('SHARP');
+    [~,~,~] = mkdir('SHARP');
     nii = make_nii(lfs_sharp,vox);
     save_nii(nii,'SHARP/lfs_sharp.nii');
     
@@ -426,7 +428,7 @@ if sum(strcmpi('resharp',bkg_rm))
     % lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
 
     % save nifti
-    [status,message,messageid] = mkdir('RESHARP');
+    [~,~,~] = mkdir('RESHARP');
     nii = make_nii(lfs_resharp,vox);
     save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
@@ -481,7 +483,7 @@ if sum(strcmpi('esharp',bkg_rm))
     % lfs_esharp = lfs_esharp - poly3d(lfs_esharp,mask_esharp);
 
     % save nifti
-    [status,message,messageid] = mkdir('ESHARP');
+    [~,~,~] = mkdir('ESHARP');
     nii = make_nii(lfs_esharp,vox);
     save_nii(nii,'ESHARP/lfs_esharp.nii');
 
@@ -504,7 +506,7 @@ if sum(strcmpi('lbv',bkg_rm))
    lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
 
    % save nifti
-   [status,message,messageid] = mkdir('LBV');
+   [~,~,~] = mkdir('LBV');
    nii = make_nii(lfs_lbv,vox);
    save_nii(nii,'LBV/lfs_lbv.nii');
 
@@ -539,7 +541,7 @@ for r = [1 2 3]
     % try total field inversion on regular mask, regular prelude
     Tik_weight = 0.008;
     TV_weight = 0.003;
-    [chi, res] = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
+    chi = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
     nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R_pad(:,:,21:end-20),vox);
     save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);
 
