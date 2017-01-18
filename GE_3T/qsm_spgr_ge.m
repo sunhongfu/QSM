@@ -381,7 +381,7 @@ save_nii(nii,'tfs.nii');
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
-    [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask.*R,vox,mag(:,:,:,end),z_prjs);
+    lfs_pdf = projectionontodipolefields(tfs,mask.*R,vox,mag(:,:,:,end),z_prjs);
     % 3D 2nd order polyfit to remove any residual background
     % lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
