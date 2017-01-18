@@ -67,10 +67,12 @@ params.sus_mask         = sus_mask;
 params.Res_wt           = Res_wt;
 params.data             = tfs;
 
+params.P                = TV_mask + 50*(1-TV_mask);
+
 % non-linear conjugate gradient method
 [chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
-chi = real(chi);
+chi = real(params.P.*chi);
 % otherwise mask it
