@@ -12,7 +12,7 @@ function qsm_spgr_philips(path_dicom, path_out, options)
 %    .fit_thr    - extra filtering based on the fit residual : 20
 %    .bet_thr    - threshold for BET brain mask              : 0.4
 %    .bet_smooth - smoothness of BET brain mask at edges     : 2
-%    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
+%    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'bestpath'
 %    .bkg_rm     - background field removal method(s)        : 'resharp'
 %                  options: 'pdf','sharp','resharp','esharp','lbv'
 %                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
@@ -26,6 +26,12 @@ function qsm_spgr_philips(path_dicom, path_out, options)
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
 
+
+% AUTHOR: Hongfu Sun
+% EMAIL: sunhongfu@gmail.com
+% PAPER TO REFERENCE: Sun H, Wilman AH. Background field removal using spherical mean value
+% filtering and Tikhonov regularization. Magn Reson Med. 2014 Mar;71(3):1151-7.
+% doi: 10.1002/mrm.24765. PubMed PMID: 23666788.
 
 
 if ~ exist('path_dicom','var') || isempty(path_dicom)
@@ -62,7 +68,7 @@ if ~ isfield(options,'bet_smooth')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
+    options.ph_unwrap = 'bestpath';
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -131,7 +137,7 @@ list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
 
-imsize = double([dicom_info.Width, dicom_info.Height, ...
+imsize = single([dicom_info.Width, dicom_info.Height, ...
             length(list_dicom)/dicom_info.EchoTrainLength/2, ...
                 dicom_info.EchoTrainLength]);
 
@@ -148,17 +154,17 @@ z_prjs = [Xz, Yz, Zz];
 
 
 % read in all the dicoms into MATLAB matrix
-mag = zeros(imsize(1),imsize(2),imsize(3)*imsize(4));
-ph = zeros(imsize(1),imsize(2),imsize(3)*imsize(4));
+mag = zeros(imsize(1),imsize(2),imsize(3)*imsize(4),'single');
+ph = zeros(imsize(1),imsize(2),imsize(3)*imsize(4),'single');
 for i = 1:length(list_dicom)/2
-    mag(:,:,i) = double(dicomread([path_dicom,filesep,list_dicom(i).name]));
+    mag(:,:,i) = dicomread([path_dicom,filesep,list_dicom(i).name]);
 end
 % reshape the matrix into 4D
 mag = reshape(mag,[imsize(1),imsize(2),imsize(4),imsize(3)]);
 mag = permute(mag,[2 1 4 3]);
 % read in phase images
 for i = length(list_dicom)/2+1:length(list_dicom)
-    ph(:,:,i-length(list_dicom)/2) = double(dicomread([path_dicom,filesep,list_dicom(i).name]));
+    ph(:,:,i-length(list_dicom)/2) = dicomread([path_dicom,filesep,list_dicom(i).name]);
 end
 ph = reshape(ph,[imsize(1),imsize(2),imsize(4),imsize(3)]);
 ph = permute(ph,[2 1 4 3]);
@@ -170,9 +176,13 @@ dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
 minSlice = dicom_info.SliceLocation;
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(end).name]);
 maxSlice = dicom_info.SliceLocation;
-vox = [dicom_info.PixelSpacing(1), double(dicom_info.PixelSpacing(2)), abs(maxSlice-minSlice)/(imsize(3)-1)];
+vox = double([dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), abs(maxSlice-minSlice)/(imsize(3)-1)]);
 
-
+% read in the TEs
+for i = 1:imsize(4)
+    dicom_info = dicominfo([path_dicom,filesep,list_dicom(i).name]);
+    TE(i) = dicom_info.EchoTime*1e-3;
+end
 
 % define output directories
 path_qsm = [path_out '/QSM_SPGR_PHILIPS'];
@@ -180,6 +190,14 @@ path_qsm = [path_out '/QSM_SPGR_PHILIPS'];
 init_dir = pwd;
 cd(path_qsm);
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% discard the first 17 slices for this dataset!!!
+%mag = mag(:,:,18:end,:);
+%ph = ph(:,:,18:end,:);
+%imsize(3) = imsize(3) - 17;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % save magnitude and raw phase niftis for each echo
@@ -202,22 +220,24 @@ unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
-mask = double(nii.img);
+mask = single(nii.img);
 
 
-% phase offset correction
-% if unipolar
-if strcmpi('unipolar',readout)
-    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
-% if bipolar
-elseif strcmpi('bipolar',readout)
-    ph_corr = zeros(imsize);
-    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask);
-    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask);
-else
-    error('is the sequence unipolar or bipolar readout?')
-end
-
+%%%%%%%%%%%%% is this needed? %%%%%%%%%%%%%%%%%%%% 
+ % phase offset correction
+ % if unipolar
+ %if strcmpi('unipolar',readout)
+ %    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
+ %% if bipolar
+ %elseif strcmpi('bipolar',readout)
+ %    ph_corr = zeros(imsize);
+ %    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask);
+ %    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask);
+ %else
+ %    error('is the sequence unipolar or bipolar readout?')
+ %end
+ph_corr = ph;
+clear ph;
 % save offset corrected phase niftis
 for echo = 1:imsize(4)
     nii = make_nii(ph_corr(:,:,:,echo),vox);
@@ -276,7 +296,7 @@ elseif strcmpi('bestpath',ph_unwrap)
             bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
             'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
         end
-        unix(bash_script) ;
+        unix(bash_script);
 
         fid = fopen(['unwrapped_phase' num2str(echo_num) '.dat'],'r');
         tmp = fread(fid,'float');
@@ -292,6 +312,8 @@ elseif strcmpi('bestpath',ph_unwrap)
         nii = make_nii(reliability_raw.*mask,vox);
         save_nii(nii,['reliability_raw' num2str(echo_num) '.nii']);
     end
+    
+    clear reliability_raw mask_unwrp tmp;
 
     nii = make_nii(unph,vox);
     save_nii(nii,'unph_bestpath.nii');
@@ -300,6 +322,7 @@ else
     error('what unwrapping methods to use? prelude or bestpath?')
 end
 
+clear ph_corr;
 
 % check and correct for 2pi jump between echoes
 disp('--> correct for potential 2pi jumps between TEs ...')
@@ -310,8 +333,9 @@ disp('--> correct for potential 2pi jumps between TEs ...')
 % unph2 = double(nii.img);
 % unph_diff = unph2 - unph1;
 
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
+% nii = load_nii('unph_diff.nii');
+% unph_diff = double(nii.img);
+unph_diff = unph(:,:,:,2) - unph(:,:,:,1);
 if strcmpi('bipolar',readout)
     unph_diff = unph_diff/2;
 end
@@ -326,30 +350,37 @@ for echo = 2:imsize(4)
     unph(:,:,:,echo) = unph(:,:,:,echo).*mask;
 end
 
+clear unph_diff;
+
+nii = make_nii(unph,vox);
+save_nii(nii,'unph_corrected.nii');
 
 % fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
 [tfs, fit_residual] = echofit(unph,mag,TE,0); 
+Mag = mag(:,:,:,end);
 
+clear unph mag;
 
 % extra filtering according to fitting residuals
 if r_mask
     % generate reliability map
-    fit_residual_blur = smooth3(fit_residual,'box',round(1./vox)*2+1); 
-    nii = make_nii(fit_residual_blur,vox);
+    fit_residual = smooth3(fit_residual,'box',round(1./vox)*2+1); 
+    nii = make_nii(fit_residual,vox);
     save_nii(nii,'fit_residual_blur.nii');
-    R = ones(size(fit_residual_blur));
-    R(fit_residual_blur >= fit_thr) = 0;
+    R = ones(size(fit_residual),'single');
+    R(fit_residual >= fit_thr) = 0;
 else
     R = 1;
 end
 
+clear fit_residual
 
 % normalize to main field
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 3T
-tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+tfs = tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
 
 nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
@@ -359,7 +390,7 @@ save_nii(nii,'tfs.nii');
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
-    lfs_pdf = projectionontodipolefields(tfs,mask.*R,vox,mag(:,:,:,end),z_prjs);
+    lfs_pdf = projectionontodipolefields(tfs,mask.*R,vox,Mag,z_prjs);
     % 3D 2nd order polyfit to remove any residual background
     % lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
@@ -370,7 +401,7 @@ if sum(strcmpi('pdf',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on PDF...');
-    sus_pdf = tvdi(lfs_pdf,mask_pdf,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+    sus_pdf = tvdi(lfs_pdf,mask_pdf,vox,tv_reg,Mag,z_prjs,inv_num); 
 
     % save nifti
     nii = make_nii(sus_pdf.*mask_pdf,vox);
@@ -391,7 +422,7 @@ if sum(strcmpi('sharp',bkg_rm))
     
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on SHARP...');
-    sus_sharp = tvdi(lfs_sharp,mask_sharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+    sus_sharp = tvdi(lfs_sharp,mask_sharp,vox,tv_reg,Mag,z_prjs,inv_num); 
    
     % save nifti
     nii = make_nii(sus_sharp.*mask_sharp,vox);
@@ -412,7 +443,7 @@ if sum(strcmpi('resharp',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
-    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,Mag,z_prjs,inv_num); 
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
@@ -467,7 +498,7 @@ if sum(strcmpi('esharp',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on ESHARP...');
-    sus_esharp = tvdi(lfs_esharp,mask_esharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+    sus_esharp = tvdi(lfs_esharp,mask_esharp,vox,tv_reg,Mag,z_prjs,inv_num); 
    
     % save nifti
     nii = make_nii(sus_esharp.*mask_esharp,vox);
@@ -490,7 +521,7 @@ if sum(strcmpi('lbv',bkg_rm))
 
    % inversion of susceptibility 
    disp('--> TV susceptibility inversion on lbv...');
-   sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num);   
+   sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,Mag,z_prjs,inv_num);   
 
    % save nifti
    nii = make_nii(sus_lbv.*mask_lbv,vox);
@@ -498,32 +529,32 @@ if sum(strcmpi('lbv',bkg_rm))
 end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% tik-qsm
-
-% pad zeros
-tfs_pad = padarray(tfs,[0 0 20]);
-mask_pad = padarray(mask,[0 0 20]);
-R_pad = padarray(R,[0 0 20]);
-
-for r = [1 2 3] 
-
-    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
-    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
-    ker = h/sum(h(:));
-    imsize = size(mask_pad);
-    mask_tmp = convn(mask_pad.*R_pad,ker,'same');
-    mask_ero = zeros(imsize);
-    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
-
-    % try total field inversion on regular mask, regular prelude
-    Tik_weight = 0.008;
-    TV_weight = 0.003;
-    chi = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
-    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R_pad(:,:,21:end-20),vox);
-    save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);
-
-end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% tik-qsm
+%
+%% pad zeros
+%tfs_pad = padarray(tfs,[0 0 20]);
+%mask_pad = padarray(mask,[0 0 20]);
+%R_pad = padarray(R,[0 0 20]);
+%
+%for r = [1 2 3] 
+%
+%    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+%    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+%    ker = h/sum(h(:));
+%    imsize = size(mask_pad);
+%    mask_tmp = convn(mask_pad.*R_pad,ker,'same');
+%    mask_ero = zeros(imsize);
+%    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
+%
+%    % try total field inversion on regular mask, regular prelude
+%    Tik_weight = 0.01;
+%    TV_weight = 0.0005;
+%    chi = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
+%    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R_pad(:,:,21:end-20),vox);
+%    save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);
+%
+%end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 save('all.mat','-v7.3');
