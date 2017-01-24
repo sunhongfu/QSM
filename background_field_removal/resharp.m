@@ -10,7 +10,7 @@ function [lfs, mask_ero, res_term, reg_term] = resharp(tfs,mask,vox,ker_rad,tik_
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
 %   KER_RAD     : radius of convolution kernel (mm), e.g. 3
 %   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-4
-%	CGS_NUM     : maximum number of CGS times of iteration, e.g. 200
+%   CGS_NUM     : maximum number of CGS times of iteration, e.g. 200
 %
 %Method is described in the paper:
 %Sun, H. and Wilman, A. H. (2013), 
