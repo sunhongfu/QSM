@@ -13,17 +13,17 @@ function [sus,res] = tvdi(lfs, mask, vox, tv_reg, weights, z_prjs, Itnlim, pNorm
 %   LFS    : local field shift (field perturbation map)
 %   MASK   : binary mask defining ROI
 %   VOX    : voxel size, e.g. [1 1 1] for isotropic resolution
-%   TV_REG : Total Variation regularization paramter, e.g. 3e-3
-%   WEIGHTS: weights for the data consistancy term
-%   Z_PRJS : normal vector of the imaging plane
-%   ITNLIM : interation numbers of nlcg
+%   TV_REG : Total Variation regularization paramter, e.g. 5e-4
+%   WEIGHTS: weights for the data consistancy term, e.g. mask or magnitude
+%   Z_PRJS : normal vector of the imaging plane, e.g. [0,0,1]
+%   ITNLIM : interation numbers of nlcg, e.g. 500
 %   PNORM  : L1 or L2 norm regularization
 
 
-% % pad extra 10 slices on both sides
-% lfs = padarray(lfs,[0 0 10]);
-% mask = padarray(mask,[0 0 10]);
-% weights = padarray(weights,[0 0 10]);
+% pad extra 20 slices on both sides
+lfs = padarray(lfs,[0 0 20]);
+mask = padarray(mask,[0 0 20]);
+weights = padarray(weights,[0 0 20]);
 
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
@@ -42,10 +42,10 @@ end
 imsize = size(lfs);
 
 % weights for data consistancy term (normalized)
-%W = mask.*weights;
-%W = W/sum(W(:))*sum(mask(:));
+W = mask.*weights;
+W = W/sum(W(:))*sum(mask(:));
 % to be consistent with tfi_nlcg.m
-W = weights/sqrt(sum(weights(:).^2)/numel(weights));
+% W = weights/sqrt(sum(weights(:).^2)/numel(weights));
 
 % % set the DC point of field in k-space to 0
 % % mean value of lfs to be 0
@@ -54,7 +54,6 @@ W = weights/sqrt(sum(weights(:).^2)/numel(weights));
 % lfs = lfs.*mask;
 
 % create K-space filter kernel D
-%%%%% make this a seperate function in the future
 FOV = vox.*[Nx,Ny,Nz];
 FOVx = FOV(1);
 FOVy = FOV(2);
@@ -104,8 +103,8 @@ sus = real(sus);
 res = lfs - real(ifftn(D.*fftn(sus)));
 
 
-% % remove the extra padding slices
-% sus = sus(:,:,11:end-10);
-% res = res(:,:,11:end-10);
+% remove the extra padding slices
+sus = sus(:,:,21:end-20);
+res = res(:,:,21:end-20);
 
 end

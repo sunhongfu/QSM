@@ -144,6 +144,11 @@ img = flipdim(flipdim(img,2),3);
 voxelSize = [Pars.lpe/nv, Pars.lro/np, Pars.lpe2/ns]*10;
 
 
+% have a peak of the raw phase
+nii = make_nii(angle(img),voxelSize);
+save_nii(nii,'rawphase.nii');
+
+
 % intrinsic euler angles 
 % z-x-z convention, psi first, then theta, lastly phi
 % psi and theta are left-handed, while gamma is right-handed!
@@ -173,10 +178,6 @@ ph_ramp2 = exp(-sqrt(-1)*2*pi*pix2*(-1/2:1/nv:1/2-1/nv));
 img_corr = img.* repmat((ph_ramp),[nv 1 ns nrcvrs]);
 img_corr = img_corr.* repmat(transpose(ph_ramp2),[1 np ns nrcvrs]);
 
-% have a peak of the raw phase
-nii = make_nii(angle(img_corr),voxelSize);
-save_nii(nii,'rawphase.nii');
-
 
 % combine receivers
 if Pars.RCVRS_ > 1
@@ -201,7 +202,8 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+% unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+unix('bet2 combine/mag_cmb.nii BET -f ${bet_thr} -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -304,7 +306,7 @@ if sum(strcmpi('pdf',bkg_rm))
     [lfs_pdf,mask_pdf] = pdf(tfs,mask,voxelSize,smv_rad, ...
         weights,z_prjs);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
+    lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
     mkdir('PDF');
@@ -327,7 +329,7 @@ if sum(strcmpi('sharp',bkg_rm))
     disp('--> SHARP to remove background field ...');
     [lfs_sharp, mask_sharp] = sharp(tfs,mask,voxelSize,smv_rad,t_svd);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_sharp= poly3d(lfs_sharp,mask_sharp);
+    lfs_sharp= lfs_sharp - poly3d(lfs_sharp,mask_sharp);
 
     % save nifti
     mkdir('SHARP');
@@ -350,7 +352,7 @@ if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
     [lfs_resharp, mask_resharp] = resharp(tfs,mask,voxelSize,smv_rad,tik_reg);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_resharp= poly3d(lfs_resharp,mask_resharp);
+    lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
 
     % save nifti
     mkdir('RESHARP');
@@ -408,7 +410,7 @@ if sum(strcmpi('esharp',bkg_rm))
     mask_esharp     = mask(1+pad_size(1):end,1+pad_size(2):end,1+pad_size(3):end);  
 
     % 3D 2nd order polyfit to remove any residual background
-    lfs_esharp = poly3d(lfs_esharp,mask_esharp);
+    lfs_esharp = lfs_esharp - poly3d(lfs_esharp,mask_esharp);
 
     % save nifti
     mkdir('ESHARP');
@@ -433,7 +435,7 @@ if sum(strcmpi('lbv',bkg_rm))
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
     % 3D 2nd order polyfit to remove any residual background
-    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+    lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
 
     % save nifti
     mkdir('LBV');
@@ -454,7 +456,7 @@ end
 % clean the directory
 if clean_all
     disp('--> clean temp nifti files ...');
-    unix('ls | grep -v "combine\|RESHARP" | xargs rm -rf');
+    unix('ls | grep -v "combine\|RESHARP\|unph" | xargs rm -rf');
 else
     % save all variables for future reference
     clear nii;
@@ -464,6 +466,24 @@ end
 
 % save parameters used in the recon
 save('parameters.mat','options','-v7.3')
+
+% save the git log for future tracking
+unix('git log --branches --decorate --color --abbrev-commit --graph --no-merges --tags > git_log');
+
+% save all the NIFTIs in LPS orientation
+% originally in scanner coordinates LAI
+mkdir('LPS');
+[status, list] = unix('find . -name "*.nii"');
+expression = '\n';
+splitStr = regexp(strtrim(list),expression,'split');
+for i = 1:size(splitStr,2)
+    [pathstr,name,ext] = fileparts(splitStr{i});
+    nii = load_nii(splitStr{i});
+    tmp = double(nii.img);
+    tmp = flipdim(flipdim(tmp,2),3);
+    nii = make_nii(tmp,voxelSize);
+    save_nii(nii,['LPS/',name,ext]);
+end
 
 % go back to the initial directory
 cd(init_dir);

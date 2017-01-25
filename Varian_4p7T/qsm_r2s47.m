@@ -182,7 +182,8 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [status,cmdout] = unix('rm BET*');
-unix('bet2 combine/mag_cmb1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+% unix('bet2 combine/mag_cmb1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+unix('bet2 combine/mag_cmb1.nii BET -f ${bet_thr} -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -455,7 +456,10 @@ else
 end
 
 % save parameters used in the recon
-save('parameters.mat','options','-v7.3')
+save('parameters.mat','options','-v7.3');
+
+% save the git log for future tracking
+unix('git log --branches --decorate --color --abbrev-commit --graph --no-merges --tags > git_log');
 
 % go back to the initial directory
 cd(init_dir);

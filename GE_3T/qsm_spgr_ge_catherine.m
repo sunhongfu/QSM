@@ -5,13 +5,13 @@ function qsm_spgr_ge_catherine(path_dicom, path_out, options)
 %   Re-define the following default settings if necessary
 %
 %   PATH_DICOM   - directory for input GE dicoms
-%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SWI_PRISMA
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SPGR_GE
 %   OPTIONS      - parameter structure including fields below
 %    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
 %    .r_mask     - whether to enable the extra masking       : 1
 %    .fit_thr    - extra filtering based on the fit residual : 20
 %    .bet_thr    - threshold for BET brain mask              : 0.4
-%    .bet_smooth - smoothness of BET brain mask at edges     : 3
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
 %    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
 %    .bkg_rm     - background field removal method(s)        : 'resharp'
 %                  options: 'pdf','sharp','resharp','esharp','lbv'
@@ -19,10 +19,10 @@ function qsm_spgr_ge_catherine(path_dicom, path_out, options)
 %    .t_svd      - truncation of SVD for SHARP               : 0.1
 %    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
 %    .tik_reg    - Tikhonov regularization for resharp       : 1e-4
-%    .cgs_num    - max interation number for RESHARP         : 500
+%    .cgs_num    - max interation number for RESHARP         : 200
 %    .lbv_peel   - LBV layers to be peeled off               : 2
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
-%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tv_reg     - Total variation regularization parameter  : 2e-4
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
 
@@ -77,11 +77,11 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 5e-4;
+    options.tik_reg = 1e-4;
 end
 
 if ~ isfield(options,'cgs_num')
-    options.cgs_num = 500;
+    options.cgs_num = 200;
 end
 
 if ~ isfield(options,'lbv_tol')
@@ -93,7 +93,7 @@ if ~ isfield(options,'lbv_peel')
 end
 
 if ~ isfield(options,'tv_reg')
-    options.tv_reg = 1e-3;
+    options.tv_reg = 2e-4;
 end
 
 if ~ isfield(options,'inv_num')
@@ -375,8 +375,6 @@ nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
 
 
-smv_rad = 4;
-tik_reg = 5e-4;
 % RE-SHARP (tik_reg: Tikhonov regularization parameter)
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
@@ -397,7 +395,7 @@ if sum(strcmpi('resharp',bkg_rm))
     % lfs_resharp_poly3d(:,:,1:2:end) = lfs_resharp(:,:,1:2:end) - poly3d(lfs_resharp(:,:,1:2:end),mask_resharp(:,:,1:2:end));
     % lfs_resharp_poly3d(:,:,2:2:end) = lfs_resharp(:,:,2:2:end) - poly3d(lfs_resharp(:,:,2:2:end),mask_resharp(:,:,1:2:end));
 
-    tv_reg = 1e-3;    
+    
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
     sus_resharp = tvdi(lfs_resharp_poly2d,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
@@ -405,6 +403,27 @@ if sum(strcmpi('resharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
     save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+
+
+    % 2D V-SHARP
+    voxelsize0 = vox(1:2);
+    padsize0 = [100 100]; 
+    smvsize = 100;
+    for cpt = 1:imsize(3)
+      lfs_resharp_v2d(:,:,cpt) = V_SHARP_2d(single(lfs_resharp(:,:,cpt)),single(mask_resharp(:,:,cpt)),'smvsize',smvsize,'voxelsize',voxelsize0,'padsize',padsize0);
+    end
+
+    nii = make_nii(lfs_resharp_v2d,vox);
+    save_nii(nii,'lfs_resharp_v2d.nii');
+
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on RESHARP...');
+    sus_resharp_v2d = tvdi(lfs_resharp_v2d,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_resharp_v2d.*mask_resharp,vox);
+    save_nii(nii,['RESHARP/sus_resharp_v2d_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+
 end
 
 % LBV
@@ -431,6 +450,35 @@ if sum(strcmpi('lbv',bkg_rm))
 end
 
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% tik-qsm
+
+% pad zeros
+tfs = padarray(tfs,[0 0 20]);
+mask = padarray(mask,[0 0 20]);
+R = padarray(R,[0 0 20]);
+
+for r = [1 2 3] 
+
+    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+    ker = h/sum(h(:));
+    imsize = size(mask);
+    mask_tmp = convn(mask.*R,ker,'same');
+    mask_ero = zeros(imsize);
+    mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
+
+    % try total field inversion on regular mask, regular prelude
+    Tik_weight = 0.005;
+    TV_weight = 0.003;
+    [chi, res] = tikhonov_qsm(tfs, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
+    nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R(:,:,21:end-20),vox);
+    save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 save('all.mat','-v7.3');
 cd(init_dir);

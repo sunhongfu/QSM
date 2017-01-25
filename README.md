@@ -1,5 +1,5 @@
 # Welcome to QSM
-The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) images from MRI. The codes cover image recons for single-echo or multiple-echo GRE sequence as well as gradient EPI sequence.
+The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) images from MRI. The codes cover image recons for single-echo SWI or multiple-echo GRE sequence as well as gradient EPI sequence.
 
 ## Recon flow
 1. Extract complex img 
@@ -11,33 +11,31 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
 7. dipole inversion
 	
 ## Release Note
-1. QSM 1.0 (2015-11-23)
-  * Recon codes for 1.5T, 3T and 4.7T QSM, including sequences such as SWI, R2s and EPI.
+1. QSM 2.0 (2017-01-01)
+  * Recon codes for 1.5T, 3T and 4.7T QSM, including sequences such as SWI, R2* and EPI.
 	
 
 ## Manual
-* Codes location:
-  + stable (master) branch: 129.128.117.89\hongfu\Documents\MATLAB\qsm_stable
-  + testing (develop) brach: 129.128.117.89\hongfu\Documents\MATLAB\qsm_testing
-
 * Directory structure
-  - *15*: recon codes for 1.5T sequences, e.g. EPI (fMRI) and SWI
+  - *Siemens_1p5T*: recon codes for Siemens 1.5T sequences, e.g. EPI (fMRI) and SWI
     + **qsm_epi15.m**
     + **qsm_swi15.m**
-  - *47*: recon codes for 4.7T sequences, e.g. EPI (fMRI), SWI and R2*
+    + **qsm_hemo15.m**
+  - *Varian_4p7T*: recon codes for Varian 4.7T sequences, e.g. EPI (fMRI), SWI and R2*
     + **qsm_epi47.m**
     + **qsm_swi47.m**
     + **qsm_r2s47.m**
-  - *PRISMA*: recon codes for 3T PRISMA sequences, e.g. EPI (fMRI), SWI and R2*
+  - *Siemens_3T*: recon codes for 3T PRISMA sequences, e.g. EPI (fMRI), SWI and R2*
     + **qsm_epi_prisma.m**
     + **qsm_swi_prisma.m**
     + **qsm_r2s_prisma.m**
-  - *GE*: recon codes for 3T GE sequence, e.g. R2*
+    + **qsm_hemo_prisma.m**
+  - *GE_3T*: recon codes for 3T GE sequence, e.g. R2*
     + **qsm_spgr_ge.m**
-  - *arr_cmb*: coils combination related codes
+  - *coil_combination*: coils combination related codes
     + **adaptive_cmb.m**: adaptive filter method for single-echo, e.g. EPI, SWI
     + **geme_cmb.m**: dual echo approach for multi-echo, e.g. R2*
-  - *bkg_rm*: background field removal, including RESHARP/SHARP/ESHARP/PDF/LBV
+  - *background_field_removal*: background field removal, including RESHARP/SHARP/ESHARP/PDF/LBV
     + **sharp.m**: SHARP
     + **resharp.m**: RESHARP
     + **projectionontodipolefields.m**: PDF
@@ -45,14 +43,15 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + **LBV.m**: LBV
     + **poly2d.m**: 2nd order 2D polynomial fit
     + **poly3d.m**: 2nd order 3D polynomial fit
-  - *dip_inv*: dipole inversion with TV regularization
+  - *dipole_inversion*: dipole inversion with TV regularization
     + **tvdi.m**: total variation dipole inversion
-  - *Misc*: other functions including NIFTI and Ryan's small functions
+    + **tikhonov_qsm.m**: Tikhonov total field inversion
+  - *Misc*: other functions including NIFTI and other small functions
 
 * Usage
   - Call the main QSM function corresponding to the sequence, e.g. `qsm_r2s47` is the function for QSM recon of R2* at 4.7T.
   - Function inputs are 
-    + Directory of the raw data for 1.5T/4.7T or directories of both magnitude and unfiltered phase DICOMs for PRISMA/GE 3T)
+    + Directory of the raw data for 1.5T/4.7T or directories of both magnitude and unfiltered phase DICOMs for Siemens/GE 3T)
     + User defined directory for QSM output results
     + User specified parameters "options"
   - Examples:

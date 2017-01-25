@@ -421,7 +421,7 @@ lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,lbv_layer); % strip 2 layers
 mask_lbv = ones(size(mask));
 mask_lbv(lfs_lbv==0) = 0;
 % 3D 2nd order polyfit to remove any residual background
-lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
 
 
 

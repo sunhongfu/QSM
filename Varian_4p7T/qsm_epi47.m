@@ -191,7 +191,7 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 bash_script = ['bet2 combine/mag_cmb001.nii BET ' ...
-	'-f ${bet_thr} -m -w ${bet_smooth}'];
+	'-f ${bet_thr} -m'];
 unix(bash_script);
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -303,8 +303,8 @@ for i = 1:nr % all time series
 	    disp('--> PDF to remove background field ...');
 	    [lfs_pdf,mask_pdf] = pdf(tfs,mask,voxelSize,smv_rad, ...
 	        abs(img_cmb),z_prjs);
-	    % 3D 2nd order polyfit to remove any residual background
-	    lfs_pdf= poly2d(lfs_pdf,mask_pdf);
+	    % 2D 2nd order polyfit to remove any residual background
+	    lfs_pdf = lfs_pdf - poly2d(lfs_pdf,mask_pdf);
 
 	    % save nifti
 	    mkdir('PDF');
@@ -335,8 +335,8 @@ for i = 1:nr % all time series
 	if sum(strcmpi('sharp',bkg_rm))
 	    disp('--> SHARP to remove background field ...');
 	    [lfs_sharp, mask_sharp] = sharp(tfs,mask,voxelSize,smv_rad,t_svd);
-	    % 3D 2nd order polyfit to remove any residual background
-	    lfs_sharp= poly2d(lfs_sharp,mask_sharp);
+	    % 2D 2nd order polyfit to remove any residual background
+	    lfs_sharp = lfs_sharp - poly2d(lfs_sharp,mask_sharp);
 
 	    % save nifti
 	    mkdir('SHARP');
@@ -367,8 +367,8 @@ for i = 1:nr % all time series
 	if sum(strcmpi('resharp',bkg_rm))
 	    disp('--> RESHARP to remove background field ...');
 	    [lfs_resharp, mask_resharp] = resharp(tfs,mask,voxelSize,smv_rad,tik_reg);
-	    % 3D 2nd order polyfit to remove any residual background
-	    lfs_resharp= poly2d(lfs_resharp,mask_resharp);
+	    % 2D 2nd order polyfit to remove any residual background
+	    lfs_resharp = lfs_resharp - poly2d(lfs_resharp,mask_resharp);
 
 	    % save nifti
 	    mkdir('RESHARP');
@@ -430,8 +430,8 @@ for i = 1:nr % all time series
 	    mask_esharp     = mask;
 
 
-	    % 3D 2nd order polyfit to remove any residual background
-	    lfs_esharp = poly3d(localField,mask_esharp);
+	    % 2D 2nd order polyfit to remove any residual background
+	    lfs_esharp = lfs_esharp - poly2d(localField,mask_esharp);
 
 	    % save nifti
 	    mkdir('ESHARP');
@@ -464,8 +464,8 @@ for i = 1:nr % all time series
 	    lfs_lbv = LBV(tfs,mask,size(tfs),voxelSize,0.01,lbv_layer); % strip 2 layers
 	    mask_lbv = ones(size(mask));
 	    mask_lbv(lfs_lbv==0) = 0;
-	    % 3D 2nd order polyfit to remove any residual background
-	    lfs_lbv= poly2d(lfs_lbv,mask_lbv);
+	    % 2D 2nd order polyfit to remove any residual background
+	    lfs_lbv = lfs_lbv - poly2d(lfs_lbv,mask_lbv);
 
 	    % save nifti
 	    mkdir('LBV');
@@ -510,6 +510,8 @@ end
 % save parameters used in the recon
 save('parameters.mat','options','-v7.3')
 
+% save the git log for future tracking
+unix('git log --branches --decorate --color --abbrev-commit --graph --no-merges --tags > git_log');
 
 % clean up
 unix('rm *.nii*');

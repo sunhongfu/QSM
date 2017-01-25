@@ -237,7 +237,7 @@ if sum(strcmpi('pdf',bkg_rm))
     disp('--> PDF to remove background field ...');
     [lfs_pdf,mask_pdf] = projectionontodipolefields(tfs,mask,vox,smv_rad,mag,z_prjs);
     % 3D 2nd order polyfit to remove any residual background
-    lfs_pdf= poly3d(lfs_pdf,mask_pdf);
+    lfs_pdf= lfs_pdf - poly3d(lfs_pdf,mask_pdf);
 
     % save nifti
     mkdir('PDF');
@@ -356,7 +356,7 @@ if sum(strcmpi('lbv',bkg_rm))
     mask_lbv = ones(size(mask));
     mask_lbv(lfs_lbv==0) = 0;
     % 3D 2nd order polyfit to remove any residual background
-    lfs_lbv= poly3d(lfs_lbv,mask_lbv);
+    lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
 
     % save nifti
     mkdir('LBV');
