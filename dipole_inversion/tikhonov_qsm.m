@@ -22,7 +22,7 @@ end
 
 
 % normalize the weights
-Res_wt = Res_wt/sqrt(sum(Res_wt(:).^2)/numel(Res_wt));
+% Res_wt = Res_wt/sqrt(sum(Res_wt(:).^2)/numel(Res_wt));
 
 
 % create K-space filter kernel D
