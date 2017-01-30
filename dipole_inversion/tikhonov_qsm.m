@@ -48,16 +48,16 @@ D = fftshift(D);
 % parameter structures for inversion
 % data consistancy and TV term objects
 params.FT               = cls_dipconv([Nx, Ny, Nz], D); % class for dipole kernel convolution
-params.TV               = cls_tv; % class for TV operation
+params.TV               = cls_tv; 						% class for TV operation
 
-params.Itnlim           = Itnlim; % interations numbers (adjust accordingly!)
-params.gradToll         = 1e-4; % step size tolerance stopping criterea
-params.l1Smooth         = eps; %1e-15; smoothing parameter of L1 norm
-params.pNorm            = 1; % type of norm to use (i.e. L1 L2 etc)
+params.Itnlim           = Itnlim; 						% interations numbers (adjust accordingly!)
+params.gradToll         = 1e-4; 						% step size tolerance stopping criterea
+params.l1Smooth         = eps; 							% 1e-15; smoothing parameter of L1 norm
+params.pNorm            = 1; 							% type of norm to use (i.e. L1 L2 etc)
 params.lineSearchItnlim = 100;
 params.lineSearchAlpha  = 0.01;
 params.lineSearchBeta   = 0.6;
-params.lineSearchT0     = 1 ; % step size to start with
+params.lineSearchT0     = 1 ; 							% step size to start with
 
 params.Tik_reg          = Tik_reg; 
 params.TV_reg           = TV_reg; 
