@@ -67,7 +67,8 @@ params.sus_mask         = sus_mask;
 params.Res_wt           = Res_wt;
 params.data             = tfs;
 
-params.P                = TV_mask + 50*(1-TV_mask);
+params.P                = TV_mask + 30*(1-TV_mask);
+%params.P                = 1;
 
 % non-linear conjugate gradient method
 [chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
