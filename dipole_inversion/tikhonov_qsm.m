@@ -24,6 +24,8 @@ end
 % normalize the weights
 % Res_wt = Res_wt/sqrt(sum(Res_wt(:).^2)/numel(Res_wt));
 
+Res_wt = TV_mask.*Res_wt;
+Res_wt = Res_wt/sum(Res_wt(:))*sum(TV_mask(:));
 
 % create K-space filter kernel D
 %%%%% make this a seperate function in the future

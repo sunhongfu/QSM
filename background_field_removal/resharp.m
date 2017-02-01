@@ -57,7 +57,8 @@ imsize = size(tfs);
 
 mask_ero = zeros(imsize);
 mask_tmp = convn(mask,ker,'same');
-mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error points tolerence 
+%mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error points tolerence 
+mask_ero(mask_tmp > 0.999999) = 1; % no error points tolerence 
 
 
 % prepare convolution kernel: delta-ker
