@@ -24,6 +24,8 @@ end
 % normalize the weights
 % Res_wt = Res_wt/sqrt(sum(Res_wt(:).^2)/numel(Res_wt));
 
+% Res_wt = TV_mask.*Res_wt;
+% Res_wt = Res_wt/sum(Res_wt(:))*sum(TV_mask(:));
 
 % create K-space filter kernel D
 %%%%% make this a seperate function in the future
@@ -67,10 +69,13 @@ params.sus_mask         = sus_mask;
 params.Res_wt           = Res_wt;
 params.data             = tfs;
 
+params.P                = TV_mask + 30*(1-TV_mask);
+%params.P                = 1;
+
 % non-linear conjugate gradient method
 [chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
-chi = real(chi);
+chi = real(params.P.*chi);
 % otherwise mask it
