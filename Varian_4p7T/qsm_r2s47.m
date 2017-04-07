@@ -21,6 +21,7 @@ function qsm_r2s47(path_in, path_out, options)
 %    .echo_num   - keep only the first 'echo_num' echoes     : 5
 %    .fit_thr    - truncation level on fitting residual      : 10
 %    .clean_all  - clean all the temp nifti results          : 1
+%    .interp     - interpolate the image to the double size  : 0
 
 
 % default settings
@@ -103,6 +104,10 @@ if ~ isfield(options,'clean_all')
     options.clean_all = 1;
 end
 
+if ~ isfield(options,'interp')
+    options.interp = 0;
+end
+
 
 ref_coil   = options.ref_coil;
 eig_rad    = options.eig_rad;
@@ -118,6 +123,7 @@ t_svd      = options.t_svd;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
 clean_all  = options.clean_all;
+interp     = options.interp;
 
 
 % define directories
@@ -131,6 +137,20 @@ cd(path_qsm);
 disp('--> reconstruct fid to complex img ...');
 [img,par] = r2s47_recon(path_fid);
 
+imsize = size(img);
+
+% interpolate the images to the double size
+if interp
+    img = single(img);
+    % zero padding the k-space
+    k = fftshift(fftshift(fftshift(fft(fft(fft(img,[],1),[],2),[],3),1),2),3);
+    k = padarray(k,double(imsize(1:3)/2));
+    img = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
+    clear k;
+    imsize = size(img);
+    % vox = vox/2;
+end
+
 
 % match scanner frame (PE,RO,SL,NE,RX)
 % so that angle corrections can be performed (phi, psi, theta)
@@ -138,7 +158,7 @@ img = permute(img,[2 1 3 4 5]);
 img = flipdim(img,1);
 img = flipdim(img,2);
 [nv,np,nv2,ne,~] = size(img);
-voxelSize = [par.lpe/par.nv, par.lro/(par.np/2), par.lpe2/par.nv2]*10;
+voxelSize = [par.lpe/nv, par.lro/np, par.lpe2/nv2]*10;
 % resolution in mm/pixel
 te = par.te + (0:ne-1)*par.esp;
 

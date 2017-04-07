@@ -135,7 +135,7 @@ ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
 for i = 1:length(ph_list)
     ph(:,:,i) = permute(single(dicomread([path_ph,filesep,ph_list(i).name])),[2,1]);
     % covert to [-pi pi] range
-    ph(:,:,i) = ph(:,:,i-2)/4095*2*pi - pi;
+    ph(:,:,i) = ph(:,:,i)/4095*2*pi - pi;
 end
 
 
