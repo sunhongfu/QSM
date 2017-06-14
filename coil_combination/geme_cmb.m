@@ -1,12 +1,14 @@
-function ph_cmb = geme_cmb(img, vox, te, mask, smooth_method)
+function [ph_cmb,mag_cmb] = geme_cmb(img, vox, te, mask, smooth_method)
 %Gradient-echo multi-echo combination (for phase).
-%   PH_CMB = GEME_CMB(IMG,PAR) combines phase from multiple receivers
+%   PH_CMB = GEME_CMB(IMG,VOX, TE,SMOOTH_METHOD) combines phase from multiple receivers
 %
-%   IMG:    raw complex images from multiple receivers, 5D: [3D_image, echoes, receivers]
-%   TE :    echo times
-%   vox:    spatial resolution/voxel size, e.g. [1 1 1] for isotropic
-%   PH_CMB: phase after combination
-%   SMOOTH: smooth method (1) smooth3, (2) poly3, (3) poly3_nlcg
+%   IMG:     raw complex images from multiple receivers, 5D: [3D_image, echoes, receiver channels]
+%   TE :     echo times
+%   MASK:    brain mask
+%   VOX:     spatial resolution/voxel size, e.g. [1 1 1] for isotropic
+%   PH_CMB:  phase after combination
+%   MAG_CMB: magnitude after combination
+%   SMOOTH:  smooth method s(1) smooth3, (2) poly3, (3) poly3_nlcg
 
 if ~ exist('smooth_method','var') || isempty(smooth_method)
     smooth_method = 'smooth3';
@@ -33,7 +35,7 @@ save_nii(nii,'ph_diff.nii');
 % unph_diff_cmb = double(nii.img);
 mag1 = sqrt(sum(abs(img(:,:,:,1,:).^2),5));
 mask_input = mask;
-mask = (mag1 > 0.2*median(mag1(logical(mask(:)))));
+mask = (mag1 > 0.1*median(mag1(logical(mask(:)))));
 
 
 % method (2)
@@ -44,7 +46,7 @@ setenv('nv',num2str(imsize(1)));
 setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
 
-fid = fopen(['wrapped_phase_diff.dat'],'w');
+fid = fopen('wrapped_phase_diff.dat','w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
 
@@ -62,7 +64,7 @@ else
 end
 unix(bash_script) ;
 
-fid = fopen(['unwrapped_phase_diff.dat'],'r');
+fid = fopen('unwrapped_phase_diff.dat','r');
 tmp = fread(fid,'float');
 unph_diff_cmb = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
 fclose(fid);
@@ -77,12 +79,17 @@ offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
 offsets = offsets./abs(offsets); % complex phase offset
 offsets(isnan(offsets)) = 0;
 
+nii = make_nii(angle(offsets),vox);
+save_nii(nii,'offets_raw.nii');
+% 
 % smooth offsets
 if strcmpi('smooth3',smooth_method)
-    for chan = 1:nrcvrs
-        offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(10./vox/2)*2+1); 
-        offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
+    parpool;
+    parfor chan = 1:nrcvrs
+        offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(10./vox/2)*2+1); 
+        offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
     end
+    delete(gcp('nocreate'));
 elseif strcmpi('poly3',smooth_method)
     for chan = 1:nrcvrs
         fid = fopen(['wrapped_offsets_chan' num2str(chan) '.dat'],'w');
@@ -119,5 +126,7 @@ save_nii(nii,'offsets.nii');
 offsets = repmat(offsets,[1,1,1,ne,1]);
 img = img./offsets;
 ph_cmb = angle(sum(img,5));
-
 ph_cmb(isnan(ph_cmb)) = 0;
+mag_cmb = abs(sum(img,5));
+mag_cmb(isnan(mag_cmb)) = 0;
+

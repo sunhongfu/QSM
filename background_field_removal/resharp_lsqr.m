@@ -1,5 +1,5 @@
-function [lfs, mask_ero, res_term, reg_term] = resharp(tfs,mask,vox,ker_rad,tik_reg,iter_num)
-%   [LSF,MASK_ERO,RES_TERM,REG_TERM] = RESHARP(TFS,MASK,VOX,KER_RAD,TIK_REG)
+function [lfs, mask_ero] = resharp_lsqr(tfs,mask,vox,ker_rad,iter_num)
+%   [LSF,MASK_ERO,RES_TERM,REG_TERM] = RESHARP(TFS,MASK,VOX,KER_RAD,ITER_NUM)
 %
 %   LFS         : local field shift after background removal
 %   MASK_ERO    : eroded mask after convolution
@@ -9,8 +9,7 @@ function [lfs, mask_ero, res_term, reg_term] = resharp(tfs,mask,vox,ker_rad,tik_
 %   MASK        : binary mask defining the brain ROI
 %   VOX         : voxel size (mm), e.g. [1,1,1] for isotropic
 %   KER_RAD     : radius of convolution kernel (mm), e.g. 3
-%   TIK_REG     : Tikhonov regularization parameter, e.g. 1e-4
-%   CGS_NUM     : maximum number of CGS times of iteration, e.g. 200
+%   ITER_NUM    : maximum number of CGS times of iteration, e.g. 200
 %
 %Method is described in the paper:
 %Sun, H. and Wilman, A. H. (2013), 
@@ -25,12 +24,8 @@ if ~ exist('ker_rad','var') || isempty(ker_rad)
     ker_rad = 3;
 end
 
-if ~ exist('tik_reg','var') || isempty(tik_reg)
-    tik_reg = 1e-4;
-end
-
 if ~ exist('iter_num','var') || isempty(iter_num)
-    iter_num = 200;
+    iter_num = 500;
 end
 
 
@@ -67,49 +62,45 @@ dker(rx+1,ry+1,rz+1) = 1-ker(rx+1,ry+1,rz+1);
 DKER = fftn(dker,imsize); % dker in Fourier domain
 
 
-% RESHARP with Tikhonov regularization:   
-%   argmin ||MSfCFx - MSfCFy||2 + lambda||x||2 
+% RESHARP with LSQR:   
+%   MSfCFx = MSfCFy
 %   x: local field
 %	y: total field
 % 	M: binary mask
 %	S: circular shift
 %	F: forward FFT, f: inverse FFT (ifft) 
 %	C: deconvolution kernel
-%	lambda: tikhonov regularization parameter
-%	||...||2: sum of square
-%
-%   create 'MSfCF' as an object 'H', then simplified as: 
-%   argmin ||Hx - Hy||2 + lambda||x||2
-%   To solve it, derivative equals 0: 
-%   (H'H + lambda)x = H'Hy
-%   Model as Ax = b, solve with cgs
 
-% H = cls_smvconv(imsize,DKER,csh,mask_ero); 
+%   Model as Ax = b, solve with LSQR
 
-b = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),-csh),csh)));
+b = mask_ero.*circshift(ifftn(DKER.*fftn(tfs)),-csh);
 b = b(:);
 
-m = cgs(@Afun, b, 1e-6, iter_num);
+m = lsqr(@Afun, b, 1e-6, iter_num);
 
 lfs = real(reshape(m,imsize)).*mask_ero;
-
-res_term = mask_ero.*circshift(ifftn(DKER.*fftn(tfs-reshape(m,imsize))),-csh);
-res_term = norm(res_term(:));
-
-reg_term = norm(m);
 
 % remove the padding for outputs
 lfs = lfs(rx+1:end-rx,ry+1:end-ry,rz+1:end-rz);
 mask_ero = mask_ero(rx+1:end-rx,ry+1:end-ry,rz+1:end-rz);
 
 % nested function
-function y = Afun(x)
+
+function y = Afun(x,transp_flag)
+    if strcmp(transp_flag,'transp')
     % y = H'*(H*x) + tik_reg*x;
     x = reshape(x,imsize);
-    y = ifftn(conj(DKER).*fftn(circshift(mask_ero.*circshift(ifftn(DKER.*fftn(x)),-csh),csh))) + tik_reg*x;
+    y = ifftn(conj(DKER).*fftn(circshift(mask_ero.*x,csh)));
 
     y = y(:);
+    
+    else
+    % y = H'*(H*x) + tik_reg*x;
+    x = reshape(x,imsize);
+    y = mask_ero.*circshift(ifftn(DKER.*fftn(x)),-csh);
+
+    y = y(:); 
+    end
 end
 
 end
-
