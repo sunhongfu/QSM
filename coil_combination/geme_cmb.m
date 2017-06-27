@@ -80,7 +80,7 @@ offsets(isnan(offsets)) = 0;
 % smooth offsets
 if strcmpi('smooth3',smooth_method)
     for chan = 1:nrcvrs
-        offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(10./vox/2)*2+1); 
+        offsets(:,:,:,:,chan) = smooth3(offsets(:,:,:,:,chan),'box',round(20./vox/2)*2+1); 
         offsets(:,:,:,:,chan) = offsets(:,:,:,:,chan)./abs(offsets(:,:,:,:,chan));
     end
 elseif strcmpi('poly3',smooth_method)
