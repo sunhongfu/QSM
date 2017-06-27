@@ -232,7 +232,11 @@ end
 
 % fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
+<<<<<<< HEAD
 [tfs, fit_residual] = echofit(unph,mag_corr,TE,0); 
+=======
+[tfs, fit_residual] = echofit(unph,mag,TE,0); 
+>>>>>>> 2b7f16ba145e12a74d3b6f314aa629fad0d9790b
 % [tfs, fit_residual] = echofit(unph,mag,TE,1); 
 
 
@@ -319,11 +323,19 @@ if sum(strcmpi('resharp',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
+<<<<<<< HEAD
     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag_corr(:,:,:,end),z_prjs,inv_num); 
    
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
     save_nii(nii,'RESHARP/sus_resharp_1e-5.nii');
+=======
+    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_resharp.*mask_resharp,vox);
+    save_nii(nii,'RESHARP/sus_resharp.nii');
+>>>>>>> 2b7f16ba145e12a74d3b6f314aa629fad0d9790b
 end
 
 % E-SHARP (SHARP edge extension)
