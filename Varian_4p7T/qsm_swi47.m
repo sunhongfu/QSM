@@ -21,6 +21,7 @@ function qsm_swi47(path_in, path_out, options)
 %    .tv_reg     - Total variation regularization parameter  : 5e-4
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .clean_all  - clean all the temp nifti results          : 1
+%    .interp     - interpolate the image to the double size  : 0
 
 
 % default settings
@@ -100,6 +101,9 @@ if ~ isfield(options,'clean_all')
     options.clean_all = 1;
 end
 
+if ~ isfield(options,'interp')
+    options.interp = 0;
+end
 
 ref_coil   = options.ref_coil;
 eig_rad    = options.eig_rad;
@@ -114,6 +118,7 @@ lbv_layer  = options.lbv_layer;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
 clean_all  = options.clean_all;
+interp     = options.interp;
 
 
 %%% define directories
@@ -188,13 +193,26 @@ else  % single channel
     img_cmb = img_corr;
 end
 
+% interpolate the images to the double size
+if interp
+    imsize = size(img_cmb);
+    img_cmb = single(img_cmb);
+    % zero padding the k-space
+    k = fftshift(fftshift(fftshift(fft(fft(fft(img_cmb,[],1),[],2),[],3),1),2),3);
+    k = padarray(k,double([0 0 25]));
+    img_cmb = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
+    clear k;
+    imsize = size(img_cmb);
+    voxelSize(3) = voxelSize(3)/2;
+end
+
+
 % save nifti
 mkdir('combine');
 nii = make_nii(abs(img_cmb),voxelSize);
 save_nii(nii,'combine/mag_cmb.nii');
 nii = make_nii(angle(img_cmb),voxelSize);
 save_nii(nii,'combine/ph_cmb.nii');
-
 
 
 % generate brain mask
@@ -439,7 +457,7 @@ if sum(strcmpi('lbv',bkg_rm))
 
     % save nifti
     mkdir('LBV');
-    nii = make_nii(lfs_lbv,voxelSize);
+    nii = make_nii(lfs_lbv.*mask_lbv,voxelSize);
     save_nii(nii,'LBV/lfs_lbv.nii');
 
     % inversion of susceptibility 

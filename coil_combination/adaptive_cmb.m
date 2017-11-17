@@ -1,4 +1,4 @@
-function img_cmb_all = adaptive_cmb(img,vox,cref,radi,flag_pool)
+function [img_cmb_all,sen] = adaptive_cmb(img,vox,cref,radi,flag_pool)
 
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
@@ -6,7 +6,7 @@ function img_cmb_all = adaptive_cmb(img,vox,cref,radi,flag_pool)
 % img: raw complex 4D or 5D images: [3Dimages, multi-receivers, (multi-echoes)]
 % vox: resolution of the images (vector), voxel size
 % cref: coil referece (coil number)
-% radi: radius of the kernel (e.g. 3mm)
+% radi: radius of the kernel (e.g. 5mm)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % vox = [1 ,1, 1];  % isotropic 1mm resolution
@@ -44,7 +44,7 @@ kz = round(radi./vox(3));
 kern = ones([kx*2+1,ky*2+1,kz*2+1]);
 
 % construct coils correlation matrix
-R = zeros([np,nv,nv2,nrcvrs,nrcvrs]);
+R = zeros([np,nv,nv2,nrcvrs,nrcvrs],'single');
 for j = 1:nrcvrs
     for k = 1:nrcvrs
         R(:,:,:,j,k) = img(:,:,:,j).*conj(img(:,:,:,k));
