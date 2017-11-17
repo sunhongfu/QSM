@@ -402,6 +402,25 @@ if sum(strcmpi('resharp',bkg_rm))
     save_nii(nii,'RESHARP/sus_resharp.nii');
 end
 
+% V-SHARP
+if sum(strcmpi('vsharp',bkg_rm))
+    disp('--> V-SHARP to remove background field ...');
+    smvsize = 12;
+    [lfs_vsharp, mask_vsharp] = V_SHARP(tfs ,single(mask.*R),'smvsize',smvsize,'voxelsize',vox);
+    
+    % save nifti
+    mkdir('VSHARP');
+    nii = make_nii(lfs_vsharp,vox);
+    save_nii(nii,'VSHARP/lfs_vsharp.nii');
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on RESHARP...');
+    sus_vsharp = tvdi(lfs_vsharp,mask_vsharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_vsharp.*mask_vsharp,vox);
+    save_nii(nii,'VSHARP/sus_vsharp.nii');
+end
+
 % E-SHARP (SHARP edge extension)
 if sum(strcmpi('esharp',bkg_rm))
     disp('--> E-SHARP to remove background field ...');
