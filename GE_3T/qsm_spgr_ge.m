@@ -539,8 +539,8 @@ for r = [1 2 3]
     mask_ero(mask_tmp > 1-1/sum(h(:))) = 1; % no error tolerance
 
     % try total field inversion on regular mask, regular prelude
-    Tik_weight = 0.008;
-    TV_weight = 0.003;
+    Tik_weight = 0.002;
+    TV_weight = 0.0001;
     chi = tikhonov_qsm(tfs_pad, mask_ero, 1, mask_ero, mask_ero, TV_weight, Tik_weight, vox, z_prjs, 2000);
     nii = make_nii(chi(:,:,21:end-20).*mask_ero(:,:,21:end-20).*R_pad(:,:,21:end-20),vox);
     save_nii(nii,['chi_brain_pad20_ero' num2str(r) '_TV_' num2str(TV_weight) '_Tik_' num2str(Tik_weight) '_2000.nii']);

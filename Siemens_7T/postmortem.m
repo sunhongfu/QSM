@@ -106,9 +106,12 @@ save('raw.mat','-v7.3');
 mag1_sos = sqrt(sum(mag_all(:,:,:,1,:).^2,5));
 nii = make_nii(mag1_sos,vox);
 save_nii(nii,'mag1_sos.nii');
-% unix('bet2 mag1_sos.nii BET -f 0.4 -w 2 -m');
+
+unix('N4BiasFieldCorrection -i mag1_sos.nii -o mag1_sos_n4.nii');
+
+unix('bet2 mag1_sos_n4.nii BET -f 0.1 -m');
 % set a lower threshold for postmortem
-unix('bet2 mag1_sos.nii BET -f 0.1 -m');
+% unix('bet2 mag1_sos.nii BET -f 0.1 -m');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -184,9 +187,9 @@ clear unph_fudge ph_corr
 
 % set parameters
 fit_thr = 20;
-tik_reg = 1e-6;
+% tik_reg = 1e-6;
 cgs_num = 200;
-tv_reg = 2e-4;
+% tv_reg = 2e-4;
 inv_num = 1000;
 
 
@@ -201,8 +204,6 @@ tfs_0 = tfs_0/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
 nii = make_nii(tfs_0,vox);
 save_nii(nii,'tfs_0.nii');
 
-clear mag_corr
-
 % extra filtering according to fitting residuals
 % generate reliability map
 fit_residual_0_blur = smooth3(fit_residual_0,'box',round(1./vox)*2+1); 
@@ -211,21 +212,63 @@ save_nii(nii,'fit_residual_0_blur.nii');
 R_0 = ones(size(fit_residual_0_blur));
 R_0(fit_residual_0_blur >= fit_thr) = 0;
 
-smv_rad = 3;
-% RE-SHARP (tik_reg: Tikhonov regularization parameter)
-disp('--> RESHARP to remove background field ...');
-[lfs_resharp_0, mask_resharp_0] = resharp(tfs_0,mask.*R_0,vox,smv_rad,tik_reg,cgs_num);
-% % 3D 2nd order polyfit to remove any residual background
-% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
-% save nifti
-mkdir('RESHARP');
-nii = make_nii(lfs_resharp_0,vox);
-save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '.nii']);
 
-% iLSQR
-chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
-nii = make_nii(chi_iLSQR_0,vox);
-save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '.nii']);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for smv_rad = [1 2 3]
+for smv_rad = [3]
+    % RE-SHARP (tik_reg: Tikhonov regularization parameter)
+    disp('--> RESHARP to remove background field ...');
+    [lfs_resharp_0, mask_resharp_0] = resharp_lsqr(tfs_0,mask.*R_0,vox,smv_rad,cgs_num);
+    % % 3D 2nd order polyfit to remove any residual background
+    % lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+    % save nifti
+    mkdir('RESHARP');
+    nii = make_nii(lfs_resharp_0,vox);
+    save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_lsqr.nii']);
+
+    % iLSQR
+    chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+    nii = make_nii(chi_iLSQR_0,vox);
+    save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '.nii']);
+
+    % % MEDI
+    % %%%%% normalize signal intensity by noise to get SNR %%%
+    % %%%% Generate the Magnitude image %%%%
+    % iMag = sqrt(sum(mag_corr.^2,4));
+    % % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
+    % matrix_size = single(imsize(1:3));
+    % voxel_size = vox;
+    % delta_TE = TE(2) - TE(1);
+    % B0_dir = z_prjs';
+    % CF = dicom_info.ImagingFrequency *1e6;
+    % iFreq = [];
+    % N_std = 1;
+    % RDF = lfs_resharp_0*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    % Mask = mask_resharp_0;
+    % save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+    %      voxel_size delta_TE CF B0_dir;
+    % % run part of MEDI first
+    % % QSM = MEDI_L1('lambda',500);
+    % % nii = make_nii(QSM.*Mask,vox);
+    % % save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',1000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % % QSM = MEDI_L1('lambda',1500);
+    % % nii = make_nii(QSM.*Mask,vox);
+    % % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % % QSM = MEDI_L1('lambda',2000);
+    % % nii = make_nii(QSM.*Mask,vox);
+    % % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+
+    % %TVDI
+    % sus_resharp = tvdi(lfs_resharp_0,mask_resharp_0,vox,2e-4,iMag,z_prjs,500); 
+    % nii = make_nii(sus_resharp.*mask_resharp_0,vox);
+    % save_nii(nii,['RESHARP/TV_2e-4_smvrad' num2str(smv_rad) '.nii']);
+
+end
 
 
 
@@ -253,178 +296,4 @@ end
 save('cosmos.mat','lfs_resharp_0','mask_resharp_0','lfs_resharp','mask','vox','z_prjs');
 
 
-
-
-%%%%%%%%%%%%%%%%%
-% COSMOS
-cd ../../../1/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp1=lfs_resharp_0;
-lfs_resharp_all1=lfs_resharp;
-mask1=mask;
-mask_resharp1=mask_resharp_0;
-z_prjs1=z_prjs;
-cd ../../../2/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp2=lfs_resharp_0;
-lfs_resharp_all2=lfs_resharp;
-mask2=mask;
-mask_resharp2=mask_resharp_0;
-z_prjs2=z_prjs;
-cd ../../../3/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp3=lfs_resharp_0;
-lfs_resharp_all3=lfs_resharp;
-mask3=mask;
-mask_resharp3=mask_resharp_0;
-z_prjs3=z_prjs;
-cd ../../../4/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp4=lfs_resharp_0;
-lfs_resharp_all4=lfs_resharp;
-mask4=mask;
-mask_resharp4=mask_resharp_0;
-z_prjs4=z_prjs;
-cd ../../../5/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp5=lfs_resharp_0;
-lfs_resharp_all5=lfs_resharp;
-mask5=mask;
-mask_resharp5=mask_resharp_0;
-z_prjs5=z_prjs;
-cd ../../../6/QSM_MEGE_7T/fudge/
-load cosmos.mat
-lfs_resharp6=lfs_resharp_0;
-lfs_resharp_all6=lfs_resharp;
-mask6=mask;
-mask_resharp6=mask_resharp_0;
-z_prjs6=z_prjs;
-
-
-
-% define common space coordinates as the nature position orientation
-% register all other orientations with the common space coordinate
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_qsm.nii.gz -omat /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_qsm.mat -bins 256 -cost normcorr -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 12  -interp trilinear
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_qsm.nii.gz -omat /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_qsm.mat -bins 256 -cost normcorr -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 12  -interp trilinear
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_qsm.nii.gz -omat /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_qsm.mat -bins 256 -cost normcorr -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 12  -interp trilinear
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/chi_iLSQR_0_niter50_smvrad3.nii -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_qsm.nii.gz -omat /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_qsm.mat -bins 256 -cost normcorr -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 12  -interp trilinear
-
-
-
-% apply the transformation to local field map
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii -applyxfm -init /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_qsm.mat -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_lfs.nii -paddingsize 0.0 -interp trilinear -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii -applyxfm -init /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_qsm.mat -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_lfs.nii -paddingsize 0.0 -interp trilinear -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii -applyxfm -init /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_qsm.mat -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_lfs.nii -paddingsize 0.0 -interp trilinear -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii
-
-/usr/local/fsl/5.0.9/bin/flirt -in /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii -applyxfm -init /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_qsm.mat -out /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_lfs.nii -paddingsize 0.0 -interp trilinear -ref /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii
-
-
-
-% calculate the angles of B0 with registered local field maps
-% R is transformation matrix from individual image space to common space (FLIRT matrix)
-% common space coordinates = R* object image space coordinates
-load /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_qsm.mat -ASCII
-R_t(:,:,1) = flirt_qsm(1:3,1:3);
-
-load /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_qsm.mat -ASCII
-R_t(:,:,2) = flirt_qsm(1:3,1:3);
-
-load /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_qsm.mat -ASCII
-R_t(:,:,3) = flirt_qsm(1:3,1:3);
-
-load /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_qsm.mat -ASCII
-R_t(:,:,4) = flirt_qsm(1:3,1:3);
-
-R_t(:,:,5) = eye(3);
-
-
-% (each orientation has own R and z_prjs)
-% R is the rotation matrix from image space to common space
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/QSM_MEGE_7T/raw.mat','z_prjs');
-z_prjs_o(:,1) = z_prjs';
-
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/QSM_MEGE_7T/raw.mat','z_prjs');
-z_prjs_o(:,2) = z_prjs';
-
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/QSM_MEGE_7T/raw.mat','z_prjs');
-z_prjs_o(:,3) = z_prjs';
-
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/QSM_MEGE_7T/raw.mat','z_prjs');
-z_prjs_o(:,4) = z_prjs';
-
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/raw.mat','z_prjs');
-z_prjs_o(:,5) = z_prjs';
-
-for i = 1:5
-    z_prjs_c(:,i) = R_t(:,:,i)'*z_prjs_o(:,i);
-end
-
-
-%% COSMOS reconstruction with closed-form solution
-% load in registered local field shift maps
-unix('gunzip -f /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/*.gz');
-nii = load_nii('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/extension/flirt_lfs.nii');
-lfs(:,:,:,1) = double(nii.img);
-
-unix('gunzip -f /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/*.gz');
-nii = load_nii('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/flexion/flirt_lfs.nii');
-lfs(:,:,:,2) = double(nii.img);
-
-unix('gunzip -f /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/*.gz');
-nii = load_nii('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/right/flirt_lfs.nii');
-lfs(:,:,:,3) = double(nii.img);
-
-unix('gunzip -f /gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/*.gz');
-nii = load_nii('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/left/flirt_lfs.nii');
-lfs(:,:,:,4) = double(nii.img);
-
-nii = load_nii('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/RESHARP/lfs_resharp_0_smvrad3_lsqr.nii');
-lfs(:,:,:,5) = double(nii.img);
-
-mask = and(and(and(and(lfs(:,:,:,1),lfs(:,:,:,2)),lfs(:,:,:,3)),lfs(:,:,:,4)),lfs(:,:,:,5));
-mask = double(mask);
-
-% construct k-space kernel for each orientation
-% create K-space filter kernel D
-%%%%% make this a seperate function in the future
-load('/gpfs/M2Scratch/NCIgb5/hongfu/recon/ED/neutral/QSM_MEGE_7T/raw.mat','vox');
-
-Nx = size(lfs,1);
-Ny = size(lfs,2);
-Nz = size(lfs,3);
-
-for i = 1:5
-FOV = vox.*[Nx,Ny,Nz];
-FOVx = FOV(1);
-FOVy = FOV(2);
-FOVz = FOV(3);
-
-x = -Nx/2:Nx/2-1;
-y = -Ny/2:Ny/2-1;
-z = -Nz/2:Nz/2-1;
-[kx,ky,kz] = ndgrid(x/FOVx,y/FOVy,z/FOVz);
-% D = 1/3 - kz.^2./(kx.^2 + ky.^2 + kz.^2);
-D = 1/3 - (kx.*z_prjs_c(1,i)+ky.*z_prjs_c(2,i)+kz.*z_prjs_c(3,i)).^2./(kx.^2 + ky.^2 + kz.^2);
-D(floor(Nx/2+1),floor(Ny/2+1),floor(Nz/2+1)) = 0;
-D = fftshift(D);
-
-kernel(:,:,:,i) = D;
-end
-
-
-for i = 1:5
-    lfs_k(:,:,:,i) = fftn(lfs(:,:,:,i).*mask);
-end
-
-kernel_sum = sum(abs(kernel).^2, 4);
-
-chi_cosmos = real( ifftn( sum(kernel .* lfs_k, 4) ./ (eps + kernel_sum) ) ) .* mask;
-
-nii = make_nii(chi_cosmos,vox);
-save_nii(nii,'cosmos_5.nii');
 
