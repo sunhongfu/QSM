@@ -5,7 +5,7 @@ function [m, Res_term, TV_term, Tik_term] = nlcg_tik(m0, params)
 % TV_term: norm of TV term
 % Tik_term: norm of Tik_term
 %
-% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| 
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| + TV_reg2 * TV|air_mask * chi|
 %
 % tfs:      total field shift; can be local field shift if use this for local field inversion
 % Res_wt:   weighting matrix for the residual/fidelity term, usually brain mask
@@ -40,7 +40,7 @@ while(k <= params.Itnlim)
     % backtracking line-search
     t = t0;
     f0 = objFunc(m,dm,0,params);
-    [f1, Res_term, TV_term, Tik_term] = objFunc(m,dm,t,params);
+    [f1, Res_term, TV_term, Tik_term, TV_term2] = objFunc(m,dm,t,params);
     lsiter = 0;
     while (f1 > f0 + alpha*t*(g0(:)'*dm(:))) && (lsiter<maxlsiter)
         t = t* beta;
@@ -82,7 +82,7 @@ return;
 
 
 
-function [obj,Res_term,TV_term,Tik_term] = objFunc(m, dm, t, params)
+function [obj,Res_term,TV_term,Tik_term,TV_term2] = objFunc(m, dm, t, params)
 p = params.pNorm;
 w1 = m+t*dm;
 
@@ -90,24 +90,32 @@ w2 = params.TV*(params.P.*w1.*params.TV_mask);
 TV = (w2.*conj(w2)+params.l1Smooth).^(p/2);
 TV_term = sum(TV(:));
 
+% add air TV
+w3 = params.TV*(params.P.*w1.*params.air_mask);
+TV2 = (w3.*conj(w3)+params.l1Smooth).^(p/2);
+TV_term2 = sum(TV2(:));
+
 Res_term = params.FT*(params.P.*w1.*params.sus_mask) - params.data;
 Res_term = (params.Res_wt(:).*Res_term(:))'*(params.Res_wt(:).*Res_term(:));
 
 Tik_term = (params.P(:).*params.Tik_mask(:).*w1(:))'*(params.P(:).*params.Tik_mask(:).*w1(:));
 
-obj = Res_term + params.Tik_reg*Tik_term + params.TV_reg*TV_term;
+% obj = Res_term + params.Tik_reg*Tik_term + params.TV_reg*TV_term;
+obj = Res_term + params.Tik_reg*Tik_term + params.TV_reg*TV_term + params.TV_reg2*TV_term2;
 
 
 
 function grad = wGradient(m,params)
 p = params.pNorm;
 w1 = params.TV*(params.P.*m.*params.TV_mask);
+w2 = params.TV*(params.P.*m.*params.air_mask);
 
 grad_TV = params.P.*params.TV_mask.*(params.TV'*(p*w1.*(w1.*conj(w1)+params.l1Smooth).^(p/2-1)));
+grad_TV2 = params.P.*params.air_mask.*(params.TV'*(p*w2.*(w2.*conj(w2)+params.l1Smooth).^(p/2-1)));
 
 grad_Res = params.P.*params.sus_mask.*(params.FT'*((params.Res_wt.^2).*((params.FT*(params.P.*params.sus_mask.*m))-params.data)));
 
 grad_Tik = params.P.^2.*params.Tik_mask.*m;
 
-grad = 2*grad_Res + params.TV_reg*grad_TV + 2*params.Tik_reg.*grad_Tik;
+grad = 2*grad_Res + params.TV_reg*grad_TV + 2*params.Tik_reg.*grad_Tik + params.TV_reg2*grad_TV2;
 
