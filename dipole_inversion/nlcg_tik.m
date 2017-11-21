@@ -115,7 +115,7 @@ grad_TV2 = params.P.*params.air_mask.*(params.TV'*(p*w2.*(w2.*conj(w2)+params.l1
 
 grad_Res = params.P.*params.sus_mask.*(params.FT'*((params.Res_wt.^2).*((params.FT*(params.P.*params.sus_mask.*m))-params.data)));
 
-grad_Tik = params.P.^2.*params.Tik_mask.*m;
+grad_Tik = params.P.^2.*params.Tik_mask.^2.*m;
 
 grad = 2*grad_Res + params.TV_reg*grad_TV + 2*params.Tik_reg.*grad_Tik + params.TV_reg2*grad_TV2;
 
