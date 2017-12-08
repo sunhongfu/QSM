@@ -348,6 +348,18 @@ for echo = 2:imsize(4)
     unph(:,:,:,echo) = unph(:,:,:,echo).*mask;
 end
 
+% for echo = 2:imsize(4)
+%     meandiff = unph(:,:,:,echo)-unph(:,:,:,echo-1)-unph_diff;
+%     meandiff = meandiff(mask==1);
+%     meandiff = mean(meandiff(:))
+%     njump = round(meandiff/(2*pi))
+%     disp(['    ' num2str(njump) ' 2pi jumps for TE' num2str(echo)]);
+%     unph(:,:,:,echo) = unph(:,:,:,echo) - njump*2*pi;
+%     unph(:,:,:,echo) = unph(:,:,:,echo).*mask;
+% end
+
+nii = make_nii(unph,vox);
+save_nii(nii,'unph_corrected.nii');
 
 % fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
