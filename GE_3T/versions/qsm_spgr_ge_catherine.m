@@ -178,7 +178,7 @@ ph(:,:,:,1) = angle(exp(1j*(ph(:,:,:,1)-pi)));
 
 
 % define output directories
-path_qsm = [path_out '/QSM_SPGR_GE'];
+path_qsm = [path_out '/QSM_SPGR_GE_pi'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -240,14 +240,14 @@ end
 % phase offset correction
 % if unipolar
 if strcmpi('unipolar',readout)
-    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
+    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask,'gaussian',0);
     % ph_corr(:,:,1:2:end,:) = geme_cmb(mag(:,:,1:2:end,:).*exp(1j*ph(:,:,1:2:end,:)),[vox(1),vox(2),vox(3)*2],TE,mask(:,:,1:2:end,:));
     % ph_corr(:,:,2:2:end,:) = geme_cmb(mag(:,:,2:2:end,:).*exp(1j*ph(:,:,2:2:end,:)),[vox(1),vox(2),vox(3)*2],TE,mask(:,:,2:2:end,:));
 % if bipolar
 elseif strcmpi('bipolar',readout)
     ph_corr = zeros(imsize);
-    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask);
-    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask);
+    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask,'gaussian',0);
+    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask,'gaussian',0);
 else
     error('is the sequence unipolar or bipolar readout?')
 end
@@ -305,8 +305,14 @@ elseif strcmpi('bestpath',ph_unwrap)
         fwrite(fid,ph_corr(:,:,:,echo_num),'float');
         fclose(fid);
 
-        bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
-            'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+
+        if isdeployed
+            bash_script = ['~/bin/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+                    'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+        else
+            bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+                'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+        end
         unix(bash_script) ;
 
         fid = fopen(['unwrapped_phase' num2str(echo_num) '.dat'],'r');
@@ -383,7 +389,7 @@ end
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 4.7T
-tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+tfs = -tfs/(CF*2*pi)*1e6; % unit ppm
 
 nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
@@ -413,7 +419,7 @@ if sum(strcmpi('resharp',bkg_rm))
 
     
     % inversion of susceptibility （iLSQR method)
-    chi_iLSQR = QSM_iLSQR(lfs_resharp_v2d*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_v2d,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+    chi_iLSQR = QSM_iLSQR(lfs_resharp_v2d*CF*2*pi/1e6,mask_resharp_v2d,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
     nii = make_nii(chi_iLSQR,vox);
     save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
 
@@ -430,7 +436,7 @@ if sum(strcmpi('resharp',bkg_rm))
     CF = dicom_info.ImagingFrequency *1e6;
     iFreq = [];
     N_std = 1;
-    RDF = lfs_resharp_v2d*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    RDF = lfs_resharp_v2d*CF*2*pi*delta_TE*1e-6;
     Mask = mask_resharp_v2d;
     save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
          voxel_size delta_TE CF B0_dir;
@@ -471,7 +477,7 @@ if sum(strcmpi('lbv',bkg_rm))
 
       
         % inversion of susceptibility （iLSQR method)
-        chi_iLSQR = QSM_iLSQR(lfs_lbv_v2d*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_lbv_v2d,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+        chi_iLSQR = QSM_iLSQR(lfs_lbv_v2d*(CF*2*pi)/1e6,mask_lbv_v2d,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
         nii = make_nii(chi_iLSQR,vox);
         save_nii(nii,['LBV/chi_iLSQR_peel' num2str(peel) '.nii']);
 
@@ -488,7 +494,7 @@ if sum(strcmpi('lbv',bkg_rm))
     CF = dicom_info.ImagingFrequency *1e6;
     iFreq = [];
     N_std = 1;
-    RDF = lfs_lbv_v2d*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    RDF = lfs_lbv_v2d*CF*2*pi*delta_TE*1e-6;
     Mask = mask_lbv_v2d;
     save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
          voxel_size delta_TE CF B0_dir;
@@ -517,7 +523,7 @@ if sum(strcmpi('tfi',bkg_rm))
     N_std = 1;
 
     % (4) TFI of 3 voxels erosion
-    iFreq = tfs*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    iFreq = tfs*CF*2*pi*delta_TE*1e-6;
     % erode the mask (full mask to 3mm erosion)
     % apply R
     mask = mask.*R;
@@ -583,7 +589,7 @@ end
 % save_nii(nii,'iFreq_lap.nii');
 
 % delta_TE = TE(2) - TE(1);
-% tfs = iFreq_lap/(2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6);
+% tfs = iFreq_lap/(CF*2*pi*delta_TE*1e-6);
 % nii = make_nii(tfs,vox);
 % save_nii(nii,'tfs_cpx.nii');
 

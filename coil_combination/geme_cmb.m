@@ -1,4 +1,4 @@
-function [ph_cmb,mag_cmb,img] = geme_cmb(img, vox, te, mask, smooth_method)
+function [ph_cmb,mag_cmb,img] = geme_cmb(img, vox, te, mask, smooth_method, parpool_flag)
 %Gradient-echo multi-echo combination (for phase).
 %   PH_CMB = GEME_CMB(IMG,VOX, TE,SMOOTH_METHOD) combines phase from multiple receivers
 %
@@ -12,6 +12,10 @@ function [ph_cmb,mag_cmb,img] = geme_cmb(img, vox, te, mask, smooth_method)
 
 if ~ exist('smooth_method','var') || isempty(smooth_method)
     smooth_method = 'gaussian';
+end
+
+if ~ exist('parpool_flag','var') || isempty(parpool_flag)
+    parpool_flag = 1;
 end
 
 [~,~,~,ne,nrcvrs] = size(img);
@@ -86,21 +90,37 @@ save_nii(nii,'offsets_raw.nii');
 % maybe later change to smooth the real and imag parts seperately, and try
 % guassian filter!
 if strcmpi('smooth3',smooth_method)
-    parpool;
-    parfor chan = 1:nrcvrs
-        offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
-%         offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
+    if parpool_flag
+        parpool;
+        parfor chan = 1:nrcvrs
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
+    %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
+            offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
+        end
+        delete(gcp('nocreate'));
+    else
+        for chan = 1:nrcvrs
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
+    %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
+            offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
+        end
+    end
 
-        offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
-    end
-    delete(gcp('nocreate'));
 elseif strcmpi('gaussian',smooth_method)
-    parpool;
-    parfor chan = 1:nrcvrs
-        offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),4) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),4);
-        offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
+    if parpool_flag
+        parpool;
+        parfor chan = 1:nrcvrs
+            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),4) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),4);
+            offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
+        end
+        delete(gcp('nocreate'));
+    else
+        for chan = 1:nrcvrs
+            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),4) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),4);
+            offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
+        end
     end
-    delete(gcp('nocreate'));
+
 elseif strcmpi('poly3',smooth_method)
     for chan = 1:nrcvrs
         fid = fopen(['wrapped_offsets_chan' num2str(chan) '.dat'],'w');
