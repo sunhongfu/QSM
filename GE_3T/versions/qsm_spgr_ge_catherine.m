@@ -131,6 +131,7 @@ dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
 imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/2, ...
 			 dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
+CF = dicom_info.ImagingFrequency *1e6;
 
 % angles!!!
 Xz = dicom_info.ImageOrientationPatient(3);
@@ -491,7 +492,6 @@ if sum(strcmpi('lbv',bkg_rm))
     voxel_size = vox;
     delta_TE = TE(2) - TE(1);
     B0_dir = z_prjs';
-    CF = dicom_info.ImagingFrequency *1e6;
     iFreq = [];
     N_std = 1;
     RDF = lfs_lbv_v2d*CF*2*pi*delta_TE*1e-6;
