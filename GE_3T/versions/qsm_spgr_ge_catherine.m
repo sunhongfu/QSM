@@ -445,9 +445,9 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
-    QSM = MEDI_L1('lambda',500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
@@ -502,9 +502,9 @@ if sum(strcmpi('lbv',bkg_rm))
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['LBV/MEDI1000_LBV_peel' num2str(peel) '.nii']);
 
-    QSM = MEDI_L1('lambda',500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['LBV/MEDI500_LBV_peel' num2str(peel) '.nii']);
+    % QSM = MEDI_L1('lambda',500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['LBV/MEDI500_LBV_peel' num2str(peel) '.nii']);
 
     end
 end
@@ -566,13 +566,45 @@ if sum(strcmpi('tfi',bkg_rm))
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,'TFI/TFI_ero2_lambda1000.nii');
 
-    QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,'TFI/TFI_ero2_lambda500.nii');
-
-    % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1500);
+    % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
     % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,'TFI/TFI_ero2_lambda1500.nii');
+    % save_nii(nii,'TFI/TFI_ero2_lambda500.nii');
+
+
+     iFreq = lfs_lbv_v2d*CF*2*pi*delta_TE*1e-6;
+     Mask = mask_lbv_v2d;
+     Mask_G = Mask;
+     P_B = 30;
+     P = 1 * Mask + P_B * (1-Mask);
+     RDF = 0;
+     save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+ 
+     % 1000
+     QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+     nii = make_nii(QSM.*Mask,vox);
+     save_nii(nii,'TFI/TFI_lbv_v2d_lambda1000.nii');
+     
+     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+     % nii = make_nii(QSM.*Mask,vox);
+     % save_nii(nii,'TFI/TFI_lbv_v2d_lambda2000.nii');
+
+
+     iFreq = lfs_resharp_v2d*CF*2*pi*delta_TE*1e-6;
+     Mask = mask_resharp_v2d;
+     Mask_G = Mask;
+     P_B = 30;
+     P = 1 * Mask + P_B * (1-Mask);
+     RDF = 0;
+     save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+ 
+     % 1000
+     QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+     nii = make_nii(QSM.*Mask,vox);
+     save_nii(nii,'TFI/TFI_resharp_v2d_lambda1000.nii');
+     
+     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+     % nii = make_nii(QSM.*Mask,vox);
+     % save_nii(nii,'TFI/TFI_resharp_v2d_lambda2000.nii');
 end
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
