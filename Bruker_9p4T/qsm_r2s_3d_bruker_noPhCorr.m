@@ -1,9 +1,9 @@
-function qsm_r2s_3d_bruker(path_fid,path_out)
+function qsm_r2s_3d_bruker_noPhCorr(path_fid,path_out)
 
 [iField voxel_size matrix_size TE delta_TE CF Affine3D B0_dir TR NumEcho] = Read_Bruker_raw_sun(path_fid);
 
 % define directories
-path_qsm = [path_out '/QSM_R2s_9p4'];
+path_qsm = [path_out '/QSM_R2s_9p4_noPhCorr'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -63,9 +63,10 @@ save_nii(nii,'mask_thr.nii');
 
 
 
-% phase offset correction
-ph_corr = geme_cmb_mouse(mag.*exp(1j*ph),voxel_size,TE,mask);
+% No phase offset correction
+% ph_corr = geme_cmb_mouse(mag.*exp(1j*ph),voxel_size,TE,mask);
 % save offset corrected phase niftis
+ph_corr = ph;
 for echo = 1:imsize(4)
     nii = make_nii(ph_corr(:,:,:,echo),voxel_size);
     save_nii(nii,['src/corr_ph' num2str(echo) '.nii']);
@@ -151,8 +152,10 @@ save_nii(nii,'unph_bestpath.nii');
 disp('--> correct for potential 2pi jumps between TEs ...')
 
 
-nii = load_nii('unph_diff.nii');
-unph_diff = double(nii.img);
+% nii = load_nii('unph_diff.nii');
+% unph_diff = double(nii.img);
+
+unph_diff = unph(:,:,:,2) - unph(:,:,:,1);
 
 for echo = 2:imsize(4)
     meandiff = unph(:,:,:,echo)-unph(:,:,:,1)-double(echo-1)*unph_diff;
