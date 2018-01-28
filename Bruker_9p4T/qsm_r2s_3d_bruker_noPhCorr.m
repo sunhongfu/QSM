@@ -67,10 +67,10 @@ save_nii(nii,'mask_thr.nii');
 % ph_corr = geme_cmb_mouse(mag.*exp(1j*ph),voxel_size,TE,mask);
 % save offset corrected phase niftis
 ph_corr = ph;
-for echo = 1:imsize(4)
-    nii = make_nii(ph_corr(:,:,:,echo),voxel_size);
-    save_nii(nii,['src/corr_ph' num2str(echo) '.nii']);
-end
+% for echo = 1:imsize(4)
+%     nii = make_nii(ph_corr(:,:,:,echo),voxel_size);
+%     save_nii(nii,['src/corr_ph' num2str(echo) '.nii']);
+% end
 
 
 % % unwrap each echo using prelude (too slow)
@@ -112,7 +112,6 @@ setenv('np',num2str(imsize(2)));
 setenv('ns',num2str(imsize(3)));
 
 unph = zeros(imsize);
-ph_corr = angle(iField);
 
 for echo_num = 1:imsize(4)
     setenv('echo_num',num2str(echo_num));
