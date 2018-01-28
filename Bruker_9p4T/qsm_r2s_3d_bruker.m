@@ -16,6 +16,7 @@ nii = make_nii(angle(iField),voxel_size);
 save_nii(nii,'ph_all.nii');
 
 imsize = size(iField);
+z_prjs = B0_dir;
 
 mkdir src
 for i = 1:imsize(4)

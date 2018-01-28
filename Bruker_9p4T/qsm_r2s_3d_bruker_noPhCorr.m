@@ -16,6 +16,7 @@ nii = make_nii(angle(iField),voxel_size);
 save_nii(nii,'ph_all.nii');
 
 imsize = size(iField);
+z_prjs = B0_dir;
 
 mkdir src
 for i = 1:imsize(4)
@@ -210,16 +211,16 @@ for fit_thr = [20, 40]
     save_nii(nii,'tfs.nii');
 
 
-    disp('--> RESHARP to remove background field ...');
-    smv_rad = 0.3;
-    tik_reg = 5e-4;
-    % tik_reg = 0;
-    cgs_num = 500;
-    tv_reg = 2e-4;
-    z_prjs = B0_dir;
-    inv_num = 500;
+    % disp('--> RESHARP to remove background field ...');
+    % smv_rad = 0.3;
+    % tik_reg = 5e-4;
+    % % tik_reg = 0;
+    % cgs_num = 500;
+    % tv_reg = 2e-4;
+    % z_prjs = B0_dir;
+    % inv_num = 500;
 
-    [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxel_size,smv_rad,tik_reg,cgs_num);
+    % [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,voxel_size,smv_rad,tik_reg,cgs_num);
     % % 3D 2nd order polyfit to remove any residual background
     % lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
 
