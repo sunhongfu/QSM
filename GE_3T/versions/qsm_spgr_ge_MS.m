@@ -66,7 +66,7 @@ if ~ isfield(options,'ph_unwrap')
 end
 
 if ~ isfield(options,'bkg_rm')
-    options.bkg_rm = {'resharp','lbv','tfi'};
+    options.bkg_rm = {'resharp','lbv','tfi','lnqsm'};
     % options.bkg_rm = {'pdf','sharp','resharp','esharp','lbv'};
 end
 
@@ -438,7 +438,8 @@ end
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
 
-for smv_rad = 2:3
+% for smv_rad = 2:3
+for smv_rad = 2
 
     [lfs_resharp, mask_resharp] = resharp(tfs,mask.*R,vox,smv_rad,tik_reg,cgs_num);
     % % 3D 2nd order polyfit to remove any residual background
@@ -495,15 +496,31 @@ for smv_rad = 2:3
      RDF = 0;
      save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
  
-     % 1000
-     QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
-     nii = make_nii(QSM.*Mask,vox);
-     save_nii(nii,['TFI/TFI_resharp_lambda1000_smvrad' num2str(smv_rad) '.nii']);
+     mkdir TFI
+     % % 1000
+     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+     % nii = make_nii(QSM.*Mask,vox);
+     % save_nii(nii,['RESHARP/TFI_resharp_lambda1000_smvrad' num2str(smv_rad) '.nii']);
      
      QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
      nii = make_nii(QSM.*Mask,vox);
-     save_nii(nii,['TFI/TFI_resharp_lambda2000_smvrad' num2str(smv_rad) '.nii']);
+     save_nii(nii,['RESHARP/TFI_resharp_lambda2000_smvrad' num2str(smv_rad) '.nii']);
 
+
+
+    % LN-QSM on local field
+    maskR = mask.*R;
+    Res_wt = iMag.*maskR;
+    Res_wt = Res_wt/sum(Res_wt(:))*sum(maskR(:));
+
+    P = mask_resharp + 30*(1 - mask_resharp);
+    chi_ero0_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero0_500.*mask_resharp,vox);
+    save_nii(nii,['RESHARP/chi_ero0_tik_1e-3_tv_5e-4_500_smvrad_' num2str(smv_rad) '.nii']);
+
+    chi_ero0_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero0_500.*mask_resharp,vox);
+    save_nii(nii,['RESHARP/chi_ero0_tik_1e-3_tv_1e-4_500_smvrad_' num2str(smv_rad) '.nii']);
 end
 
 
@@ -569,7 +586,7 @@ end
 if sum(strcmpi('lbv',bkg_rm))
    disp('--> LBV to remove background field ...');
 
-for lbv_peel = 1:2
+for lbv_peel = 1:3
 
    lfs_lbv = LBV(tfs,mask.*R,imsize(1:3),vox,lbv_tol,-1,lbv_peel); % strip 2 layers
    mask_lbv = ones(imsize(1:3));
@@ -580,7 +597,7 @@ for lbv_peel = 1:2
    % save nifti
    [~,~,~] = mkdir('LBV');
    nii = make_nii(lfs_lbv,vox);
-   save_nii(nii,['LBV/lfs_lbv_peel' num2str(peel) '.nii']);
+   save_nii(nii,['LBV/lfs_lbv_peel' num2str(lbv_peel) '.nii']);
 
    % % inversion of susceptibility 
    % disp('--> TV susceptibility inversion on lbv...');
@@ -588,14 +605,14 @@ for lbv_peel = 1:2
 
    % % save nifti
    % nii = make_nii(sus_lbv.*mask_lbv,vox);
-   % save_nii(nii,['LBV/sus_lbv_tv_', num2str(tv_reg), '_peel_', num2str(peel), '.nii']);
+   % save_nii(nii,['LBV/sus_lbv_tv_', num2str(tv_reg), '_peel_', num2str(lbv_peel), '.nii']);
 
 
     % LBV + iLSQR
     % inversion of susceptibility （iLSQR method)
     chi_iLSQR = QSM_iLSQR(lfs_lbv*CF*2*pi/1e6,mask_lbv,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
     nii = make_nii(chi_iLSQR,vox);
-    save_nii(nii,['LBV/chi_LBV_iLSQR_peel' num2str(peel) '.nii']);
+    save_nii(nii,['LBV/chi_LBV_iLSQR_peel' num2str(lbv_peel) '.nii']);
 
 
     % MEDI
@@ -616,7 +633,7 @@ for lbv_peel = 1:2
          voxel_size delta_TE CF B0_dir;
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['LBV/MEDI1000_LBV_peel' num2str(peel) '.nii']);
+    save_nii(nii,['LBV/MEDI1000_LBV_peel' num2str(lbv_peel) '.nii']);
 
 
 
@@ -628,15 +645,28 @@ for lbv_peel = 1:2
      RDF = 0;
      save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
  
+
+    mkdir TFI
      % 1000
      QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
      nii = make_nii(QSM.*Mask,vox);
-     save_nii(nii,['TFI/TFI_lbv_lambda1000_peel_' num2str(peel) '.nii']);
+     save_nii(nii,['LBV/TFI_lbv_lambda1000_peel_' num2str(lbv_peel) '.nii']);
      
      QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
      nii = make_nii(QSM.*Mask,vox);
-     save_nii(nii,['TFI/TFI_lbv_lambda2000_peel_' num2str(peel) '.nii']);
+     save_nii(nii,['LBV/TFI_lbv_lambda2000_peel_' num2str(lbv_peel) '.nii']);
 
+
+
+    % LN-QSM on local field
+    maskR = mask.*R;
+    Res_wt = iMag.*maskR;
+    Res_wt = Res_wt/sum(Res_wt(:))*sum(maskR(:));
+
+    P = mask_lbv + 30*(1 - mask_lbv);
+    chi_ero0_500 = tikhonov_qsm(lfs_lbv, Res_wt.*mask_lbv, 1, mask_lbv, mask_lbv, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero0_500.*mask_lbv,vox);
+    save_nii(nii,['LBV/chi_ero0_tik_1e-3_tv_5e-4_500_peel_' num2str(lbv_peel) '.nii']);
 
 end
 
@@ -741,6 +771,56 @@ if sum(strcmpi('tfi',bkg_rm))
 
 
 
+    Mask = mask_ero3;
+    Mask_G = Mask;
+    P_B = 30;
+    P = 1 * Mask + P_B * (1-Mask);
+    RDF = 0;
+    save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+
+    % 
+    QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,'TFI/TFI_ero3_lambda1000.nii');
+
+    QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,'TFI/TFI_ero3_lambda2000.nii');
+end
+
+
+
+% LN-QSM
+if sum(strcmpi('lnqsm',bkg_rm))
+    mkdir LN-QSM
+
+    maskR = mask.*R;
+    P = maskR + 30*(1 - maskR);
+    Res_wt = iMag.*maskR;
+    Res_wt = Res_wt/sum(Res_wt(:))*sum(maskR(:));
+
+
+    chi_ero0_500 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero0_500,vox);
+    save_nii(nii,['LN-QSM/chi_ero0_tik_1e-3_tv_5e-4_500.nii']);
+
+
+    P = mask_ero1 + 30*(1 - mask_ero1);
+    chi_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero1_500,vox);
+    save_nii(nii,['LN-QSM/chi_ero1_tik_1e-3_tv_5e-4_500.nii']);
+
+
+    P = mask_ero2 + 30*(1 - mask_ero2);
+    chi_ero2_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero2, 1, mask_ero2, mask_ero2, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero2_500,vox);
+    save_nii(nii,['LN-QSM/chi_ero2_tik_1e-3_tv_5e-4_500.nii']);
+
+
+    P = mask_ero3 + 30*(1 - mask_ero3);
+    chi_ero3_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero3, 1, mask_ero3, mask_ero3, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero3_500,vox);
+    save_nii(nii,['LN-QSM/chi_ero3_tik_1e-3_tv_5e-4_500.nii']);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
