@@ -596,7 +596,7 @@ if sum(strcmpi('lbv',bkg_rm))
     mask_lbv = ones(imsize(1:3));
     mask_lbv(lfs_lbv==0) = 0;
     % 3D 2nd order polyfit to remove any residual background
-    lfs_lbv= lfs_lbv - poly3d(lfs_lbv,mask_lbv);
+    lfs_lbv= (lfs_lbv - poly3d(lfs_lbv,mask_lbv)).*mask_lbv;
 
     % save nifti
     [~,~,~] = mkdir('LBV');
