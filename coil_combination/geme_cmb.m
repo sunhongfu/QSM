@@ -18,6 +18,10 @@ if ~ exist('parpool_flag','var') || isempty(parpool_flag)
     parpool_flag = 1;
 end
 
+if isdeployed
+    parpool_flag = 0;
+end
+
 [~,~,~,ne,nrcvrs] = size(img);
 TE1 = te(1);
 TE2 = te(2);
