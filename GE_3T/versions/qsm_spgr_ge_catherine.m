@@ -104,6 +104,10 @@ if ~ isfield(options,'interp')
     options.interp = 0;
 end
 
+if ~ isfield(options,'corr_echo1')
+    options.corr_echo1 = 'pi';
+end
+
 readout    = options.readout;
 r_mask     = options.r_mask;
 fit_thr    = options.fit_thr;
@@ -120,6 +124,7 @@ lbv_peel   = options.lbv_peel;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
 interp     = options.interp;
+corr_echo1 = options.corr_echo1;
 
 % read in MESPGR dicoms (multi-echo gradient-echo)
 path_dicom = cd(cd(path_dicom));
@@ -171,23 +176,35 @@ end
 ph(:,:,2:2:end,:)=angle(exp(1j*(ph(:,:,2:2:end,:)+pi)));
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%
-% first echo phase correction
-% ph(:,:,:,1) = angle(exp(1j*(ph(:,:,:,1)-pi/2)));
-ph(:,:,:,1) = angle(exp(1j*(ph(:,:,:,1)-pi)));
-%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % define output directories
-path_qsm = [path_out '/QSM_SPGR_GE_pi'];
+if strcmpi(corr_echo1,'no')
+    path_qsm = [path_out '/QSM_SPGR_GE_no_echo1'];
+elseif strcmpi(corr_echo1,'pi')
+    path_qsm = [path_out '/QSM_SPGR_GE_pi'];
+elseif strcmpi(corr_echo1,'halfpi')
+    path_qsm = [path_out '/QSM_SPGR_GE_halfpi'];
+end
+
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
-nii = make_nii(mag,vox);
-save_nii(nii,'mag_all.nii');
+% nii = make_nii(mag,vox);
+% save_nii(nii,'mag_all.nii');
 nii = make_nii(ph,vox);
-save_nii(nii,'ph_all.nii');
+save_nii(nii,'ph_all_raw.nii');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% first echo phase correction
+if strcmpi(corr_echo1,'pi')
+    ph(:,:,:,1) = angle(exp(1j*(ph(:,:,:,1)-pi)));
+    %%%%%%%%%%%%%%%%%%%%%%%%%
+elseif strcmpi(corr_echo1,'halfpi')
+    ph(:,:,:,1) = angle(exp(1j*(ph(:,:,:,1)-pi/2)));
+end
 
 
 % brain extraction
@@ -206,12 +223,6 @@ nii = load_nii('BET_mask.nii');
 mask = double(nii.img);
 
 
-% %%%%%%%%%%%%%%%%%%%%%% abandon the first echo from calculation
-% mag = mag(:,:,:,2:end);
-% ph = ph(:,:,:,2:end);
-% TE = TE(2:end);
-% imsize = size(mag);
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % interpolate the images to the double size
 if interp
@@ -226,7 +237,6 @@ if interp
 end
 
 
-
 % save magnitude and raw phase niftis for each echo
 mkdir('src')
 for echo = 1:imsize(4)
@@ -236,6 +246,13 @@ for echo = 1:imsize(4)
     save_nii(nii,['src/ph' num2str(echo) '.nii']);
 end
 
+
+if strcmpi(corr_echo1,'no')
+    mag = mag(:,:,:,2:end);
+    ph = ph(:,:,:,2:end);
+    TE = TE(2:end);
+    imsize = size(mag);
+end
 
 
 % phase offset correction
@@ -526,13 +543,13 @@ if sum(strcmpi('lbv',bkg_rm))
     Mask = mask_lbv_v2d;
     save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
          voxel_size delta_TE CF B0_dir;
-    QSM = MEDI_L1('lambda',1000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['LBV/MEDI1000_LBV_peel' num2str(lbv_peel) '.nii']);
-
-    % QSM = MEDI_L1('lambda',500);
+    % QSM = MEDI_L1('lambda',1000);
     % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['LBV/MEDI500_LBV_peel' num2str(lbv_peel) '.nii']);
+    % save_nii(nii,['LBV/MEDI1000_LBV_peel' num2str(lbv_peel) '.nii']);
+
+    QSM = MEDI_L1('lambda',2000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI2000_LBV_peel' num2str(lbv_peel) '.nii']);
 
 
      iFreq = lfs_lbv_v2d*CF*2*pi*delta_TE*1e-6;
@@ -544,14 +561,15 @@ if sum(strcmpi('lbv',bkg_rm))
      save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
  
      % 1000
-     QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
-     nii = make_nii(QSM.*Mask,vox);
-     save_nii(nii,['LBV/TFI_lbv_v2d_lambda1000_peel_' num2str(lbv_peel) '.nii']);
-     
-     % % 2000
-     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
      % nii = make_nii(QSM.*Mask,vox);
-     % save_nii(nii,['LBV/TFI_lbv_v2d_lambda2000_peel_' num2str(lbv_peel) '.nii']);
+     % save_nii(nii,['LBV/TFI_lbv_v2d_lambda1000_peel_' num2str(lbv_peel) '.nii']);
+     
+     % 2000
+     QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+     nii = make_nii(QSM.*Mask,vox);
+     save_nii(nii,['LBV/TFI_lbv_v2d_lambda2000_peel_' num2str(lbv_peel) '.nii']);
+
 
     % LN-QSM on local field
     maskR = mask.*R;
@@ -563,9 +581,9 @@ if sum(strcmpi('lbv',bkg_rm))
     nii = make_nii(chi_ero0_2000.*mask_lbv_v2d,vox);
     save_nii(nii,['LBV/chi_ero0_tik_1e-3_tv_1e-4_2000_peel_' num2str(lbv_peel) '.nii']);
 
-    % chi_ero0_2000 = tikhonov_qsm(lfs_lbv_v2d, Res_wt.*mask_lbv_v2d, 1, mask_lbv_v2d, mask_lbv_v2d, 0, 5e-5, 0.001, 0, vox, P, z_prjs, 2000);
+    % chi_ero0_2000 = tikhonov_qsm(lfs_lbv_v2d, Res_wt.*mask_lbv_v2d, 1, mask_lbv_v2d, mask_lbv_v2d, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
     % nii = make_nii(chi_ero0_2000.*mask_lbv_v2d,vox);
-    % save_nii(nii,['LBV/chi_ero0_tik_1e-3_tv_5e-5_2000_peel_' num2str(lbv_peel) '.nii']);
+    % save_nii(nii,['LBV/chi_ero0_tik_1e-3_tv_4e-4_2000_peel_' num2str(lbv_peel) '.nii']);
 
     end
 end
@@ -713,6 +731,10 @@ end
 % end
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-save('all.mat','-v7.3');
+
+% remove files to save space
+! rm -r *.dat *.bin *.mat offsets*.nii reliability*.nii results ph_diff.nii unph_diff.nii unph*.nii BET.nii src
+
+% save('all.mat','-v7.3');
 cd(init_dir);
 
