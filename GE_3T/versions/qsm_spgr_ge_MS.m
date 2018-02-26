@@ -66,7 +66,7 @@ if ~ isfield(options,'ph_unwrap')
 end
 
 if ~ isfield(options,'bkg_rm')
-    options.bkg_rm = {'resharp','lbv','tfi','lnqsm'};
+    options.bkg_rm = {'resharp','lnqsm'};
     % options.bkg_rm = {'pdf','sharp','resharp','esharp','lbv'};
 end
 
@@ -79,11 +79,12 @@ if ~ isfield(options,'smv_rad')
 end
 
 if ~ isfield(options,'tik_reg')
-    options.tik_reg = 1e-4;
+    % options.tik_reg = 1e-4;
+    options.tik_reg = 0;
 end
 
 if ~ isfield(options,'cgs_num')
-    options.cgs_num = 200;
+    options.cgs_num = 500;
 end
 
 if ~ isfield(options,'lbv_tol')
@@ -451,9 +452,6 @@ end
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
 
-    % for smv_rad = 2:3
-    for smv_rad = 2
-
     [lfs_resharp, mask_resharp] = resharp(tfs,maskR,vox,smv_rad,tik_reg,cgs_num);
     % % 3D 2nd order polyfit to remove any residual background
     % lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
@@ -497,35 +495,34 @@ if sum(strcmpi('resharp',bkg_rm))
 
 
     %%%%%%%%% (4) TFI %%%%%%%%%
-    iFreq = lfs_resharp*CF*2*pi*delta_TE*1e-6;
-    N_std = 1;
-    Mask = mask_resharp;
-    Mask_G = Mask;
-    P_B = 30;
-    P = 1 * Mask + P_B * (1-Mask);
-    RDF = 0;
-    save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+    % iFreq = lfs_resharp*CF*2*pi*delta_TE*1e-6;
+    % N_std = 1;
+    % Mask = mask_resharp;
+    % Mask_G = Mask;
+    % P_B = 30;
+    % P = 1 * Mask + P_B * (1-Mask);
+    % RDF = 0;
+    % save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
 
     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
     % nii = make_nii(QSM.*Mask,vox);
     % save_nii(nii,['RESHARP/TFI_resharp_lambda1000_smvrad' num2str(smv_rad) '.nii']);
 
-    QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/TFI_resharp_lambda2000_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/TFI_resharp_lambda2000_smvrad' num2str(smv_rad) '.nii']);
 
 
     %%%%%%%%% (5) LN-QSM %%%%%%%%%
     P = mask_resharp + 30*(1 - mask_resharp);
-    LN_resharp_2000 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    nii = make_nii(LN_resharp_2000.*mask_resharp,vox);
-    save_nii(nii,['RESHARP/LN_resharp_tik_1e-3_tv_4e-4_2000_smvrad_' num2str(smv_rad) '.nii']);
+    %LN_resharp_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 4e-4, 0, 0, vox, P, z_prjs, 500);
+    %nii = make_nii(LN_resharp_500.*mask_resharp,vox);
+    %save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_4e-4_500_smvrad_' num2str(smv_rad) '.nii']);
 
-    % LN_resharp_2000 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    % nii = make_nii(LN_resharp_2000.*mask_resharp,vox);
-    % save_nii(nii,['RESHARP/LN_resharp_tik_1e-3_tv_1e-4_2000_smvrad_' num2str(smv_rad) '.nii']);
+    LN_resharp_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 1e-4, 0, 0, vox, P, z_prjs, 500);
+    nii = make_nii(LN_resharp_500.*mask_resharp,vox);
+    save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_1e-4_500_smvrad_' num2str(smv_rad) '.nii']);
 
-    end
 end
 
 
@@ -655,13 +652,13 @@ if sum(strcmpi('lbv',bkg_rm))
 
     %%%%%%%%% (5) LN-QSM %%%%%%%%%
     P = mask_lbv + 30*(1 - mask_lbv);
-    LN_lbv_2000 = tikhonov_qsm(lfs_lbv, Res_wt.*mask_lbv, 1, mask_lbv, mask_lbv, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
+    LN_lbv_2000 = tikhonov_qsm(lfs_lbv, Res_wt.*mask_lbv, 1, mask_lbv, mask_lbv, 0, 4e-4, 0, 0, vox, P, z_prjs, 2000);
     nii = make_nii(LN_lbv_2000.*mask_lbv,vox);
-    save_nii(nii,['LBV/LN_lbv_tik_1e-3_tv_4e-4_2000_peel_' num2str(lbv_peel) '.nii']);
+    save_nii(nii,['LBV/LN_lbv_tik_0_tv_4e-4_2000_peel_' num2str(lbv_peel) '.nii']);
 
-    % LN_lbv_2000 = tikhonov_qsm(lfs_lbv, Res_wt.*mask_lbv, 1, mask_lbv, mask_lbv, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    % nii = make_nii(LN_lbv_2000.*mask_lbv,vox);
-    % save_nii(nii,['LBV/LN_lbv_tik_1e-3_tv_1e-4_2000_peel_' num2str(lbv_peel) '.nii']);
+    LN_lbv_2000 = tikhonov_qsm(lfs_lbv, Res_wt.*mask_lbv, 1, mask_lbv, mask_lbv, 0, 1e-4, 0, 0, vox, P, z_prjs, 2000);
+    nii = make_nii(LN_lbv_2000.*mask_lbv,vox);
+    save_nii(nii,['LBV/LN_lbv_tik_0_tv_1e-4_2000_peel_' num2str(lbv_peel) '.nii']);
 end
 
 end
@@ -801,28 +798,30 @@ if sum(strcmpi('lnqsm',bkg_rm))
     mask_ero3(mask_tmp > 0.999999) = 1; % no error tolerance
 
 
-    % P = maskR + 30*(1 - maskR);
-    % LN_ero0_2000 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 5e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    % nii = make_nii(LN_ero0_2000.*maskR,vox);
-    % save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_5e-4_2000.nii']);
+    P = maskR + 30*(1 - maskR);
+    LN_ero0_2000 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 2000);
+    nii = make_nii(LN_ero0_2000.*maskR,vox);
+    save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_1e-4_2000.nii']);
+
+    LN_ero0_2000 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 1e-4, 0, 0, vox, P, z_prjs, 2000);
+    nii = make_nii(LN_ero0_2000.*maskR,vox);
+    save_nii(nii,['LN-QSM/LN_ero0_tik_0_tv_1e-4_2000.nii']);
 
 
-    P = mask_ero1 + 30*(1 - mask_ero1);
-    LN_ero1_2000 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    nii = make_nii(LN_ero1_2000.*mask_ero1,vox);
-    save_nii(nii,['LN-QSM/LN_ero1_tik_1e-3_tv_4e-4_2000.nii']);
+    % P = mask_ero1 + 30*(1 - mask_ero1);
+    % LN_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    % nii = make_nii(LN_ero1_500.*mask_ero1,vox);
+    % save_nii(nii,['LN-QSM/LN_ero1_tik_1e-3_tv_1e-4_500.nii']);
 
+    % LN_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 1e-4, 0, 0, vox, P, z_prjs, 500);
+    % nii = make_nii(LN_ero1_500.*mask_ero1,vox);
+    % save_nii(nii,['LN-QSM/LN_ero1_tik_0_tv_1e-4_500.nii']);
 
     % P = mask_ero2 + 30*(1 - mask_ero2);
-    % LN_ero2_2000 = tikhonov_qsm(tfs, Res_wt.*mask_ero2, 1, mask_ero2, mask_ero2, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    % nii = make_nii(LN_ero2_2000.*mask_ero2,vox);
-    % save_nii(nii,['LN-QSM/LN_ero2_tik_1e-3_tv_4e-4_2000.nii']);
+    % LN_ero2_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero2, 1, mask_ero2, mask_ero2, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 500);
+    % nii = make_nii(LN_ero2_500.*mask_ero2,vox);
+    % save_nii(nii,['LN-QSM/LN_ero2_tik_1e-3_tv_4e-4_500.nii']);
 
-
-    % P = mask_ero3 + 30*(1 - mask_ero3);
-    % LN_ero3_2000 = tikhonov_qsm(tfs, Res_wt.*mask_ero3, 1, mask_ero3, mask_ero3, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    % nii = make_nii(LN_ero3_2000.*mask_ero3,vox);
-    % save_nii(nii,['LN-QSM/LN_ero3_tik_1e-3_tv_4e-4_2000.nii']);
 end
 
 
