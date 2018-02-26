@@ -403,7 +403,7 @@ Res_wt = iMag.*maskR;
 Res_wt = Res_wt/sum(Res_wt(:))*sum(maskR(:));
 
 % remove files to save space
-! rm -r *.dat *.bin *.mat offsets*.nii reliability*.nii results ph_diff.nii unph_diff.nii unph*.nii BET.nii src
+! rm -r *.dat *.bin *.mat offsets*.nii reliability*.nii results ph_diff.nii unph_diff.nii unph*.nii BET.nii
 
 % background field removal and dipole inversion
 % PDF
@@ -515,13 +515,16 @@ if sum(strcmpi('resharp',bkg_rm))
 
     %%%%%%%%% (5) LN-QSM %%%%%%%%%
     P = mask_resharp + 30*(1 - mask_resharp);
-    %LN_resharp_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 4e-4, 0, 0, vox, P, z_prjs, 500);
-    %nii = make_nii(LN_resharp_500.*mask_resharp,vox);
-    %save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_4e-4_500_smvrad_' num2str(smv_rad) '.nii']);
 
-    LN_resharp_500 = tikhonov_qsm(lfs_resharp, Res_wt.*mask_resharp, 1, mask_resharp, mask_resharp, 0, 1e-4, 0, 0, vox, P, z_prjs, 500);
-    nii = make_nii(LN_resharp_500.*mask_resharp,vox);
-    save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_1e-4_500_smvrad_' num2str(smv_rad) '.nii']);
+    % pad 40 zeros in both slice directions
+    P_pad = padarray(P,[0 0 40]);
+    lfs_resharp_pad = padarray(lfs_resharp,[0 0 40]);
+    Res_wt_pad = padarray(Res_wt,[0 0 40]);
+    mask_resharp_pad = padarray(mask_resharp,[0 0 40]);
+
+    LN_resharp_1000 = tikhonov_qsm(lfs_resharp_pad, Res_wt_pad.*mask_resharp_pad, 1, mask_resharp_pad, mask_resharp_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 1000);
+    nii = make_nii(LN_resharp_1000(:,:,41:end-40).*mask_resharp,vox);
+    save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_1e-4_1000_smvrad_' num2str(smv_rad) '.nii']);
 
 end
 
@@ -799,35 +802,40 @@ if sum(strcmpi('lnqsm',bkg_rm))
 
 
     P = maskR + 30*(1 - maskR);
-    LN_ero0_2000 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 2000);
-    nii = make_nii(LN_ero0_2000.*maskR,vox);
-    save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_1e-4_2000.nii']);
 
-    LN_ero0_2000 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 1e-4, 0, 0, vox, P, z_prjs, 2000);
-    nii = make_nii(LN_ero0_2000.*maskR,vox);
+    % zero padding
+    P_pad = padarray(P,[0 0 40]);
+    tfs_pad = padarray(tfs,[0 0 40]);
+    Res_wt_pad = padarray(Res_wt,[0 0 40]);
+    maskR_pad = padarray(maskR,[0 0 40]);
+
+
+    % LN_ero0_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*maskR_pad, 1, maskR_pad, maskR_pad, 0, 1e-4, 0.001, 0, vox, P_pad, z_prjs, 2000);
+    % nii = make_nii(LN_ero0_2000(:,:,41:end-40).*maskR,vox);
+    % save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_1e-4_2000.nii']);
+
+    LN_ero0_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*maskR_pad, 1, maskR_pad, maskR_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 2000);
+    nii = make_nii(LN_ero0_2000(:,:,41:end-40).*maskR,vox);
     save_nii(nii,['LN-QSM/LN_ero0_tik_0_tv_1e-4_2000.nii']);
 
 
-    % P = mask_ero1 + 30*(1 - mask_ero1);
-    % LN_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
-    % nii = make_nii(LN_ero1_500.*mask_ero1,vox);
-    % save_nii(nii,['LN-QSM/LN_ero1_tik_1e-3_tv_1e-4_500.nii']);
+    P = mask_ero1 + 30*(1 - mask_ero1);
 
-    % LN_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 1e-4, 0, 0, vox, P, z_prjs, 500);
-    % nii = make_nii(LN_ero1_500.*mask_ero1,vox);
-    % save_nii(nii,['LN-QSM/LN_ero1_tik_0_tv_1e-4_500.nii']);
+    % zero padding
+    P_pad = padarray(P,[0 0 40]);
+    mask_ero1_pad = padarray(mask_ero1,[0 0 40]);
 
-    % P = mask_ero2 + 30*(1 - mask_ero2);
-    % LN_ero2_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero2, 1, mask_ero2, mask_ero2, 0, 4e-4, 0.001, 0, vox, P, z_prjs, 500);
-    % nii = make_nii(LN_ero2_500.*mask_ero2,vox);
-    % save_nii(nii,['LN-QSM/LN_ero2_tik_1e-3_tv_4e-4_500.nii']);
+    LN_ero1_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*mask_ero1_pad, 1, mask_ero1_pad, mask_ero1_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 2000);
+    nii = make_nii(LN_ero1_2000(:,:,41:end-40).*mask_ero1,vox);
+    save_nii(nii,['LN-QSM/LN_ero1_tik_0_tv_1e-4_2000.nii']);
+
 
 end
 
 
 
 % remove files to save space
-! rm -r *.dat *.bin *.mat offsets*.nii reliability*.nii results ph_diff.nii unph_diff.nii unph*.nii BET.nii src
+! rm -r *.dat *.bin *.mat offsets*.nii reliability*.nii results ph_diff.nii unph_diff.nii unph*.nii BET.nii
 
 % save('all.mat','-v7.3');
 cd(init_dir);
