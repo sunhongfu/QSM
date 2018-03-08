@@ -452,6 +452,10 @@ end
 if sum(strcmpi('resharp',bkg_rm))
     disp('--> RESHARP to remove background field ...');
 
+for smv_rad = 2:3
+if exist(['RESHARP/LN_resharp_tik_0_tv_1e-4_1000_smvrad_' num2str(smv_rad) '.nii'])
+	continue
+else
     [lfs_resharp, mask_resharp] = resharp(tfs,maskR,vox,smv_rad,tik_reg,cgs_num);
     % % 3D 2nd order polyfit to remove any residual background
     % lfs_resharp= lfs_resharp - poly3d(lfs_resharp,mask_resharp);
@@ -514,18 +518,19 @@ if sum(strcmpi('resharp',bkg_rm))
 
 
     %%%%%%%%% (5) LN-QSM %%%%%%%%%
-    P = mask_resharp + 30*(1 - mask_resharp);
+    % P = mask_resharp + 30*(1 - mask_resharp);
 
     % pad 40 zeros in both slice directions
-    P_pad = padarray(P,[0 0 40]);
     lfs_resharp_pad = padarray(lfs_resharp,[0 0 40]);
     Res_wt_pad = padarray(Res_wt,[0 0 40]);
     mask_resharp_pad = padarray(mask_resharp,[0 0 40]);
+    P_pad = mask_resharp_pad + 30*(1 - mask_resharp_pad);
 
     LN_resharp_1000 = tikhonov_qsm(lfs_resharp_pad, Res_wt_pad.*mask_resharp_pad, 1, mask_resharp_pad, mask_resharp_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 1000);
     nii = make_nii(LN_resharp_1000(:,:,41:end-40).*mask_resharp,vox);
     save_nii(nii,['RESHARP/LN_resharp_tik_0_tv_1e-4_1000_smvrad_' num2str(smv_rad) '.nii']);
-
+end
+end
 end
 
 
@@ -801,34 +806,48 @@ if sum(strcmpi('lnqsm',bkg_rm))
     mask_ero3(mask_tmp > 0.999999) = 1; % no error tolerance
 
 
-    P = maskR + 30*(1 - maskR);
+    % P = maskR + 30*(1 - maskR);
 
     % zero padding
-    P_pad = padarray(P,[0 0 40]);
     tfs_pad = padarray(tfs,[0 0 40]);
     Res_wt_pad = padarray(Res_wt,[0 0 40]);
     maskR_pad = padarray(maskR,[0 0 40]);
+    P_pad = maskR_pad + 30*(1 - maskR_pad);
 
 
     % LN_ero0_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*maskR_pad, 1, maskR_pad, maskR_pad, 0, 1e-4, 0.001, 0, vox, P_pad, z_prjs, 2000);
     % nii = make_nii(LN_ero0_2000(:,:,41:end-40).*maskR,vox);
     % save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_1e-4_2000.nii']);
 
+    if ~ exist(['LN-QSM/LN_ero0_tik_0_tv_1e-4_2000.nii'])
     LN_ero0_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*maskR_pad, 1, maskR_pad, maskR_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 2000);
     nii = make_nii(LN_ero0_2000(:,:,41:end-40).*maskR,vox);
     save_nii(nii,['LN-QSM/LN_ero0_tik_0_tv_1e-4_2000.nii']);
+    end
 
+    if ~ exist(['LN-QSM/LN_ero0_tik_1e-3_tv_2e-4_2000.nii'])
+    LN_ero0_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*maskR_pad, 1, maskR_pad, maskR_pad, 0, 2e-4, 1e-3, 0, vox, P_pad, z_prjs, 2000);
+    nii = make_nii(LN_ero0_2000(:,:,41:end-40).*maskR,vox);
+    save_nii(nii,['LN-QSM/LN_ero0_tik_1e-3_tv_2e-4_2000.nii']);
+    end
 
-    P = mask_ero1 + 30*(1 - mask_ero1);
+    % P = mask_ero1 + 30*(1 - mask_ero1);
 
     % zero padding
-    P_pad = padarray(P,[0 0 40]);
     mask_ero1_pad = padarray(mask_ero1,[0 0 40]);
+    P_pad = mask_ero1_pad + 30*(1 - mask_ero1_pad);
 
+    if ~ exist(['LN-QSM/LN_ero1_tik_0_tv_1e-4_2000.nii'])
     LN_ero1_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*mask_ero1_pad, 1, mask_ero1_pad, mask_ero1_pad, 0, 1e-4, 0, 0, vox, P_pad, z_prjs, 2000);
     nii = make_nii(LN_ero1_2000(:,:,41:end-40).*mask_ero1,vox);
     save_nii(nii,['LN-QSM/LN_ero1_tik_0_tv_1e-4_2000.nii']);
+    end
 
+    if ~ exist(['LN-QSM/LN_ero1_tik_1e-3_tv_2e-4_2000.nii'])
+    LN_ero1_2000 = tikhonov_qsm(tfs_pad, Res_wt_pad.*mask_ero1_pad, 1, mask_ero1_pad, mask_ero1_pad, 0, 2e-4, 1e-3, 0, vox, P_pad, z_prjs, 2000);
+    nii = make_nii(LN_ero1_2000(:,:,41:end-40).*mask_ero1,vox);
+    save_nii(nii,['LN-QSM/LN_ero1_tik_1e-3_tv_2e-4_2000.nii']);
+    end
 
 end
 
