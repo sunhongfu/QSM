@@ -87,9 +87,9 @@ while(k <= Itnlim)
     else
         count = gpuArray(single(0));
     end 
-    if (count == 10) % under gradToll for continueous 10 times
-        break;
-    end
+%    if (count == 10) % under gradToll for continueous 10 times
+%        break;
+%    end
 
 
 end

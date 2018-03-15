@@ -53,8 +53,8 @@ D = fftshift(D);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % parameter structures for inversion
 % data consistancy and TV term objects
-params.FT               = cls_dipconv([Nx, Ny, Nz], D); % class for dipole kernel convolution
-params.TV               = cls_tv; 						% class for TV operation
+%params.FT               = cls_dipconv([Nx, Ny, Nz], D); % class for dipole kernel convolution
+%params.TV               = cls_tv; 						% class for TV operation
 
 params.Itnlim           = Itnlim; 						% interations numbers (adjust accordingly!)
 params.gradToll         = 1e-4; 						% step size tolerance stopping criterea
@@ -79,8 +79,8 @@ params.D                = D;
 
 % params.air_mask = 1;
 % params.TV_reg2 = 0;
-params.air_mask = air_mask;
-params.TV_reg2 = TV_reg2;
+%params.air_mask = air_mask;
+%params.TV_reg2 = TV_reg2;
 
 % non-linear conjugate gradient method
 %[chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
@@ -116,6 +116,6 @@ chi = nlcg_tik_gpu(zeros([Nx, Ny, Nz]), params);
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
-chi = real(params.P.*chi);
+chi = real(P.*gather(chi));
 % otherwise mask it
 end
