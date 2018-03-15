@@ -84,7 +84,7 @@ params.TV_reg2 = TV_reg2;
 
 % non-linear conjugate gradient method
 %[chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
-[chi, Res_term, TV_term, Tik_term] = nlcg_tik_gpu(zeros([Nx, Ny, Nz]), params);
+chi = nlcg_tik_gpu(zeros([Nx, Ny, Nz]), params);
 
 
 % LSQR method
