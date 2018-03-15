@@ -73,9 +73,9 @@ params.sus_mask         = sus_mask;
 params.Res_wt           = Res_wt;
 params.data             = tfs;
 params.P                = P;
-
 %params.P                = sus_mask.*(Tik_mask + 60*(1-Tik_mask));
 %params.P                = sus_mask.*(Tik_mask + 60*(1-Tik_mask)) + (1-sus_mask);
+params.D                = D;
 
 % params.air_mask = 1;
 % params.TV_reg2 = 0;
@@ -83,7 +83,8 @@ params.air_mask = air_mask;
 params.TV_reg2 = TV_reg2;
 
 % non-linear conjugate gradient method
-[chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
+%[chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
+[chi, Res_term, TV_term, Tik_term] = nlcg_tik_gpu(zeros([Nx, Ny, Nz]), params);
 
 
 % LSQR method
