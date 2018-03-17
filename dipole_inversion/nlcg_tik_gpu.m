@@ -5,7 +5,7 @@ function m = nlcg_tik_gpu(m0, params)
 % TV_term: norm of TV term
 % Tik_term: norm of Tik_term
 %
-% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| + TV_reg2 * TV|air_mask * chi|
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi||
 %
 % tfs:      total field shift; can be local field shift if use this for local field inversion
 % Res_wt:   weighting matrix for the residual/fidelity term, usually brain mask
@@ -64,17 +64,17 @@ while(k <= Itnlim)
         lsiter = lsiter + gpuArray(single(1));
     end
     % control the number of line searches by adapting the initial step search
-    if lsiter > 2
+    if lsiter > gpuArray(single(2))
 		t0 = t0 * beta;
     end 
-    if lsiter < 1
+    if lsiter < gpuArray(single(1))
 		t0 = t0 / beta;
     end
     
     % updates
     m = m + t*dm; dm0 = dm;
     g1 = wGradient(m,pNorm, P, TV_mask, l1Smooth, sus_mask, D, data, Tik_mask, TV_reg, Res_wt, Tik_reg);
-    bk = g1(:)'*g1(:)/(g0(:)'*g0(:)+eps);
+    bk = g1(:)'*g1(:)/(g0(:)'*g0(:)+gpuArray(single(eps)));
     g0 = g1;
     dm = -g1 + bk*dm;
     k = k + gpuArray(single(1));
@@ -107,7 +107,7 @@ clear m t dm
 TV = (Diff(P.*w1.*TV_mask).*conj(Diff(P.*w1.*TV_mask))+l1Smooth).^(p/2);
 TV_term = sum(TV(:));
 
-Res_term = ifftn(fftn((P.*w1.*sus_mask).*D)) - data;
+Res_term = ifftn(fftn(P.*w1.*sus_mask).*D) - data;
 Res_term = (Res_wt(:).*Res_term(:))'*(Res_wt(:).*Res_term(:));
 
 Tik_term = (P(:).*Tik_mask(:).*w1(:))'*(P(:).*Tik_mask(:).*w1(:));
@@ -122,7 +122,7 @@ p = pNorm;
 
 grad_TV = P.*TV_mask.*(invD(p*Diff(P.*m.*TV_mask).*(Diff(P.*m.*TV_mask).*conj(Diff(P.*m.*TV_mask))+l1Smooth).^(p/2-1)));
 
-grad_Res = P.*sus_mask.*ifftn(D.*fftn((Res_wt.^2).*(ifftn(fftn((P.*sus_mask.*m).*D))-data)));
+grad_Res = P.*sus_mask.*ifftn(D.*fftn((Res_wt.^2).*(ifftn(fftn(P.*sus_mask.*m).*D)-data)));
 
 grad_Tik = P.^2.*Tik_mask.^2.*m;
 
