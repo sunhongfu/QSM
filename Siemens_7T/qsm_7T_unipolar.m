@@ -1,7 +1,7 @@
 % read in uncombined magnitude and phase images
-path_mag = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/COSMOS_datasets/07JON/neutral/gre_4echo_mono_p2_0p6iso_hongfun_NEUTRAL_MAG_UNCOMB';
-path_pha = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/COSMOS_datasets/07JON/neutral/gre_4echo_mono_p2_0p6iso_hongfun_NEUTRAL_PHA_UNCOMB ';
-path_out = '/gpfs/M2Scratch/NCIgb5/hongfu/COSMOS_7T/07JON/neutral';
+path_mag = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01ED/neutral/1.10.1.356.1.1.28/dicom_series';
+path_pha = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01ED/neutral/1.10.1.356.1.1.29/dicom_series';
+path_out = '/gpfs/M2Scratch/NCIgb5/hongfu/COSMOS_7T/01ED/neutral';
 
 
 %% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
@@ -156,9 +156,15 @@ mkdir('src');
 for echo = 1:imsize(4)
     nii = make_nii(mag_corr(:,:,:,echo),vox);
     save_nii(nii,['src/mag_corr' num2str(echo) '.nii']);
+
+    setenv('echo',num2str(echo));
+    unix('N4BiasFieldCorrection -i src/mag_corr${echo}.nii -o src/mag_corr${echo}_n4.nii');
+
     nii = make_nii(ph_corr(:,:,:,echo),vox);
     save_nii(nii,['src/ph_corr' num2str(echo) '.nii']);
 end
+
+
 
 
 save('raw.mat','ph_corr','mag_corr','mask','-append');
@@ -316,9 +322,9 @@ save('raw.mat','unph_bestpath','-append');
 fit_thr = 20;
 tik_reg = 1e-6;
 cgs_num = 500;
-lsqr_num = 500;
+% lsqr_num = 500;
 % tv_reg = 2e-4;
-inv_num = 500;
+% inv_num = 500;
 
 
 % fit phase images with echo times
@@ -342,15 +348,15 @@ save_nii(nii,'fit_residual_0_blur.nii');
 R_0 = ones(size(fit_residual_0_blur));
 R_0(fit_residual_0_blur >= fit_thr) = 0;
 
-save('raw.mat','tfs_0','fit_residual_0','fit_residual_0_blur','R_0','fit_thr','cgs_num','inv_num','-append');
+save('raw.mat','tfs_0','fit_residual_0','fit_residual_0_blur','R_0','fit_thr','cgs_num','tik_reg','-append');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% load('raw.mat','tfs_0','mask','R_0','vox','cgs_num','dicom_info','z_prjs','mag_corr','imsize','TE');
 
-for smv_rad = [1 2]
-% for smv_rad = [1 2 3]
+load('raw.mat','tfs_0','mask','R_0','vox','cgs_num','dicom_info','z_prjs','mag_corr','imsize','TE','tik_reg');
+
+for smv_rad = [1 2 3]
     % RE-SHARP (tik_reg: Tikhonov regularization parameter)
     disp('--> RESHARP to remove background field ...');
     % [lfs_resharp_0, mask_resharp_0] = resharp_lsqr(tfs_0,mask.*R_0,vox,smv_rad,lsqr_num);
@@ -361,10 +367,15 @@ for smv_rad = [1 2]
     % save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_lsqr.nii']);
     save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_cgs_' num2str(tik_reg) '.nii']);
 
+    lfs_resharp(:,:,:,smv_rad) = lfs_resharp_0;
+    mask_resharp(:,:,:,smv_rad) = mask_resharp_0;
+
     % iLSQR
     chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
     nii = make_nii(chi_iLSQR_0,vox);
     save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
+
+    chi_iLSQR(:,:,:,smv_rad) = chi_iLSQR_0;
 
     % MEDI
     %%%%% normalize signal intensity by noise to get SNR %%%
@@ -385,13 +396,11 @@ for smv_rad = [1 2]
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    
-    % %TVDI
-    % sus_resharp = tvdi(lfs_resharp_0,mask_resharp_0,vox,2e-4,iMag,z_prjs,500); 
-    % nii = make_nii(sus_resharp.*mask_resharp_0,vox);
-    % save_nii(nii,['RESHARP/TV_2e-4_smvrad' num2str(smv_rad) '.nii']);
 
+    chi_MEDI(:,:,:,smv_rad) = QSM.*Mask;
 end
+
+save('raw.mat','lfs_resharp','mask_resharp','chi_iLSQR','chi_MEDI','-append');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
