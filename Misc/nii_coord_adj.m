@@ -14,7 +14,7 @@ nii_output.hdr.dime.glmin = min(nii_input.img(:));
 nii_output.hdr.dime.dim = nii_input.hdr.dime.dim;
 
 [filepath,name,ext] = fileparts(nii_input_name);
-nii_output_name = [filepath filesep name '_adj' ext];
+nii_output_name = fullfile(filepath,[name '_adj'],ext);
 
 save_untouch_nii(nii_output,nii_output_name);
 
