@@ -1,7 +1,7 @@
 % read in uncombined magnitude and phase images
-path_mag = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01ED/neutral/1.10.1.356.1.1.28/dicom_series';
-path_pha = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01ED/neutral/1.10.1.356.1.1.29/dicom_series';
-path_out = '/gpfs/M2Scratch/NCIgb5/hongfu/COSMOS_7T/01ED/neutral';
+path_mag = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01EG/neutral/1.10.1.356.1.1.28/dicom_series';
+path_pha = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01EG/neutral/1.10.1.356.1.1.29/dicom_series';
+path_out = '/gpfs/M2Scratch/NCIgb5/hongfu/COSMOS_7T/01EG/neutral';
 
 
 %% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
