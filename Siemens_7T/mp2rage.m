@@ -1,7 +1,7 @@
 % read in combined magnitude and phase images
-path_mag = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/point75_MP2RAGE_Multiechos/01_VM_H257/MAG_UNCOMB';
-path_ph = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/point75_MP2RAGE_Multiechos/01_VM_H257/PHA_UNCOMB';
-path_out = '/home/hongfu/NCIgb5_scratch/hongfu/MP2RAGE/01_VM_H257';
+path_mag = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/point75_MP2RAGE_Multiechos/04_BH_451/MAG_UNCOMB';
+path_ph = '/home/hongfu/NCIgb5_scratch/Jon_temp_downloads/point75_MP2RAGE_Multiechos/04_BH_451/PHA_UNCOMB';
+path_out = '/home/hongfu/NCIgb5_scratch/hongfu/ME-MP2RAGE/04_BH_451';
 
 %% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
 path_mag = cd(cd(path_mag));
