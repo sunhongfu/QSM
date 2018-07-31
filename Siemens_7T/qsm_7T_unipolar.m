@@ -193,8 +193,13 @@ for echo_num = 1:imsize(4)
     fwrite(fid,ph_corr(:,:,:,echo_num),'float');
     fclose(fid);
 
-    bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
-        'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+    if isdeployed
+        bash_script = ['~/bin/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+            'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+    else
+        bash_script = ['${pathstr}/3DSRNCP wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
+            'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+    end
     unix(bash_script) ;
 
     fid = fopen(['unwrapped_phase' num2str(echo_num) '.dat'],'r');
