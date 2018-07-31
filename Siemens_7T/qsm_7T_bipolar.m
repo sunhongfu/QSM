@@ -1,3 +1,46 @@
+function qsm_7T_bipolar(path_mag, path_pha, path_out, options)
+
+%   Re-define the following default settings if necessary
+%
+%   PATH_DICOM   - directory for input GE dicoms
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SPGR_GE
+%   OPTIONS      - parameter structure including fields below
+%    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
+%    .r_mask     - whether to enable the extra masking       : 1
+%    .fit_thr    - extra filtering based on the fit residual : 20
+%    .bet_thr    - threshold for BET brain mask              : 0.4
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
+%    .bkg_rm     - background field removal method(s)        : 'resharp'
+%                  options: 'pdf','sharp','resharp','esharp','lbv'
+%                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
+%    .t_svd      - truncation of SVD for SHARP               : 0.1
+%    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
+%    .tik_reg    - Tikhonov regularization for resharp       : 1e-4
+%    .cgs_num    - max interation number for RESHARP         : 200
+%    .lbv_peel   - LBV layers to be peeled off               : 2
+%    .lbv_tol    - LBV interation error tolerance            : 0.01
+%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
+%    .interp     - interpolate the image to the double size  : 0
+
+if ~ exist('path_mag','var') || isempty(path_mag)
+    error('Please input the directory of magnitude DICOMs')
+end
+
+if ~ exist('path_pha','var') || isempty(path_pha)
+    error('Please input the directory of unfiltered phase DICOMs')
+end
+
+if ~ exist('path_out','var') || isempty(path_out)
+    path_out = pwd;
+    display('Current directory for output')
+end
+
+if ~ exist('options','var') || isempty(options)
+    options = [];
+end
+
 % % read in uncombined magnitude and phase images
 % path_mag = '/media/pikelab/Hongfu/7T/1.7.72/1.7.72.3/1.7.72.3.1.3/1.7.72.3.1.3.25/dicom_series';
 % path_pha = '/media/pikelab/Hongfu/7T/1.7.72/1.7.72.3/1.7.72.3.1.3/1.7.72.3.1.3.26/dicom_series';

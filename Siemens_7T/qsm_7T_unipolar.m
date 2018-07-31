@@ -1,8 +1,45 @@
-% read in uncombined magnitude and phase images
-path_mag = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01EG/neutral/1.10.1.356.1.1.28/dicom_series';
-path_pha = '/home/hongfu/NCIgb5_scratch/hongfu/COSMOS/01EG/neutral/1.10.1.356.1.1.29/dicom_series';
-path_out = '/gpfs/M2Scratch/NCIgb5/hongfu/COSMOS/01EG/neutral';
+function qsm_7T_unipolar(path_mag, path_pha, path_out, options)
 
+%   Re-define the following default settings if necessary
+%
+%   PATH_DICOM   - directory for input GE dicoms
+%   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_SPGR_GE
+%   OPTIONS      - parameter structure including fields below
+%    .readout    - multi-echo 'unipolar' or 'bipolar'        : 'unipolar'
+%    .r_mask     - whether to enable the extra masking       : 1
+%    .fit_thr    - extra filtering based on the fit residual : 20
+%    .bet_thr    - threshold for BET brain mask              : 0.4
+%    .bet_smooth - smoothness of BET brain mask at edges     : 2
+%    .ph_unwrap  - 'prelude' or 'bestpath'                   : 'prelude'
+%    .bkg_rm     - background field removal method(s)        : 'resharp'
+%                  options: 'pdf','sharp','resharp','esharp','lbv'
+%                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
+%    .t_svd      - truncation of SVD for SHARP               : 0.1
+%    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
+%    .tik_reg    - Tikhonov regularization for resharp       : 1e-4
+%    .cgs_num    - max interation number for RESHARP         : 200
+%    .lbv_peel   - LBV layers to be peeled off               : 2
+%    .lbv_tol    - LBV interation error tolerance            : 0.01
+%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
+%    .interp     - interpolate the image to the double size  : 0
+
+if ~ exist('path_mag','var') || isempty(path_mag)
+    error('Please input the directory of magnitude DICOMs')
+end
+
+if ~ exist('path_pha','var') || isempty(path_pha)
+    error('Please input the directory of unfiltered phase DICOMs')
+end
+
+if ~ exist('path_out','var') || isempty(path_out)
+    path_out = pwd;
+    display('Current directory for output')
+end
+
+if ~ exist('options','var') || isempty(options)
+    options = [];
+end
 
 %% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
 path_mag = cd(cd(path_mag));
@@ -86,7 +123,6 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tic;
 % works for square 32 channels (faster)
 mag = mat2cell(mag,[wRow wRow wRow wRow wRow wRow], [wCol wCol wCol wCol wCol wCol], nSL);
 mag_all = cat(4,mag{1,1}, mag{1,2}, mag{1,3}, mag{1,4}, mag{1,5}, mag{1,6}, mag{2,1}, mag{2,2}, mag{2,3}, mag{2,4}, mag{2,5}, mag{2,6}, mag{3,1}, mag{3,2}, mag{3,3}, mag{3,4}, mag{3,5}, mag{3,6}, mag{4,1}, mag{4,2}, mag{4,3}, mag{4,4}, mag{4,5}, mag{4,6}, mag{5,1}, mag{5,2}, mag{5,3}, mag{5,4}, mag{5,5}, mag{5,6}, mag{6,1}, mag{6,2});
@@ -100,8 +136,6 @@ clear ph
 ph_all = reshape(ph_all, wRow, wCol, nSL/NumberOfEchoes, NumberOfEchoes, 32);
 ph_all = permute(ph_all,[2 1 3 4 5]);
 ph_all = 2*pi.*(ph_all - single(dicom_info.SmallestImagePixelValue))/(single(dicom_info.LargestImagePixelValue - dicom_info.SmallestImagePixelValue)) - pi;
-
-toc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
