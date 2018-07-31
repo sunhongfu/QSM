@@ -24,6 +24,7 @@ function qsm_7T_bipolar(path_mag, path_pha, path_out, options)
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
 
+
 if ~ exist('path_mag','var') || isempty(path_mag)
     error('Please input the directory of magnitude DICOMs')
 end
@@ -41,127 +42,117 @@ if ~ exist('options','var') || isempty(options)
     options = [];
 end
 
-% % read in uncombined magnitude and phase images
-% path_mag = '/media/pikelab/Hongfu/7T/1.7.72/1.7.72.3/1.7.72.3.1.3/1.7.72.3.1.3.25/dicom_series';
-% path_pha = '/media/pikelab/Hongfu/7T/1.7.72/1.7.72.3/1.7.72.3.1.3/1.7.72.3.1.3.26/dicom_series';
-% path_out = '/media/pikelab/Hongfu/7T/1.7.72/1.7.72.3/1.7.72.3.1.3';
+%% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
+path_mag = cd(cd(path_mag));
+mag_list = dir([path_mag '/*.dcm']);
+mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
+path_pha = cd(cd(path_pha));
+ph_list = dir([path_pha '/*.dcm']);
+ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
+
+% number of slices (mag and ph should be the same)
+nSL = length(ph_list);
+
+% get the sequence parameters
+dicom_info = dicominfo([path_pha,filesep,ph_list(end).name]);
+NumberOfEchoes = dicom_info.EchoNumber; 
+
+for i = 1:nSL/NumberOfEchoes:nSL % read in TEs
+    dicom_info = dicominfo([path_pha,filesep,ph_list(i).name]);
+    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+end
+vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
+
+% angles (z projections of the image x y z coordinates) 
+Xz = dicom_info.ImageOrientationPatient(3);
+Yz = dicom_info.ImageOrientationPatient(6);
+Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientationPatient(4:6));
+Zz = Zxyz(3);
+z_prjs = [Xz, Yz, Zz];
+
+% read in measurements
+mag = zeros(dicom_info.Rows,dicom_info.Columns,nSL,'single');
+ph = zeros(dicom_info.Rows,dicom_info.Columns,nSL,'single');
+for i = 1:nSL
+    mag(:,:,i) = single(dicomread([path_mag,filesep,mag_list(i).name]));
+    ph(:,:,i) = single(dicomread([path_pha,filesep,ph_list(i).name]));
+end
 
 
-% %% read in DICOMs of both uncombined magnitude and raw unfiltered phase images
-% path_mag = cd(cd(path_mag));
-% mag_list = dir([path_mag '/*.dcm']);
-% mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
-% path_pha = cd(cd(path_pha));
-% ph_list = dir([path_pha '/*.dcm']);
-% ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
+% crop mosaic into individual images
+AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
+if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL') % A/P
+% phase encoding along column
+    wRow = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
+    wCol = str2num(AcqMatrix{2});
+else % L/R
+    wCol = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
+    wRow = str2num(AcqMatrix{2});
+end
 
-% % number of slices (mag and ph should be the same)
-% nSL = length(ph_list);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nCol = double(dicom_info.Columns/wCol);
+% nRow = double(dicom_info.Rows/wRow);
+% nChan = double(dicom_info.Private_0019_100a);
 
-% % get the sequence parameters
-% dicom_info = dicominfo([path_pha,filesep,ph_list(end).name]);
-% NumberOfEchoes = dicom_info.EchoNumber; 
-
-% for i = 1:nSL/NumberOfEchoes:nSL % read in TEs
-%     dicom_info = dicominfo([path_pha,filesep,ph_list(i).name]);
-%     TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
-% end
-% vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
-
-% % angles (z projections of the image x y z coordinates) 
-% Xz = dicom_info.ImageOrientationPatient(3);
-% Yz = dicom_info.ImageOrientationPatient(6);
-% Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientationPatient(4:6));
-% Zz = Zxyz(3);
-% z_prjs = [Xz, Yz, Zz];
-
-% % read in measurements
-% mag = zeros(dicom_info.Rows,dicom_info.Columns,nSL,'single');
-% ph = zeros(dicom_info.Rows,dicom_info.Columns,nSL,'single');
+% mag_all = zeros(wRow,wCol,nChan,nSL,'single');
+% ph_all = zeros(wRow,wCol,nChan,nSL,'single');
 % for i = 1:nSL
-%     mag(:,:,i) = single(dicomread([path_mag,filesep,mag_list(i).name]));
-%     ph(:,:,i) = single(dicomread([path_pha,filesep,ph_list(i).name]));
+%     for x = 1:wRow
+%         for y = 1:wCol
+%             for z = 1:nChan
+%                 X = floor((z-1)/nCol)*wRow + x;
+%                 Y = mod(z-1,nCol)*wCol + y;
+%                 mag_all(x,y,z,i) = mag(X,Y,i);
+%                 ph_all(x,y,z,i) = ph(X,Y,i);
+%             end
+%         end
+%     end
 % end
 
 
-% % crop mosaic into individual images
-% AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
-% if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL') % A/P
-% % phase encoding along column
-%     wRow = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
-%     wCol = str2num(AcqMatrix{2});
-% else % L/R
-%     wCol = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
-%     wRow = str2num(AcqMatrix{2});
-% end
+% % reshape and permute into COLS, ROWS, SLICES, ECHOES, CHANS
+% mag_all = reshape(mag_all,[wRow,wCol,nChan,nSL/NumberOfEchoes,NumberOfEchoes]);
+% mag_all = permute(mag_all,[2 1 4 5 3]);
+% ph_all = reshape(ph_all,[wRow,wCol,nChan,nSL/NumberOfEchoes,NumberOfEchoes]);
+% ph_all = permute(ph_all,[2 1 4 5 3]);
+% % 0028,0106  Smallest Image Pixel Value: 0
+% % 0028,0107  Largest Image Pixel Value: 4094
+% % conver scale to -pi to pi
+% ph_all = 2*pi.*(ph_all - single(dicom_info.SmallestImagePixelValue))./(single(dicom_info.LargestImagePixelValue - dicom_info.SmallestImagePixelValue)) - pi;
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % nCol = double(dicom_info.Columns/wCol);
-% % nRow = double(dicom_info.Rows/wRow);
-% % nChan = double(dicom_info.Private_0019_100a);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% works for square 32 channels (faster)
+mag = mat2cell(mag,[wRow wRow wRow wRow wRow wRow], [wCol wCol wCol wCol wCol wCol], nSL);
+mag_all = cat(4,mag{1,1}, mag{1,2}, mag{1,3}, mag{1,4}, mag{1,5}, mag{1,6}, mag{2,1}, mag{2,2}, mag{2,3}, mag{2,4}, mag{2,5}, mag{2,6}, mag{3,1}, mag{3,2}, mag{3,3}, mag{3,4}, mag{3,5}, mag{3,6}, mag{4,1}, mag{4,2}, mag{4,3}, mag{4,4}, mag{4,5}, mag{4,6}, mag{5,1}, mag{5,2}, mag{5,3}, mag{5,4}, mag{5,5}, mag{5,6}, mag{6,1}, mag{6,2});
+clear mag
+mag_all = reshape(mag_all, wRow, wCol, nSL/NumberOfEchoes, NumberOfEchoes, 32);
+mag_all = permute(mag_all,[2 1 3 4 5]);
 
-% % mag_all = zeros(wRow,wCol,nChan,nSL,'single');
-% % ph_all = zeros(wRow,wCol,nChan,nSL,'single');
-% % for i = 1:nSL
-% %     for x = 1:wRow
-% %         for y = 1:wCol
-% %             for z = 1:nChan
-% %                 X = floor((z-1)/nCol)*wRow + x;
-% %                 Y = mod(z-1,nCol)*wCol + y;
-% %                 mag_all(x,y,z,i) = mag(X,Y,i);
-% %                 ph_all(x,y,z,i) = ph(X,Y,i);
-% %             end
-% %         end
-% %     end
-% % end
+ph = mat2cell(ph,[wRow wRow wRow wRow wRow wRow], [wCol wCol wCol wCol wCol wCol], nSL);
+ph_all = cat(4,ph{1,1}, ph{1,2}, ph{1,3}, ph{1,4}, ph{1,5}, ph{1,6}, ph{2,1}, ph{2,2}, ph{2,3}, ph{2,4}, ph{2,5}, ph{2,6}, ph{3,1}, ph{3,2}, ph{3,3}, ph{3,4}, ph{3,5}, ph{3,6}, ph{4,1}, ph{4,2}, ph{4,3}, ph{4,4}, ph{4,5}, ph{4,6}, ph{5,1}, ph{5,2}, ph{5,3}, ph{5,4}, ph{5,5}, ph{5,6}, ph{6,1}, ph{6,2});
+clear ph
+ph_all = reshape(ph_all, wRow, wCol, nSL/NumberOfEchoes, NumberOfEchoes, 32);
+ph_all = permute(ph_all,[2 1 3 4 5]);
+ph_all = 2*pi.*(ph_all - single(dicom_info.SmallestImagePixelValue))/(single(dicom_info.LargestImagePixelValue - dicom_info.SmallestImagePixelValue)) - pi;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% % % reshape and permute into COLS, ROWS, SLICES, ECHOES, CHANS
-% % mag_all = reshape(mag_all,[wRow,wCol,nChan,nSL/NumberOfEchoes,NumberOfEchoes]);
-% % mag_all = permute(mag_all,[2 1 4 5 3]);
-% % ph_all = reshape(ph_all,[wRow,wCol,nChan,nSL/NumberOfEchoes,NumberOfEchoes]);
-% % ph_all = permute(ph_all,[2 1 4 5 3]);
-% % % 0028,0106  Smallest Image Pixel Value: 0
-% % % 0028,0107  Largest Image Pixel Value: 4094
-% % % conver scale to -pi to pi
-% % ph_all = 2*pi.*(ph_all - single(dicom_info.SmallestImagePixelValue))./(single(dicom_info.LargestImagePixelValue - dicom_info.SmallestImagePixelValue)) - pi;
+% define output directories
+path_qsm = [path_out '/QSM_MEGE_7T'];
+mkdir(path_qsm);
+init_dir = pwd;
+cd(path_qsm);
+% save the raw data for future use
+clear mag ph
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% tic;
-% % works for square 32 channels (faster)
-% mag = mat2cell(mag,[wRow wRow wRow wRow wRow wRow], [wCol wCol wCol wCol wCol wCol], nSL);
-% mag_all = cat(4,mag{1,1}, mag{1,2}, mag{1,3}, mag{1,4}, mag{1,5}, mag{1,6}, mag{2,1}, mag{2,2}, mag{2,3}, mag{2,4}, mag{2,5}, mag{2,6}, mag{3,1}, mag{3,2}, mag{3,3}, mag{3,4}, mag{3,5}, mag{3,6}, mag{4,1}, mag{4,2}, mag{4,3}, mag{4,4}, mag{4,5}, mag{4,6}, mag{5,1}, mag{5,2}, mag{5,3}, mag{5,4}, mag{5,5}, mag{5,6}, mag{6,1}, mag{6,2});
-% clear mag
-% mag_all = reshape(mag_all, wRow, wCol, nSL/NumberOfEchoes, NumberOfEchoes, 32);
-% mag_all = permute(mag_all,[2 1 3 4 5]);
-
-% ph = mat2cell(ph,[wRow wRow wRow wRow wRow wRow], [wCol wCol wCol wCol wCol wCol], nSL);
-% ph_all = cat(4,ph{1,1}, ph{1,2}, ph{1,3}, ph{1,4}, ph{1,5}, ph{1,6}, ph{2,1}, ph{2,2}, ph{2,3}, ph{2,4}, ph{2,5}, ph{2,6}, ph{3,1}, ph{3,2}, ph{3,3}, ph{3,4}, ph{3,5}, ph{3,6}, ph{4,1}, ph{4,2}, ph{4,3}, ph{4,4}, ph{4,5}, ph{4,6}, ph{5,1}, ph{5,2}, ph{5,3}, ph{5,4}, ph{5,5}, ph{5,6}, ph{6,1}, ph{6,2});
-% clear ph
-% ph_all = reshape(ph_all, wRow, wCol, nSL/NumberOfEchoes, NumberOfEchoes, 32);
-% ph_all = permute(ph_all,[2 1 3 4 5]);
-% ph_all = 2*pi.*(ph_all - single(dicom_info.SmallestImagePixelValue))/(single(dicom_info.LargestImagePixelValue - dicom_info.SmallestImagePixelValue)) - pi;
-
-% toc
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+imsize = size(ph_all);
+save('raw.mat','-v7.3');
 
 
-% % define output directories
-% path_qsm = [path_out '/QSM_MEGE_7T'];
-% mkdir(path_qsm);
-% init_dir = pwd;
-% cd(path_qsm);
-% % save the raw data for future use
-% clear mag ph
-
-% imsize = size(ph_all);
-% save('raw.mat','-v7.3');
-
-cd('/home/hongfu.sun/data/7T/QSM_MEGE_7T');
-load('/home/hongfu.sun/data/7T/QSM_MEGE_7T/raw.mat');
 
 % BEGIN THE QSM RECON PIPELINE
 % initial quick brain mask
