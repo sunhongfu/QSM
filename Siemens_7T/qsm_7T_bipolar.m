@@ -364,7 +364,7 @@ save('raw.mat','unph_bestpath','-append');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % set parameters
-fit_thr = 20;
+fit_thr = 40;
 tik_reg = 1e-6;
 cgs_num = 500;
 % lsqr_num = 500;
