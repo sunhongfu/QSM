@@ -451,6 +451,42 @@ if sum(strcmpi('resharp',bkg_rm))
     % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
     save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+    
+    
+    % iLSQR
+    chi_iLSQR = QSM_iLSQR(lfs_resharp*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+    nii = make_nii(chi_iLSQR,vox);
+    save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
+    
+    % MEDI
+    %%%%% normalize signal intensity by noise to get SNR %%%
+    %%%% Generate the Magnitude image %%%%
+    iMag = sqrt(sum(mag.^2,4));
+    % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
+    matrix_size = single(imsize(1:3));
+    voxel_size = vox;
+    delta_TE = TE(2) - TE(1);
+    B0_dir = z_prjs';
+    CF = dicom_info.ImagingFrequency *1e6;
+    iFreq = [];
+    N_std = 1;
+    RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    Mask = mask_resharp;
+    save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+         voxel_size delta_TE CF B0_dir;
+    QSM = MEDI_L1('lambda',1000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',2000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+     QSM = MEDI_L1('lambda',1500);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+     QSM = MEDI_L1('lambda',5000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+
 end
 
 % E-SHARP (SHARP edge extension)
