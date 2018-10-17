@@ -54,7 +54,7 @@ if ~ isfield(options,'fit_thr')
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.4;
+    options.bet_thr = 0.3;
 end
 
 if ~ isfield(options,'bet_smooth')
@@ -444,13 +444,13 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(lfs_resharp,vox);
     save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
-    % inversion of susceptibility 
-    disp('--> TV susceptibility inversion on RESHARP...');
-    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
-   
-    % save nifti
-    nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+%     % inversion of susceptibility 
+%     disp('--> TV susceptibility inversion on RESHARP...');
+%     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+%    
+%     % save nifti
+%     nii = make_nii(sus_resharp.*mask_resharp,vox);
+%     save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
     
     
     % iLSQR
