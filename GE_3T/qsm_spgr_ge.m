@@ -62,7 +62,7 @@ if ~ isfield(options,'bet_smooth')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
+    options.ph_unwrap = 'bestpath';
 end
 
 if ~ isfield(options,'bkg_rm')
