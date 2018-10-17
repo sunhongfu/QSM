@@ -3,7 +3,7 @@ function [img_cmb,sen] = adaptive_cmb_2d(img,vox,cref,radi)
 % D. Walsh paper to estimate coil sensitivities
 % Adaptive reconstruction of phased array MR imagery. MRM 2000
 
-% img: raw complex 4D or 5D images: [2Dimages, multi-receivers, (multi-echoes)]
+% img: raw complex 3D or 4D images: [2Dimages, multi-receivers, (multi-echoes)]
 % vox: resolution of the images (vector), voxel size
 % cref: coil referece (coil number)
 % radi: radius of the kernel (e.g. 5mm)
