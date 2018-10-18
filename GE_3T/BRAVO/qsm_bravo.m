@@ -109,11 +109,6 @@ real_list = real_list(~strncmpi('.', {real_list.name}, 1));
 % get the sequence parameters
 dicom_info = dicominfo([realDicomsDir,filesep,real_list(1).name]);
 
-%%%%%%%%%%%%%%%%%%%%%%%
-% fix number of echoes and echo times
-dicom_info.EchoTrainLength = 4;
-%%%%%%%%%%%%%%%%%%%%%%%
-
 EchoTrainLength = dicom_info.EchoTrainLength;
 for i = 1:EchoTrainLength % read in TEs
     dicom_info = dicominfo([realDicomsDir,filesep,real_list(i).name]);
@@ -149,11 +144,6 @@ for i = 1:length(imag_list)
     imag(:,:,NS,NE) = permute(single(dicomread([imagDicomsDir,filesep,imag_list(i).name])),[2,1]);
 end
 
-
-%%%%%%%%%%%%%%%%%%%%%%%
-% fix number of echoes and echo times
-TE = [3.24 7.08 10.92 14.76]/1000;
-%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % define output directories
@@ -459,14 +449,19 @@ if sum(strcmpi('resharp',bkg_rm))
     %%%%% normalize signal intensity by noise to get SNR %%%
     %%%% Generate the Magnitude image %%%%
     if imsize(4) > 1
-    	iMag = sqrt(sum(mag.^2,4));
+        iMag = sqrt(sum(mag.^2,4));
 	else
 		iMag = mag;
-	end
+    end
+    
     % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
     matrix_size = single(imsize(1:3));
     voxel_size = vox;
-    delta_TE = TE(2) - TE(1);
+    if imsize(4) > 1
+        delta_TE = TE(2) - TE(1);
+    else
+        delta_TE = 1;
+    end
     B0_dir = z_prjs';
     CF = dicom_info.ImagingFrequency *1e6;
     iFreq = [];
@@ -481,10 +476,10 @@ if sum(strcmpi('resharp',bkg_rm))
     QSM = MEDI_L1('lambda',2000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',1500);
+    QSM = MEDI_L1('lambda',1500);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',5000);
+    QSM = MEDI_L1('lambda',5000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
