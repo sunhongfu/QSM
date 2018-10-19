@@ -193,7 +193,7 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [~,~] = unix('rm BET*');
-unix('bet2 iMag.nii BET -f 0.18 -m');
+unix('bet2 iMag.nii BET -f 0.3 -m -w 2');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
@@ -460,7 +460,7 @@ if sum(strcmpi('resharp',bkg_rm))
     if imsize(4) > 1
         delta_TE = TE(2) - TE(1);
     else
-        delta_TE = 1;
+        delta_TE = 0.001;
     end
     B0_dir = z_prjs';
     CF = dicom_info.ImagingFrequency *1e6;
