@@ -27,7 +27,7 @@ if ~ isfield(options,'r_mask')
 end
 
 if ~ isfield(options,'fit_thr')
-    options.fit_thr = 40;
+    options.fit_thr = 5;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -297,8 +297,44 @@ elseif strcmpi('bestpath',ph_unwrap)
     nii = make_nii(unph,vox);
     save_nii(nii,'unph_bestpath.nii');
 
-else
-    error('what unwrapping methods to use? prelude or bestpath?')
+
+elseif strcmpi('laplacian',ph_unwrap)
+    % (3) laplacian unwrapping
+    disp('--> unwrap aliasing phase using laplacian...');
+    Options.voxelSize = vox;
+    for i = 1:imsize(4)
+        unph(:,:,:,i) = lapunwrap(ph_corr(:,:,:,i), Options).*mask;
+    end
+
+    mkdir('lap');
+    cd('lap');
+
+    nii = make_nii(unph, vox);
+    save_nii(nii,'unph_lap.nii');
+
+    unph_lap = unph;
+    % save('raw.mat','unph_lap','-append');
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+elseif strcmpi('fudge',ph_unwrap)
+    % (4) FUDGE laplacian unwrapping
+    disp('--> unwrap aliasing phase using fudge...');
+    for i = 1:imsize(4)
+        unph(:,:,:,i) = fudge(ph_corr(:,:,:,i));
+    end
+    mkdir('fudge');
+    cd('fudge');
+    nii = make_nii(unph, vox);
+    save_nii(nii,'unph_fudge.nii');
+
+    unph_fudge = unph;
+    % save('raw.mat','unph_fudge','-append');
+
+
 end
 
 
@@ -342,6 +378,7 @@ if imsize(4) > 1
     save_nii(nii,'unph_corrected.nii');
 end
 
+
 % fit phase images with echo times
 disp('--> magnitude weighted LS fit of phase to TE ...');
 if imsize(4) > 1
@@ -349,7 +386,7 @@ if imsize(4) > 1
 else
 	tfs = unph/TE;
 end
- 
+
 if imsize(4) > 1
     % extra filtering according to fitting residuals
     if r_mask
@@ -366,11 +403,22 @@ else
     R = 1;
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% insert individual echo recon here
+%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 % normalize to main field
 % ph = gamma*dB*TE
 % dB/B = ph/(gamma*TE*B0)
 % units: TE s, gamma 2.675e8 rad/(sT), B0 3T
-tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+if (strcmp(readout,'unipolar'))
+    tfs = tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+else 
+    tfs = -tfs/(2.675e8*dicom_info.MagneticFieldStrength)*1e6; % unit ppm
+end
 
 nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
