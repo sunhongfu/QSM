@@ -193,7 +193,7 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [~,~] = unix('rm BET*');
-unix('bet2 iMag.nii BET -f 0.3 -m -w 2');
+unix('bet2 iMag.nii BET -f 0.2 -m -w 2');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');

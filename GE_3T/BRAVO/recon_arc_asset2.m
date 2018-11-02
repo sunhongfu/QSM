@@ -57,7 +57,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
     % ASSET recon
     % change the p-file header of ASSET
     setenv('pfilePath',pfilePath);
-    unix('/Users/hongfusun/bin/orchestra-sdk-1.7-1/build/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
+    unix('/Users/hongfusun/bin/HS_ModHeader --pfile $pfilePath');
     pfilePath=[pfilePath '.mod'];
     % Load Pfile
     clear GERecon
