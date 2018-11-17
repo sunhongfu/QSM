@@ -1,4 +1,4 @@
-function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
+function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;
@@ -37,6 +37,10 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
     % extract the kSpace
     % Synthesize KSpace to get full kSpace
     kSpace = zeros(pfile.xRes, pfile.yRes, acquiredSlices, pfile.channels, pfile.echoes, pfile.passes,'single');
+
+    if exist('kacq_file','var')
+        GERecon('Arc.LoadKacq', kacq_file);
+    end
 
     for pass = 1:pfile.passes
         for echo = 1:pfile.echoes
@@ -94,6 +98,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
                 sliceInfo.sliceInPass = slice;
                 info = GERecon('Pfile.Info', slice);
                 unaliasedImage(:,:,slice,echo,pass) = GERecon('Asset.Unalias', channelImages, info);
+                % unaliasedImage(:,:,slice,echo,pass) = channelImages;
             end
         end
     end
@@ -120,6 +125,8 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
     mkdir(outputDir);
     mkdir([outputDir '/DICOMs_real']);
     mkdir([outputDir '/DICOMs_imag']);
+    mkdir([outputDir '/DICOMs_mag']);
+    mkdir([outputDir '/DICOMs_phase']);
     % save DICOMs for QSM inputs
     % mod some of the DICOM fields: current echo number, current TE, echo train length
     tenum.Group = hex2dec('0018');
@@ -152,6 +159,9 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
                 finalRealImage = GERecon('Orient', gradwarpedRealImage, info.Orientation);
                 finalImagImage = GERecon('Orient', gradwarpedImagImage, info.Orientation);
 
+                finalMagImage = abs(finalRealImage + 1j*finalImagImage);
+                finalPhaseImage = angle(finalRealImage + 1j*finalImagImage)*1000;
+
                 % mod dicom header
                 tenum.Value = num2str( echo );
                 teval.Value = num2str( header.RawHeader.echotimes(echo)*1000 );
@@ -163,25 +173,14 @@ function recon_arc_asset2(pfilePath, calibrationPfile, outputDir)
                 GERecon('Dicom.Write', filename, finalRealImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
                 filename = [outputDir '/DICOMs_imag/imagImage' num2str(imageNumber,'%03d') '.dcm'];
                 GERecon('Dicom.Write', filename, finalImagImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
+                filename = [outputDir '/DICOMs_mag/magImage' num2str(imageNumber,'%03d') '.dcm'];
+                GERecon('Dicom.Write', filename, finalMagImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
+                filename = [outputDir '/DICOMs_phase/phaseImage' num2str(imageNumber,'%03d') '.dcm'];
+                GERecon('Dicom.Write', filename, finalPhaseImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
+
+
             end
         end
     end
 
 end
-
-
-
-function number = ImageNumber(pass, slice, echo, pfile)
-% Image numbering scheme (P = Phase; S = Slice; E = Echo):
-% P0S0E0, P0S0E1, ... P0S0En, P0S1E0, P0S1E1, ... P0S1En, ... P0SnEn, ...
-% P1S0E0, P1S0E1, ... PnSnEn
-
-    % Need to map the legacy "pass" number to a phase number
-    numPassesPerPhase = fix(pfile.passes / pfile.phases);
-    phase = fix(pass / numPassesPerPhase);
-
-    slicesPerPhase = pfile.slicesPerPass * numPassesPerPhase * pfile.echoes;
-    number = (phase-1) * slicesPerPhase + (slice-1) * pfile.echoes + (echo-1) + 1;
-end
-
-
