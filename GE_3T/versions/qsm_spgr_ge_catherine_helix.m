@@ -1,4 +1,4 @@
-function qsm_spgr_ge_catherine(path_dicom, path_out, options)
+function qsm_spgr_ge_catherine_helix(path_dicom, path_out, corr_echo1)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -104,10 +104,6 @@ if ~ isfield(options,'interp')
     options.interp = 0;
 end
 
-if ~ isfield(options,'corr_echo1')
-    options.corr_echo1 = 'pi';
-end
-
 readout    = options.readout;
 r_mask     = options.r_mask;
 fit_thr    = options.fit_thr;
@@ -124,7 +120,6 @@ lbv_peel   = options.lbv_peel;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
 interp     = options.interp;
-corr_echo1 = options.corr_echo1;
 
 % read in MESPGR dicoms (multi-echo gradient-echo)
 path_dicom = cd(cd(path_dicom));

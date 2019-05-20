@@ -1,4 +1,4 @@
-function [chi, Res_term, TV_term, Tik_term] = tikhonov_qsm(tfs, Res_wt, sus_mask, TV_mask, Tik_mask, TV_reg, Tik_reg, vox, z_prjs, Itnlim)
+function [chi, Res_term, TV_term, Tik_term] = tikhonov_qsm(tfs, Res_wt, sus_mask, TV_mask, Tik_mask, air_mask, TV_reg, Tik_reg, TV_reg2, vox, P, z_prjs, Itnlim)
 % argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| 
 %
 % tfs:      total field shift; can be local field shift if use this for local field inversion
@@ -11,6 +11,10 @@ function [chi, Res_term, TV_term, Tik_term] = tikhonov_qsm(tfs, Res_wt, sus_mask
 % vox:      voxel size in mm
 % z_prjs:   z-projections of the k-space coordinates onto main field B0 direction
 % Itnlim:   Iteration number limit 
+
+if ~ exist('P','var') || isempty(P)
+    P = 1; % no preconditioning
+end
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
     z_prjs = [0, 0, 1]; % PURE axial slices
@@ -68,14 +72,49 @@ params.TV_mask          = TV_mask;
 params.sus_mask         = sus_mask;
 params.Res_wt           = Res_wt;
 params.data             = tfs;
+params.P                = P;
 
-params.P                = TV_mask + 30*(1-TV_mask);
-%params.P                = 1;
+%params.P                = sus_mask.*(Tik_mask + 60*(1-Tik_mask));
+%params.P                = sus_mask.*(Tik_mask + 60*(1-Tik_mask)) + (1-sus_mask);
+
+% params.air_mask = 1;
+% params.TV_reg2 = 0;
+params.air_mask = air_mask;
+params.TV_reg2 = TV_reg2;
 
 % non-linear conjugate gradient method
 [chi, Res_term, TV_term, Tik_term] = nlcg_tik(zeros([Nx, Ny, Nz]), params);
+
+
+% LSQR method
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + Tik_reg * ||Tik_mask * chi|| 
+
+% b = P.*sus_mask.*ifftn(D.*fftn(Res_wt.*Res_wt.*tfs));
+% b = b(:);
+% imsize = size(tfs);
+% m = lsqr(@Afun, b, 1e-6, Itnlim);
+% chi = real(reshape(m,imsize));
+
+% function y = Afun(x,transp_flag)
+%     if strcmp(transp_flag,'transp')
+%     % y = H'*(H*x) + tik_reg*x;
+%     x = reshape(x,imsize);
+%     y = P.*sus_mask.*ifftn(D.*fftn(Res_wt.*Res_wt.*ifftn(D.*fftn(sus_mask.*P.*x)))) + Tik_reg*P.*Tik_mask.*Tik_mask.*P.*x;
+
+%     y = y(:);
+    
+%     else
+%     % y = H'*(H*x) + tik_reg*x;
+%     x = reshape(x,imsize);
+%     y = P.*sus_mask.*ifftn(D.*fftn(Res_wt.*Res_wt.*ifftn(D.*fftn(sus_mask.*P.*x)))) + Tik_reg*P.*Tik_mask.*Tik_mask.*P.*x;
+
+%     y = y(:); 
+%     end
+% end
+
 
 % if want to keep the dipole fitting result
 % don't mask it, instead, use the following:
 chi = real(params.P.*chi);
 % otherwise mask it
+end

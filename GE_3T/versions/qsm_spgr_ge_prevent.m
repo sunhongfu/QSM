@@ -126,11 +126,11 @@ path_dicom = cd(cd(path_dicom));
 list_dicom = dir(path_dicom);
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
-dicom_info.EchoTrainLength = 6;
+dicom_info.EchoTrainLength = 8;
 dicom_info.SliceThickness = 1;
 
-imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/4, ...
-			 dicom_info.EchoTrainLength];
+imsize = [dicom_info.Width, dicom_info.Height, (length(list_dicom)-2)/dicom_info.EchoTrainLength/2, ...
+             dicom_info.EchoTrainLength];
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
 % angles!!!
@@ -150,18 +150,18 @@ Counter = 1;
 for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
-		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-       Counter = Counter + 1 ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+       % Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
-       Counter = Counter + 1 ;
+       % Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theReal = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
         dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
-	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
-		Counter = Counter + 1 ;
+        TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+        Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theImag = ...
@@ -170,7 +170,7 @@ for zCount = 1 : imsize(3)
         
         img(:,:,zCount,echoCount) = theReal + 1j * theImag ;
 
-	end
+    end
 
 end
 
