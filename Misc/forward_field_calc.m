@@ -62,5 +62,5 @@ D = fftshift(D);
 field = real(ifftn(D.*fftn(sus)));
 
 if padding_flag
-    field = field(1+Nx/2:end-Nx/2, 1+Ny/2:end-Ny/2, 1+Nz/2:end-Nz/2);
+    field = field(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
 end
