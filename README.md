@@ -1,6 +1,16 @@
 # Welcome to QSM
 The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) images from MRI. The codes cover image recons for single-echo SWI or multiple-echo GRE sequence as well as gradient EPI sequence.
 
+# References
+* For the background field removal method RESHARP, please reference:  
+***H. Sun, A.H. Wilman. Background field removal using spherical mean value filtering and Tikhonov regularization. Magn Reson Med. 2014 Mar;71(3):1151-7.***
+* For the POEM multi-channel coil combination method, please referece:  
+***H. Sun, J.O. Cleary, R. Glarin, S.C. Kolbe, R.J. Ordidge, B.A. Moffat, G.B. Pike; Extracting more for less: Multi-echo MP2RAGE for simultaneous T1-weighted imaging, T1 mapping, R2\* mapping, SWI, and QSM from a single acquisition.***
+* For the EPI-QSM processing pipeline, please referece:  
+***H. Sun, A.H. Wilman. Quantitative susceptibility mapping using single-shot echo-planar imaging. Magn Reson Med. 2015 May;73(5):1932-8.***
+* For the hemorrhage-QSM method and processing pipeline, please referece:  
+***H. Sun, M. Kate, L.C. Gioia, D.J. Emery, K. Butcher, A.H. Wilman. Quantitative susceptibility mapping using a superposed dipole inversion method: Application to intracranial hemorrhage. Magn Reson Med. 2016 Sep;76(3):781-91.***
+
 ## Recon flow
 1. Extract complex img from DICOMs or raw files
 2. removal phase-offsets if multiple-echo, then combine coils 
@@ -10,14 +20,13 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
 6. background field removal 
 7. dipole inversion
 	
-## Release Note
-1. QSM 2.0.0 (2017-01-01)
-  * Recon codes for 1.5 T (Siemens), 
-  * 3 T (Siemens and GE)
-  * 4.7 T (Varian) QSM
-  * Support sequences of single-echo SWI, multi-echo R2* and EPI.
-2. QSM 2.0.1
-  * add recon codes for Philips 3 T
+## Support scanner platforms
+  * 1.5 T (Siemens)
+  * 3   T (Siemens, GE, and Philips)
+  * 4.7 T (Varian)
+  * 7   T (Siemens)
+  * 9.4 T (Bruker)
+  * Support sequences of single-echo SWI, multi-echo GRE and EPI.
 
 ## Manual
 * Directory structure
@@ -38,12 +47,17 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + **qsm_spgr_ge.m**
   - *Philips_3T*: recon codes for 3T Philips sequence, currently only R2*
     + **qsm_spgr_philips.m**
+  - *Siemens_7T*: recon codes for 7T Magnetom sequences, e.g. SWI, ME-GRE and ME-MP2RAGE
+    + **qsm_swi.m**
+    + **mp2rage.m**
+    + **qsm_7T_bipolar.m**
+    + **qsm_7T_unipolar.m**
   - *coil_combination*: coils combination related codes
     + **adaptive_cmb.m**: adaptive filter method for single-echo, e.g. EPI, SWI
-    + **geme_cmb.m**: dual echo approach for multi-echo, e.g. R2*
+    + **poem.m**: POEM (Phase-Offsets Estimation from Multi-echoes) coil combination
   - *background_field_removal*: background field removal, including RESHARP/SHARP/ESHARP/PDF/LBV
     + **sharp.m**: SHARP
-    + **resharp.m**: RESHARP
+    + **resharp.m**: RESHARP method -- can tweak the ker_rad (kernel size) and tik_reg (regularization)
     + **projectionontodipolefields.m**: PDF
     + **extendharmonicfield.m**: ESHARP
     + **LBV.m**: LBV
