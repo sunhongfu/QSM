@@ -52,6 +52,8 @@ The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) im
     + **mp2rage.m**
     + **qsm_7T_bipolar.m**
     + **qsm_7T_unipolar.m**
+  - *Bruker_9p4T*: recon codes for 9.4T Bruker 3D multi-echo sequence
+    + **qsm_r2s_3d_bruker.m**  
   - *coil_combination*: coils combination related codes
     + **adaptive_cmb.m**: adaptive filter method for single-echo, e.g. EPI, SWI
     + **poem.m**: POEM (Phase-Offsets Estimation from Multi-echoes) coil combination
