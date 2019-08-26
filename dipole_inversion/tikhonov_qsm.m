@@ -1,5 +1,5 @@
 function [chi, Res_term, TV_term, Tik_term] = tikhonov_qsm(tfs, Res_wt, sus_mask, TV_mask, Tik_mask, air_mask, TV_reg, Tik_reg, TV_reg2, vox, P, z_prjs, Itnlim)
-% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| 
+% argmin ||Res_wt * (F_{-1} * D * F * sus_mask * chi - tfs)|| + TV_reg * TV|TV_mask * chi| + Tik_reg * ||Tik_mask * chi|| + TV_reg2 * TV|air_mask * chi|
 %
 % tfs:      total field shift; can be local field shift if use this for local field inversion
 % Res_wt:   weighting matrix for the residual/fidelity term, usually brain mask
