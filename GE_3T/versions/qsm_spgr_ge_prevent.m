@@ -1,4 +1,4 @@
-function qsm_spgr_ge_edm(path_dicom, path_out, options)
+function qsm_spgr_ge_prevent(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -32,7 +32,7 @@ end
 
 if ~ exist('path_out','var') || isempty(path_out)
     path_out = pwd;
-    display('Current directory for output')
+    disp('Current directory for output')
 end
 
 if ~ exist('options','var') || isempty(options)
@@ -124,6 +124,7 @@ interp     = options.interp;
 % read in MESPGR dicoms (multi-echo gradient-echo)
 path_dicom = cd(cd(path_dicom));
 list_dicom = dir(path_dicom);
+list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(3).name]);
 dicom_info.EchoTrainLength = 8;
@@ -150,22 +151,22 @@ Counter = 1;
 for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
        % Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
        % Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         theReal = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
-        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
+        dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
         TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
         Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         theImag = ...
-            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;    
+            permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;    
         Counter = Counter + 1 ;
         
         img(:,:,zCount,echoCount) = theReal + 1j * theImag ;

@@ -157,20 +157,20 @@ Counter = 1;
 for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
-		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+		%tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         theReal = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
         dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
 	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
         theImag = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;    
         Counter = Counter + 1 ;
