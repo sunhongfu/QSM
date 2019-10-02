@@ -215,7 +215,7 @@ end
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
-[status,cmdout] = unix('rm BET*');
+[~,~] = unix('rm BET*');
 unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -226,7 +226,7 @@ mask = double(nii.img);
 % phase offset correction
 % if unipolar
 if strcmpi('unipolar',readout)
-    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
+    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask,[],0);
 % if bipolar
 elseif strcmpi('bipolar',readout)
     ph_corr = zeros(imsize);
