@@ -38,7 +38,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % Synthesize KSpace to get full kSpace
     kSpace = zeros(pfile.xRes, pfile.yRes, acquiredSlices, pfile.channels, pfile.echoes, pfile.passes,'single');
 
-    if exist('kacq_file','var')
+    if exist('kacq_file','var') && ~isempty(kacq_file)
         GERecon('Arc.LoadKacq', kacq_file);
     end
 
@@ -61,7 +61,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % ASSET recon
     % change the p-file header of ASSET
     setenv('pfilePath',pfilePath);
-    unix('/Users/hongfusun/bin/HS_ModHeader --pfile $pfilePath');
+    unix('/Users/hongfusun/bin/orchestra/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
     pfilePath=[pfilePath '.mod'];
     % Load Pfile
     clear GERecon
@@ -112,17 +112,17 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % correct for phase chopping
     unaliasedImage = fft(fft(fft(fftshift(fftshift(fftshift(ifft(ifft(ifft(unaliasedImage,[],1),[],2),[],3),1),2),3),[],1),[],2),[],3);
 
+    mkdir(outputDir);
     nii=make_nii(abs(unaliasedImage));
-    save_nii(nii,'unaliasedImage_mag.nii');
+    save_nii(nii,[outputDir '/unaliasedImage_mag.nii']);
     nii=make_nii(angle(unaliasedImage));
-    save_nii(nii,'unaliasedImage_pha.nii');
+    save_nii(nii,[outputDir '/unaliasedImage_pha.nii']);
 
 
     % save the matlab matrix for later use
-    save('unaliasedImage','unaliasedImage');
+    save([outputDir '/unaliasedImage'],'unaliasedImage');
 
 
-    mkdir(outputDir);
     mkdir([outputDir '/DICOMs_real']);
     mkdir([outputDir '/DICOMs_imag']);
     mkdir([outputDir '/DICOMs_mag']);

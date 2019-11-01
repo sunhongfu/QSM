@@ -1,4 +1,4 @@
-function recon_arc_asset(pfilePath, calibrationPfile, outputDir)
+function recon_arc_asset_slow(pfilePath, calibrationPfile, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;

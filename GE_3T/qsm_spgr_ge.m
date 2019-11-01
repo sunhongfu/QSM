@@ -595,6 +595,17 @@ end
 %end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 save('all.mat','-v7.3');
+
+% R2* mapping
+[R2, T2, amp] = r2imgfit2(double(mag),TE,repmat(mask,[1 1 1 imsize(4)]));
+nii = make_nii(R2,vox);
+save_nii(nii,'R2.nii');
+nii = make_nii(T2,vox);
+save_nii(nii,'T2.nii');
+nii = make_nii(amp,vox);
+save_nii(nii,'amp.nii');
+
 cd(init_dir);
 
