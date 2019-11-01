@@ -64,7 +64,7 @@ if ~ isfield(options,'bet_smooth')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
+    options.ph_unwrap = 'bestpath';
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -165,8 +165,30 @@ for i = 1:length(ph_list)
 end
 
 
+
+% interpolation into isotropic
+if interp
+    img = mag.*exp(1j*ph);
+    k = fftshift(fftshift(fftshift(fft(fft(fft(img,[],1),[],2),[],3),1),2),3);
+    % find the finest resolution
+    minvox = min(vox);
+    % update matrix size
+    pad_size =  round((vox.*imsize(1:3)/minvox - imsize(1:3))/2);
+    k = padarray(k, pad_size);
+    img = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
+    clear k;
+    imsize_old = imsize;
+    imsize = size(img);
+    vox = imsize_old(1:3).*vox./imsize(1:3);
+    mag = abs(img);
+    ph = angle(img);
+end
+
+
+
+
 % define output directories
-path_qsm = [path_out '/QSM_R2S_PRISMA'];
+path_qsm = [path_out '/QSM_R2S_PRISMA_iso'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -395,11 +417,48 @@ if sum(strcmpi('resharp',bkg_rm))
 
     % inversion of susceptibility 
     disp('--> TV susceptibility inversion on RESHARP...');
+    % iLSQR
+    chi_iLSQR = QSM_iLSQR(lfs_resharp*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+    nii = make_nii(chi_iLSQR,vox);
+    save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
+    
+    % % MEDI
+    % %%%%% normalize signal intensity by noise to get SNR %%%
+    % %%%% Generate the Magnitude image %%%%
+    % iMag = sqrt(sum(mag.^2,4));
+    % % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
+    % matrix_size = single(imsize(1:3));
+    % voxel_size = vox;
+    % delta_TE = TE(2) - TE(1);
+    % B0_dir = z_prjs';
+    % CF = dicom_info.ImagingFrequency *1e6;
+    % iFreq = [];
+    % N_std = 1;
+    % RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    % Mask = mask_resharp;
+    % save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+    %      voxel_size delta_TE CF B0_dir;
+    % QSM = MEDI_L1('lambda',1000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',2000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',1500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',5000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+
+    % TVDI method
     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
-   
-    % save nifti
     nii = make_nii(sus_resharp.*mask_resharp,vox);
     save_nii(nii,'RESHARP/sus_resharp.nii');
+
 end
 
 % V-SHARP
@@ -491,14 +550,342 @@ if sum(strcmpi('lbv',bkg_rm))
     save_nii(nii,'LBV/lfs_lbv.nii');
 
     % inversion of susceptibility 
-    disp('--> TV susceptibility inversion on lbv...');
-    sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num);   
+    disp('--> TV susceptibility inversion on LBV...');
+    % iLSQR
+    chi_iLSQR = QSM_iLSQR(lfs_lbv*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_lbv,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+    nii = make_nii(chi_iLSQR,vox);
+    save_nii(nii,['LBV/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
+    
+    % MEDI
+    %%%%% normalize signal intensity by noise to get SNR %%%
+    %%%% Generate the Magnitude image %%%%
+    iMag = sqrt(sum(mag.^2,4));
+    % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
+    matrix_size = single(imsize(1:3));
+    voxel_size = vox;
+    delta_TE = TE(2) - TE(1);
+    B0_dir = z_prjs';
+    CF = dicom_info.ImagingFrequency *1e6;
+    iFreq = [];
+    N_std = 1;
+    RDF = lfs_lbv*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    Mask = mask_lbv;
+    save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+            voxel_size delta_TE CF B0_dir;
+    QSM = MEDI_L1('lambda',1000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI1000_lbv_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',2000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI2000_lbv_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',1500);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI1500_lbv_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',5000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI5000_lbv_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',500);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['LBV/MEDI500_lbv_smvrad' num2str(smv_rad) '.nii']);
 
-    % save nifti
+    % TVDI method
+    sus_lbv = tvdi(lfs_lbv,mask_lbv,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
     nii = make_nii(sus_lbv.*mask_lbv,vox);
     save_nii(nii,'LBV/sus_lbv.nii');
 end
 
+
+
+% TFI
+mkdir TFI
+%%%% Generate the Magnitude image %%%%
+iMag = sqrt(sum(mag.^2,4));
+matrix_size = single(imsize(1:3));
+voxel_size = vox;
+delta_TE = TE(2) - TE(1);
+B0_dir = z_prjs';
+CF = dicom_info.ImagingFrequency *1e6;
+N_std = 1;
+
+% (4) TFI of 3 voxels erosion
+iFreq = tfs*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+% erode the mask (full mask to 3mm erosion)
+% apply R
+mask = mask.*R;
+% mask_erosion
+r = 1; 
+[X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+ker = h/sum(h(:));
+imsize = size(mask);
+mask_tmp = convn(mask,ker,'same');
+mask_ero1 = zeros(imsize);
+mask_ero1(mask_tmp > 0.999999) = 1; % no error tolerance
+r = 2; 
+[X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+ker = h/sum(h(:));
+imsize = size(mask);
+mask_tmp = convn(mask,ker,'same');
+mask_ero2 = zeros(imsize);
+mask_ero2(mask_tmp > 0.999999) = 1; % no error tolerance
+r = 3; 
+[X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+ker = h/sum(h(:));
+imsize = size(mask);
+mask_tmp = convn(mask,ker,'same');
+mask_ero3 = zeros(imsize);
+mask_ero3(mask_tmp > 0.999999) = 1; % no error tolerance
+
+
+% Mask = mask;
+% Mask_G = Mask;
+% P_B = 30;
+% P = 1 * Mask + P_B * (1-Mask);
+% RDF = 0;
+% save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda500_full.nii');
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda1000_full.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda1500_full.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda2000_full.nii');
+
+
+% Mask = mask_ero1;
+% Mask_G = Mask;
+% P_B = 30;
+% P = 1 * Mask + P_B * (1-Mask);
+% RDF = 0;
+% save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda500_ero1.nii');
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda1000_ero1.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda1500_ero1.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda2000_ero1.nii');
+
+
+% Mask = mask_ero2;
+% Mask_G = Mask;
+% P_B = 30;
+% P = 1 * Mask + P_B * (1-Mask);
+% RDF = 0;
+% save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda500_ero2.nii');
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda1000_ero2.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1500);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda1500_ero2.nii');
+% % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+% % nii = make_nii(QSM.*Mask,vox);
+% % save_nii(nii,'TFI/TFI_0_lambda2000_ero2.nii');
+
+
+Mask = mask_ero3;
+Mask_G = Mask;
+P_B = 30;
+P = 1 * Mask + P_B * (1-Mask);
+RDF = 0;
+save RDF_brain.mat matrix_size voxel_size delta_TE B0_dir CF iMag N_std iFreq Mask Mask_G P RDF
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 500);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda500_ero3.nii');
+QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1000);
+nii = make_nii(QSM.*Mask,vox);
+save_nii(nii,'TFI/TFI_0_lambda1000_ero3.nii');
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 1500);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda1500_ero3.nii');
+% QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
+% nii = make_nii(QSM.*Mask,vox);
+% save_nii(nii,'TFI/TFI_0_lambda2000_ero3.nii');
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% complex fitting first then laplacian, resharp, iLSQR
+[iFreq_raw N_std] = Fit_ppm_complex(mag.*exp(1j*ph_corr));
+nii = make_nii(iFreq_raw,vox);
+save_nii(nii,'iFreq_raw.nii');
+
+delta_TE = TE(2) - TE(1);
+
+% laplacian unwrapping
+Options.voxelSize = vox;
+iFreq_lap = lapunwrap(iFreq_raw, Options);
+tfs_lap = -iFreq_lap/(2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6);
+nii = make_nii(tfs_lap,vox);
+save_nii(nii,'tfs_lap_ppm_fit.nii');
+% FUDGE unwrapping
+iFreq_fudge = fudge(iFreq_raw);
+tfs_fudge = -iFreq_fudge/(2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6);
+nii = make_nii(tfs_fudge,vox);
+save_nii(nii,'tfs_fudge_ppm_fit.nii');
+% prelude unwrapping
+!prelude -a src/mag1.nii -p iFreq_raw.nii -u iFreq_prelude.nii -m BET_mask.nii -n 12
+!gunzip -f iFreq_prelude.nii.gz
+nii = load_nii(['iFreq_prelude.nii']);
+iFreq_prelude = double(nii.img);
+tfs_prelude = -iFreq_prelude/(2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6);
+nii = make_nii(tfs_prelude,vox);
+save_nii(nii,'tfs_prelude_ppm_fit.nii');
+% bestpath unwrapping
+fid = fopen(['iFreq_raw.dat'],'w');
+fwrite(fid,iFreq_raw,'float');
+fclose(fid);
+disp('--> unwrap aliasing phase using bestpath...');
+mask_unwrp = uint8(abs(mask)*255);
+fid = fopen('mask_unwrp.dat','w');
+fwrite(fid,mask_unwrp,'uchar');
+fclose(fid);
+[pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
+setenv('pathstr',pathstr);
+setenv('nv',num2str(imsize(1)));
+setenv('np',num2str(imsize(2)));
+setenv('ns',num2str(imsize(3)));
+if isdeployed
+    bash_script = ['~/bin/3DSRNCP iFreq_raw.dat mask_unwrp.dat ' ...
+    'iFreq_bestpath.dat $nv $np $ns reliability${echo_num}.dat'];
+else    
+    bash_script = ['${pathstr}/3DSRNCP iFreq_raw.dat mask_unwrp.dat ' ...
+    'iFreq_bestpath.dat $nv $np $ns reliability${echo_num}.dat'];
+end
+unix(bash_script) ;
+fid = fopen(['iFreq_bestpath.dat'],'r');
+tmp = fread(fid,'float');
+% tmp = tmp - tmp(1);
+iFreq_bestpath = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
+fclose(fid);
+tfs_bestpath = -iFreq_bestpath/(2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6);
+nii = make_nii(tfs_bestpath,vox);
+save_nii(nii,'tfs_bestpath_ppm_fit.nii');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% background field removal
+
+% (1) lap
+tfs = tfs_lap;
+[lfs_resharp_0, mask_resharp_0] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
+% % 3D 2nd order polyfit to remove any residual background
+% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+% save nifti
+mkdir('RESHARP');
+nii = make_nii(lfs_resharp_0,vox);
+save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_cpx_lap.nii']);
+lfs_resharp_cpx_lap = lfs_resharp_0;
+
+% (2) FUDGE
+tfs = tfs_fudge;
+[lfs_resharp_0, mask_resharp_0] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
+% % 3D 2nd order polyfit to remove any residual background
+% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+% save nifti
+mkdir('RESHARP');
+nii = make_nii(lfs_resharp_0,vox);
+save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_cpx_fudge.nii']);
+lfs_resharp_cpx_fudge = lfs_resharp_0;
+
+
+% (3) prelude
+tfs = tfs_prelude;
+[lfs_resharp_0, mask_resharp_0] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
+% % 3D 2nd order polyfit to remove any residual background
+% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+% save nifti
+mkdir('RESHARP');
+nii = make_nii(lfs_resharp_0,vox);
+save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_cpx_prelude.nii']);
+lfs_resharp_cpx_prelude = lfs_resharp_0;
+
+
+% (4) bestpath
+tfs = tfs_bestpath;
+[lfs_resharp_0, mask_resharp_0] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
+% % 3D 2nd order polyfit to remove any residual background
+% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+% save nifti
+mkdir('RESHARP');
+nii = make_nii(lfs_resharp_0,vox);
+save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_cpx_bestpath.nii']);
+lfs_resharp_cpx_bestpath = lfs_resharp_0;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% dipole inversion
+% iLSQR
+% (1) lap
+lfs_resharp_0 = lfs_resharp_cpx_lap;
+chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+nii = make_nii(chi_iLSQR_0,vox);
+save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '_cpx_lap.nii']);
+
+% (2) FUDGE
+lfs_resharp_0 = lfs_resharp_cpx_fudge;
+chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+nii = make_nii(chi_iLSQR_0,vox);
+save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '_cpx_fudge.nii']);
+
+% (3) prelude
+lfs_resharp_0 = lfs_resharp_cpx_prelude;
+chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+nii = make_nii(chi_iLSQR_0,vox);
+save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '_cpx_prelude.nii']);
+
+    % TVDI method
+    sus_resharp = tvdi(lfs_resharp_0,mask_resharp_0,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+    nii = make_nii(sus_resharp.*mask_resharp_0,vox);
+    save_nii(nii,'RESHARP/sus_resharp_cpx_prelude.nii');
+
+% (4) bestpath
+lfs_resharp_0 = lfs_resharp_cpx_bestpath;
+chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+nii = make_nii(chi_iLSQR_0,vox);
+save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '_cpx_bestpath.nii']);
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% using only the first echo
+tfs_TE1 = -unph(:,:,:,1)/(2.675e8*dicom_info.MagneticFieldStrength*TE(1)*1e-6);
+[lfs_resharp_0, mask_resharp_0] = -resharp(tfs_TE1,mask,vox,smv_rad,tik_reg,cgs_num);
+% % 3D 2nd order polyfit to remove any residual background
+% lfs_resharp= (lfs_resharp - poly3d(lfs_resharp,mask_resharp)).*mask_resharp;
+% save nifti
+mkdir('RESHARP');
+nii = make_nii(lfs_resharp_0,vox);
+save_nii(nii,['RESHARP/lfs_resharp_0_smvrad' num2str(smv_rad) '_te1.nii']);
+lfs_resharp_te1 = lfs_resharp_0;
+
+chi_iLSQR_0 = QSM_iLSQR(lfs_resharp_0*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp_0,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
+nii = make_nii(chi_iLSQR_0,vox);
+save_nii(nii,['RESHARP/chi_iLSQR_0_niter50_smvrad' num2str(smv_rad) '_te1.nii']);
+
+% TVDI method
+sus_resharp = tvdi(lfs_resharp_0,mask_resharp_0,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+nii = make_nii(sus_resharp.*mask_resharp,vox);
+save_nii(nii,'RESHARP/sus_resharp_te1.nii');
 
 save('all.mat','-v7.3');
 cd(init_dir);

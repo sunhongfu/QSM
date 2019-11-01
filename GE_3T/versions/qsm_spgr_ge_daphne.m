@@ -1,4 +1,4 @@
-function qsm_spgr_ge(path_dicom, path_out, options)
+function qsm_spgr_ge_daphne(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -22,7 +22,7 @@ function qsm_spgr_ge(path_dicom, path_out, options)
 %    .cgs_num    - max interation number for RESHARP         : 200
 %    .lbv_peel   - LBV layers to be peeled off               : 2
 %    .lbv_tol    - LBV interation error tolerance            : 0.01
-%    .tv_reg     - Total variation regularization parameter  : 5e-4
+%    .tv_reg     - Total variation regularization parameter  : 2e-4
 %    .tvdi_n     - iteration number of TVDI (nlcg)           : 500
 %    .interp     - interpolate the image to the double size  : 0
 
@@ -95,7 +95,7 @@ if ~ isfield(options,'lbv_peel')
 end
 
 if ~ isfield(options,'tv_reg')
-    options.tv_reg = 5e-4;
+    options.tv_reg = 2e-4;
 end
 
 if ~ isfield(options,'inv_num')
@@ -130,10 +130,10 @@ list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
-dicom_info.EchoTrainLength = 8;
+dicom_info.EchoTrainLength = 10;
 
 imsize = [dicom_info.Width, dicom_info.Height, ...
-            length(list_dicom)/dicom_info.EchoTrainLength/4, ...
+            length(list_dicom)/dicom_info.EchoTrainLength/2, ...
                 dicom_info.EchoTrainLength];
 
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
@@ -157,20 +157,20 @@ Counter = 1;
 for zCount = 1 : imsize(3)
     for echoCount = 1 : imsize(4)
 
-		%tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
-        Counter = Counter + 1 ;
+		%tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
-        Counter = Counter + 1 ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
+        %Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theReal = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
         dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
 	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
-        %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
+        %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;
         theImag = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;    
         Counter = Counter + 1 ;
@@ -444,14 +444,14 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(lfs_resharp,vox);
     save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
-%     % inversion of susceptibility 
+    % inversion of susceptibility 
 %     disp('--> TV susceptibility inversion on RESHARP...');
 %     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
 %    
 %     % save nifti
 %     nii = make_nii(sus_resharp.*mask_resharp,vox);
 %     save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
-    
+%     
     
     % iLSQR
     chi_iLSQR = QSM_iLSQR(lfs_resharp*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
@@ -477,15 +477,6 @@ if sum(strcmpi('resharp',bkg_rm))
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',2000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',1500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',5000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
@@ -595,17 +586,6 @@ end
 %end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 save('all.mat','-v7.3');
-
-% R2* mapping
-[R2, T2, amp] = r2imgfit2(double(mag),TE,repmat(mask,[1 1 1 imsize(4)]));
-nii = make_nii(R2,vox);
-save_nii(nii,'R2.nii');
-nii = make_nii(T2,vox);
-save_nii(nii,'T2.nii');
-nii = make_nii(amp,vox);
-save_nii(nii,'amp.nii');
-
 cd(init_dir);
 
