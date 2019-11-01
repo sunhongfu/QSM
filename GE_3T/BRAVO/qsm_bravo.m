@@ -1,4 +1,4 @@
-function qsm_bravo(realDicomsDir, imagDicomsDir, outputDir)
+function qsm_bravo(realDicomsDir, imagDicomsDir, path_out, options)
 
 
 if ~ exist('realDicomsDir','var') || isempty(realDicomsDir)
@@ -98,7 +98,7 @@ lbv_tol    = options.lbv_tol;
 lbv_peel   = options.lbv_peel;
 tv_reg     = options.tv_reg;
 inv_num    = options.inv_num;
-interp     = options.interp;
+% interp     = options.interp;
 
 
 
@@ -152,19 +152,19 @@ mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
 
-
-
-% interpolate the images to the double size
-if interp
-    img = single(img);
-    % zero padding the k-space
-    k = fftshift(fftshift(fftshift(fft(fft(fft(img,[],1),[],2),[],3),1),2),3);
-    k = padarray(k,double(imsize(1:3)/2));
-    img = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
-    clear k;
-    imsize = size(img);
-    vox = vox/2;
-end
+% 
+% 
+% % interpolate the images to the double size
+% if interp
+%     img = single(img);
+%     % zero padding the k-space
+%     k = fftshift(fftshift(fftshift(fft(fft(fft(img,[],1),[],2),[],3),1),2),3);
+%     k = padarray(k,double(imsize(1:3)/2));
+%     img = ifft(ifft(ifft(ifftshift(ifftshift(ifftshift(k,1),2),3),[],1),[],2),[],3);
+%     clear k;
+%     imsize = size(img);
+%     vox = vox/2;
+% end
 
 mag = abs(real+1j*imag);
 ph = angle(real+1j*imag);
@@ -193,7 +193,8 @@ disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
 [~,~] = unix('rm BET*');
-unix('bet2 iMag.nii BET -f 0.2 -m -w 2');
+% unix('bet2 iMag.nii BET -f 0.4 -m -w 2');
+unix('bet2 src/mag1.nii BET -f 0.4 -m -w 2');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
 nii = load_nii('BET_mask.nii');
