@@ -1,4 +1,4 @@
-function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
+function recon_arc(pfilePath, kacq_file, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;
@@ -72,12 +72,6 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     header = GERecon('Pfile.Header', pfile);
 
 
-    % calibrationPfile
-    GERecon('Calibration.Process', calibrationPfile);
-
-
-
-
     % image recon
     % Scale
     kSpace = kSpace * scaleFactor;
@@ -101,8 +95,8 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
                 %info = GERecon('Pfile.Info', sliceInfo);
                 info = GERecon('Pfile.Info', slice);
 %                 info = GERecon('Pfile.Corners', slice);
-                unaliasedImage(:,:,slice,echo,pass) = GERecon('Asset.Unalias', channelImages, info);
-                %unaliasedImage(:,:,:,slice,echo,pass) = channelImages;
+                % unaliasedImage(:,:,slice,echo,pass) = GERecon('Asset.Unalias', channelImages, info);
+                unaliasedImage(:,:,:,slice,echo,pass) = channelImages;
             end
         end
     end
@@ -124,67 +118,4 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
 
 
     % save the matlab matrix for later use
-    save([outputDir '/unaliasedImage'],'unaliasedImage');
-
-
-    mkdir([outputDir '/DICOMs_real']);
-    mkdir([outputDir '/DICOMs_imag']);
-    mkdir([outputDir '/DICOMs_mag']);
-    mkdir([outputDir '/DICOMs_phase']);
-    % save DICOMs for QSM inputs
-    % mod some of the DICOM fields: current echo number, current TE, echo train length
-    tenum.Group = hex2dec('0018');
-    tenum.Element = hex2dec('0086');
-    tenum.VRType = 'IS';
-    teval.Group = hex2dec('0018');
-    teval.Element = hex2dec('0081');
-    teval.VRType = 'DS';
-    etl.Group = hex2dec('0018');
-    etl.Element = hex2dec('0091');
-    etl.VRType = 'IS';
-    etl.Value = num2str(pfile.echoes);
-
-    for pass = 1:pfile.passes
-        for echo = 1:pfile.echoes
-            for slice = 1:acquiredSlices    
-                % Get slice information (corners and orientation) for this slice location
-                sliceInfo.pass = pass;
-                sliceInfo.sliceInPass = slice;
-                info = GERecon('Pfile.Info', sliceInfo);
-
-                realImage = real(unaliasedImage(:,:,slice,echo,pass));
-                imagImage = imag(unaliasedImage(:,:,slice,echo,pass));
-
-                % Apply Gradwarp
-                gradwarpedRealImage = GERecon('Gradwarp', realImage, info.Corners);
-                gradwarpedImagImage = GERecon('Gradwarp', imagImage, info.Corners);
-
-                % Orient the image
-                finalRealImage = GERecon('Orient', gradwarpedRealImage, info.Orientation);
-                finalImagImage = GERecon('Orient', gradwarpedImagImage, info.Orientation);
-
-                finalMagImage = abs(finalRealImage + 1j*finalImagImage);
-                finalPhaseImage = angle(finalRealImage + 1j*finalImagImage)*1000;
-
-                % mod dicom header
-                tenum.Value = num2str( echo );
-                teval.Value = num2str( header.RawHeader.echotimes(echo)*1000 );
-
-
-                % Save DICOMs
-                imageNumber = ImageNumber(pass, info.Number, echo, pfile);
-                filename = [outputDir '/DICOMs_real/realImage' num2str(imageNumber,'%03d') '.dcm'];
-                GERecon('Dicom.Write', filename, finalRealImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
-                filename = [outputDir '/DICOMs_imag/imagImage' num2str(imageNumber,'%03d') '.dcm'];
-                GERecon('Dicom.Write', filename, finalImagImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
-                filename = [outputDir '/DICOMs_mag/magImage' num2str(imageNumber,'%03d') '.dcm'];
-                GERecon('Dicom.Write', filename, finalMagImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
-                filename = [outputDir '/DICOMs_phase/phaseImage' num2str(imageNumber,'%03d') '.dcm'];
-                GERecon('Dicom.Write', filename, finalPhaseImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
-
-
-            end
-        end
-    end
-
-end
+    save([outputDir '/unaliasedImage'],'unaliasedImage','-v7.3');
