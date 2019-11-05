@@ -1,4 +1,4 @@
-function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
+function recon_arc_asset(pfilePath, calibrationPfile, kacq_file, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;
@@ -88,6 +88,8 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % Transform Across Slices
     kSpace = ifft(kSpace, pfile.slicesPerPass, 3);
 
+    channelImages = zeros(pfile.xRes, pfile.yRes, pfile.channels,'single');
+    unaliasedImage = zeros(pfile.xRes, pfile.yRes, acquiredSlices, pfile.echoes, pfile.passes,'single');
     for pass = 1:pfile.passes
         for echo = 1:pfile.echoes
             for slice = 1:pfile.slicesPerPass
@@ -102,7 +104,6 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
                 info = GERecon('Pfile.Info', slice);
 %                 info = GERecon('Pfile.Corners', slice);
                 unaliasedImage(:,:,slice,echo,pass) = GERecon('Asset.Unalias', channelImages, info);
-                %unaliasedImage(:,:,:,slice,echo,pass) = channelImages;
             end
         end
     end
@@ -124,7 +125,8 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
 
 
     % save the matlab matrix for later use
-    save([outputDir '/unaliasedImage'],'unaliasedImage');
+    save([outputDir '/unaliasedImage'],'unaliasedImage','-v7.3');
+
 
 
     mkdir([outputDir '/DICOMs_real']);
@@ -173,6 +175,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
 
                 % Save DICOMs
                 imageNumber = ImageNumber(pass, info.Number, echo, pfile);
+                % no need to use this ImageNumber function, see recon_arc function for this part
                 filename = [outputDir '/DICOMs_real/realImage' num2str(imageNumber,'%03d') '.dcm'];
                 GERecon('Dicom.Write', filename, finalRealImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
                 filename = [outputDir '/DICOMs_imag/imagImage' num2str(imageNumber,'%03d') '.dcm'];

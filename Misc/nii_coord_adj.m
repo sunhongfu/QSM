@@ -4,7 +4,7 @@ nii_input = load_untouch_nii(nii_input_name);
 nii_ref = load_untouch_nii(nii_ref_name);
 
 nii_output = nii_ref;
-nii_output.img = (flipdim(flipdim(single(nii_input.img),1),2));
+nii_output.img = (flip(flip(single(nii_input.img),1),2));
 
 nii_output.hdr.dime.datatype = 16;
 nii_output.hdr.dime.bitpix = 32;

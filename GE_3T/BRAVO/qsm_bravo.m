@@ -1,4 +1,4 @@
-function qsm_bravo(realDicomsDir, imagDicomsDir, path_out, options)
+function qsm_bravo(realDicomsDir, imagDicomsDir, path_out, options, QSM_SPGR_GE_Dir)
 
 
 if ~ exist('realDicomsDir','var') || isempty(realDicomsDir)
@@ -187,19 +187,50 @@ nii = make_nii(iMag,vox);
 save_nii(nii,'iMag.nii');
 
 
-% brain extraction
-% generate mask from magnitude of the 1th echo
-disp('--> extract brain volume and generate mask ...');
-setenv('bet_thr',num2str(bet_thr));
-setenv('bet_smooth',num2str(bet_smooth));
-[~,~] = unix('rm BET*');
-% unix('bet2 iMag.nii BET -f 0.4 -m -w 2');
-unix('bet2 src/mag1.nii BET -f 0.4 -m -w 2');
-unix('gunzip -f BET.nii.gz');
-unix('gunzip -f BET_mask.nii.gz');
-nii = load_nii('BET_mask.nii');
-mask = double(nii.img);
+if exist('QSM_SPGR_GE_Dir','var')
+    path_qsm = pwd;
 
+    setenv('QSM_SPGR_GE_Dir',QSM_SPGR_GE_Dir);
+    setenv('path_qsm',path_qsm);
+    
+    % register MEGRE to MEBRAVO
+    !flirt -in ${QSM_SPGR_GE_Dir}/src/mag1.nii -ref ${path_qsm}/src/mag1.nii -out ${path_qsm}/qsm2bravo -omat ${path_qsm}/qsm2bravo.mat -bins 256 -cost corratio -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -dof 12  -interp trilinear
+    !flirt -in ${QSM_SPGR_GE_Dir}/BET_mask.nii -applyxfm -init ${path_qsm}/qsm2bravo.mat -out ${path_qsm}/BET_mask_flirt -paddingsize 0.0 -interp trilinear -ref ${path_qsm}/src/mag1.nii 
+    !gunzip ${path_qsm}/BET_mask_flirt.nii.gz
+
+    % load FLIRT registered BET mask from MEGRE scan
+    nii = load_nii('BET_mask_flirt.nii');
+    mask = double(nii.img);
+    mask = (mask > 0);
+
+else
+    % brain extraction
+    % generate mask from magnitude of the 1th echo
+    disp('--> extract brain volume and generate mask ...');
+    setenv('bet_thr',num2str(bet_thr));
+    setenv('bet_smooth',num2str(bet_smooth));
+    [~,~] = unix('rm BET*');
+
+    % unix('fslswapdim src/mag1.nii -z x -y src/mag1_axial.nii.gz')
+    % unix('bet2 src/mag1_axial.nii.gz BET -f 0.5 -m -w 2 -g -0.4');
+
+    unix('fslswapdim iMag.nii -z x -y iMag_axial.nii.gz')
+    unix('bet2 iMag_axial.nii.gz BET -f 0.4 -m -w 2 -g -0.4');
+
+    unix('fslswapdim BET_mask.nii.gz y -z -x BET_mask_sag.nii.gz')
+    unix('fslswapdim BET.nii.gz y -z -x BET_sag.nii.gz');
+
+    unix('rm BET_mask.nii.gz BET.nii.gz');
+
+    unix('gunzip -f BET_sag.nii.gz');
+    unix('gunzip -f BET_mask_sag.nii.gz');
+
+    unix('mv BET_sag.nii BET.nii');
+    unix('mv BET_mask_sag.nii BET_mask.nii');
+
+    nii = load_nii('BET_mask.nii');
+    mask = double(nii.img);
+end
 
 
 
