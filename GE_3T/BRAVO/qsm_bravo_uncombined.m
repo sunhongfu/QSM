@@ -85,6 +85,13 @@ if ~ isfield(options,'interp')
     options.interp = 0;
 end
 
+
+if ~ isfield(options,'orien')
+    options.orien = 'saggital';
+end
+
+
+
 readout    = options.readout;
 r_mask     = options.r_mask;
 fit_thr    = options.fit_thr;
@@ -174,6 +181,11 @@ cd(path_qsm);
 
 mag = abs(real+1j*imag);
 ph = angle(real+1j*imag);
+
+if strcmpi('unipolar',readout)
+    ph = -ph;
+end
+
 clear real imag
 
 
@@ -212,19 +224,26 @@ else
     % unix('fslswapdim src/mag1.nii -z x -y src/mag1_axial.nii.gz')
     % unix('bet2 src/mag1_axial.nii.gz BET -f 0.5 -m -w 2 -g -0.4');
 
-    unix('fslswapdim iMag.nii -z x -y iMag_axial.nii.gz')
-    unix('bet2 iMag_axial.nii.gz BET -f 0.4 -m -w 2 -g -0.4');
+    if strcmpi('axial',options.orien)
+        unix('cp iMag.nii iMag_axial.nii');
+        unix('bet2 iMag_axial.nii.gz BET -f 0.3 -m -w 2');
+        unix('gunzip -f BET.nii.gz');
+        unix('gunzip -f BET_mask.nii.gz');
+    else
+        unix('fslswapdim iMag.nii -z x -y iMag_axial.nii.gz')
+        unix('bet2 iMag_axial.nii.gz BET -f 0.4 -m -w 2 -g -0.4');
 
-    unix('fslswapdim BET_mask.nii.gz y -z -x BET_mask_sag.nii.gz')
-    unix('fslswapdim BET.nii.gz y -z -x BET_sag.nii.gz');
+        unix('fslswapdim BET_mask.nii.gz y -z -x BET_mask_sag.nii.gz')
+        unix('fslswapdim BET.nii.gz y -z -x BET_sag.nii.gz');
 
-    unix('rm BET_mask.nii.gz BET.nii.gz');
+        unix('rm BET_mask.nii.gz BET.nii.gz');
 
-    unix('gunzip -f BET_sag.nii.gz');
-    unix('gunzip -f BET_mask_sag.nii.gz');
+        unix('gunzip -f BET_sag.nii.gz');
+        unix('gunzip -f BET_mask_sag.nii.gz');
 
-    unix('mv BET_sag.nii BET.nii');
-    unix('mv BET_mask_sag.nii BET_mask.nii');
+        unix('mv BET_sag.nii BET.nii');
+        unix('mv BET_mask_sag.nii BET_mask.nii');
+    end
 
     nii = load_nii('BET_mask.nii');
     mask = double(nii.img);
@@ -554,15 +573,15 @@ if sum(strcmpi('resharp',bkg_rm))
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',2000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',1500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',5000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',2000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',1500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',5000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
