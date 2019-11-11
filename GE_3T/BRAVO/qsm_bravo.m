@@ -553,15 +553,15 @@ if sum(strcmpi('resharp',bkg_rm))
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',2000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',1500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',5000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',2000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',1500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',5000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
