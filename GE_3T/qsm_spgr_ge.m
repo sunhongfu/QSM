@@ -477,15 +477,17 @@ if sum(strcmpi('resharp',bkg_rm))
     QSM = MEDI_L1('lambda',1000);
     nii = make_nii(QSM.*Mask,vox);
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',2000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',1500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-     QSM = MEDI_L1('lambda',5000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+
+% other MEDI regularization weights
+    % QSM = MEDI_L1('lambda',2000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    %  QSM = MEDI_L1('lambda',1500);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    %  QSM = MEDI_L1('lambda',5000);
+    % nii = make_nii(QSM.*Mask,vox);
+    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
@@ -596,7 +598,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-save('all.mat','-v7.3');
+
 
 % R2* mapping
 [R2, T2, amp] = r2imgfit2(double(mag),TE,repmat(mask,[1 1 1 imsize(4)]));
@@ -606,6 +608,8 @@ nii = make_nii(T2,vox);
 save_nii(nii,'T2.nii');
 nii = make_nii(amp,vox);
 save_nii(nii,'amp.nii');
+
+save('all.mat','-v7.3');
 
 cd(init_dir);
 
