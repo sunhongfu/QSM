@@ -1,4 +1,4 @@
-function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
+function recon_arc_asset(pfilePath, calibrationPfile, kacq_file, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;
@@ -38,7 +38,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % Synthesize KSpace to get full kSpace
     kSpace = zeros(pfile.xRes, pfile.yRes, acquiredSlices, pfile.channels, pfile.echoes, pfile.passes,'single');
 
-    if exist('kacq_file','var')
+    if exist('kacq_file','var') && ~isempty(kacq_file)
         GERecon('Arc.LoadKacq', kacq_file);
     end
 
@@ -61,7 +61,9 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % ASSET recon
     % change the p-file header of ASSET
     setenv('pfilePath',pfilePath);
-    unix('/Users/hongfusun/bin/HS_ModHeader --pfile $pfilePath');
+    % unix('/Users/hongfusun/bin/orchestra/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
+    % unix('/Users/uqhsun8/bin/orchestra/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
+    unix('~/bin/orchestra/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
     pfilePath=[pfilePath '.mod'];
     % Load Pfile
     clear GERecon
@@ -86,6 +88,8 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % Transform Across Slices
     kSpace = ifft(kSpace, pfile.slicesPerPass, 3);
 
+    channelImages = zeros(pfile.xRes, pfile.yRes, pfile.channels,'single');
+    unaliasedImage = zeros(pfile.xRes, pfile.yRes, acquiredSlices, pfile.echoes, pfile.passes,'single');
     for pass = 1:pfile.passes
         for echo = 1:pfile.echoes
             for slice = 1:pfile.slicesPerPass
@@ -96,9 +100,10 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
                 % Get slice information (corners and orientation) for this slice location
                 sliceInfo.pass = pass;
                 sliceInfo.sliceInPass = slice;
+                %info = GERecon('Pfile.Info', sliceInfo);
                 info = GERecon('Pfile.Info', slice);
+%                 info = GERecon('Pfile.Corners', slice);
                 unaliasedImage(:,:,slice,echo,pass) = GERecon('Asset.Unalias', channelImages, info);
-                % unaliasedImage(:,:,slice,echo,pass) = channelImages;
             end
         end
     end
@@ -112,17 +117,18 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
     % correct for phase chopping
     unaliasedImage = fft(fft(fft(fftshift(fftshift(fftshift(ifft(ifft(ifft(unaliasedImage,[],1),[],2),[],3),1),2),3),[],1),[],2),[],3);
 
+    mkdir(outputDir);
     nii=make_nii(abs(unaliasedImage));
-    save_nii(nii,'unaliasedImage_mag.nii');
+    save_nii(nii,[outputDir '/unaliasedImage_mag.nii']);
     nii=make_nii(angle(unaliasedImage));
-    save_nii(nii,'unaliasedImage_pha.nii');
+    save_nii(nii,[outputDir '/unaliasedImage_pha.nii']);
 
 
     % save the matlab matrix for later use
-    save('unaliasedImage','unaliasedImage');
+    save([outputDir '/unaliasedImage'],'unaliasedImage','-v7.3');
 
 
-    mkdir(outputDir);
+
     mkdir([outputDir '/DICOMs_real']);
     mkdir([outputDir '/DICOMs_imag']);
     mkdir([outputDir '/DICOMs_mag']);
@@ -169,6 +175,7 @@ function recon_arc_asset2(pfilePath, calibrationPfile, kacq_file, outputDir)
 
                 % Save DICOMs
                 imageNumber = ImageNumber(pass, info.Number, echo, pfile);
+                % no need to use this ImageNumber function, see recon_arc function for this part
                 filename = [outputDir '/DICOMs_real/realImage' num2str(imageNumber,'%03d') '.dcm'];
                 GERecon('Dicom.Write', filename, finalRealImage, imageNumber, info.Orientation, info.Corners, (1000), 'desp', tenum, teval, etl);
                 filename = [outputDir '/DICOMs_imag/imagImage' num2str(imageNumber,'%03d') '.dcm'];

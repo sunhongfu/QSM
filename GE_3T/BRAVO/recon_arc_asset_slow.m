@@ -1,4 +1,4 @@
-function recon_arc_asset(pfilePath, calibrationPfile, outputDir)
+function recon_arc_asset_slow(pfilePath, calibrationPfile, outputDir)
 
     if ~ exist('outputDir','var') || isempty(outputDir)
         outputDir = pwd;
@@ -230,7 +230,7 @@ function recon_arc_asset(pfilePath, calibrationPfile, outputDir)
     % ASSET recon
     % change the p-file header of ASSET
     setenv('pfilePath',pfilePath);
-    unix('/Users/hongfusun/bin/orchestra-sdk-1.7-1/build/BuildOutputs/bin/HS_ModHeader --pfile $pfilePath');
+    unix('/Users/uqhsun8/bin/HS_ModHeader --pfile $pfilePath');
     pfilePath=[pfilePath '.mod'];
     % Load Pfile
     clear GERecon
@@ -302,20 +302,3 @@ function recon_arc_asset(pfilePath, calibrationPfile, outputDir)
     end
 
 end
-
-
-
-function number = ImageNumber(pass, slice, echo, pfile)
-% Image numbering scheme (P = Phase; S = Slice; E = Echo):
-% P0S0E0, P0S0E1, ... P0S0En, P0S1E0, P0S1E1, ... P0S1En, ... P0SnEn, ...
-% P1S0E0, P1S0E1, ... PnSnEn
-
-    % Need to map the legacy "pass" number to a phase number
-    numPassesPerPhase = fix(pfile.passes / pfile.phases);
-    phase = fix(pass / numPassesPerPhase);
-
-    slicesPerPhase = pfile.slicesPerPass * numPassesPerPhase * pfile.echoes;
-    number = (phase-1) * slicesPerPhase + (slice-1) * pfile.echoes + (echo-1) + 1;
-end
-
-
