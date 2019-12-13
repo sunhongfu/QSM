@@ -306,13 +306,13 @@ elseif strcmpi('bestpath',ph_unwrap)
         unph(:,:,:,echo_num) = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
         fclose(fid);
 
-        fid = fopen(['reliability' num2str(echo_num) '.dat'],'r');
-        reliability_raw = fread(fid,'float');
-        reliability_raw = reshape(reliability_raw,imsize(1:3));
-        fclose(fid);
+        % fid = fopen(['reliability' num2str(echo_num) '.dat'],'r');
+        % reliability_raw = fread(fid,'float');
+        % reliability_raw = reshape(reliability_raw,imsize(1:3));
+        % fclose(fid);
 
-        nii = make_nii(reliability_raw.*mask,vox);
-        save_nii(nii,['reliability_raw' num2str(echo_num) '.nii']);
+        % nii = make_nii(reliability_raw.*mask,vox);
+        % save_nii(nii,['reliability_raw' num2str(echo_num) '.nii']);
     end
 
     nii = make_nii(unph,vox);
@@ -609,6 +609,8 @@ save_nii(nii,'T2.nii');
 nii = make_nii(amp,vox);
 save_nii(nii,'amp.nii');
 
+
+[~,~] = unix('rm *.dat ');
 save('all.mat','-v7.3');
 
 cd(init_dir);
