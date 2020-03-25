@@ -17,6 +17,7 @@ function qsm_r2s_prisma(path_mag, path_ph, path_out, options)
 %    .bkg_rm     - background field removal method(s)        : 'resharp'
 %                  options: 'pdf','sharp','resharp','esharp','lbv'
 %                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
+%                  set to 'lnqsm' or 'tfi' for LN-QSM and TFI methods
 %    .t_svd      - truncation of SVD for SHARP               : 0.1
 %    .smv_rad    - radius (mm) of SMV convolution kernel     : 3
 %    .tik_reg    - Tikhonov regularization for resharp       : 1e-3
@@ -190,7 +191,7 @@ end
 
 
 % define output directories
-path_qsm = [path_out '/QSM_R2S_PRISMA_iso'];
+path_qsm = [path_out '/QSM_R2S_PRISMA'];
 mkdir(path_qsm);
 init_dir = pwd;
 cd(path_qsm);
@@ -211,7 +212,7 @@ end
 disp('--> extract brain volume and generate mask ...');
 setenv('bet_thr',num2str(bet_thr));
 setenv('bet_smooth',num2str(bet_smooth));
-[status,cmdout] = unix('rm BET*');
+[~,~] = unix('rm BET*');
 unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
 unix('gunzip -f BET.nii.gz');
 unix('gunzip -f BET_mask.nii.gz');
@@ -362,6 +363,83 @@ nii = make_nii(tfs,vox);
 save_nii(nii,'tfs.nii');
 
 
+% LN-QSM
+if sum(strcmpi('lnqsm',bkg_rm))
+    mkdir LN-QSM
+
+    maskR = mask.*R;
+    iMag = sqrt(sum(mag.^2,4));
+    Res_wt = iMag.*maskR;
+    Res_wt = Res_wt/sum(Res_wt(:))*sum(maskR(:));
+
+    % mask_erosion
+    r = 1; 
+    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+    ker = h/sum(h(:));
+    imsize = size(mask);
+    mask_tmp = convn(mask,ker,'same');
+    mask_ero1 = zeros(imsize);
+    mask_ero1(mask_tmp > 0.999999) = 1; % no error tolerance
+    r = 2; 
+    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+    ker = h/sum(h(:));
+    imsize = size(mask);
+    mask_tmp = convn(mask,ker,'same');
+    mask_ero2 = zeros(imsize);
+    mask_ero2(mask_tmp > 0.999999) = 1; % no error tolerance
+    r = 3; 
+    [X,Y,Z] = ndgrid(-r:r,-r:r,-r:r);
+    h = (X.^2/r^2 + Y.^2/r^2 + Z.^2/r^2 <= 1);
+    ker = h/sum(h(:));
+    imsize = size(mask);
+    mask_tmp = convn(mask,ker,'same');
+    mask_ero3 = zeros(imsize);
+    mask_ero3(mask_tmp > 0.999999) = 1; % no error tolerance
+    
+    % (1) no erosion, keep the full brain
+    P = maskR + 30*(1 - maskR);
+    chi_ero0_500 = tikhonov_qsm(tfs, Res_wt.*maskR, 1, maskR, maskR, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero0_500.*maskR,vox);
+    save_nii(nii,'LN-QSM/chi_ero0_tik_1e-3_tv_1e-4_500.nii');
+
+    % (2) erode 1 voxel from brain edge
+    P = mask_ero1 + 30*(1 - mask_ero1);
+    chi_ero1_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero1, 1, mask_ero1, mask_ero1, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero1_500.*mask_ero1,vox);
+    save_nii(nii,'LN-QSM/chi_ero1_tik_1e-3_tv_1e-4_500.nii');
+
+    % (3) erode 2 voxel from brain edge
+    P = mask_ero2 + 30*(1 - mask_ero2);
+    chi_ero2_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero2, 1, mask_ero2, mask_ero2, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero2_500.*mask_ero2,vox);
+    save_nii(nii,'LN-QSM/chi_ero2_tik_1e-3_tv_1e-4_500.nii');
+
+    % (4) erode 3 voxel from brain edge
+    P = mask_ero3 + 30*(1 - mask_ero3);
+    chi_ero3_500 = tikhonov_qsm(tfs, Res_wt.*mask_ero3, 1, mask_ero3, mask_ero3, 0, 1e-4, 0.001, 0, vox, P, z_prjs, 500);
+    nii = make_nii(chi_ero3_500.*mask_ero3,vox);
+    save_nii(nii,'LN-QSM/chi_ero3_tik_1e-3_tv_1e-4_500.nii');
+    
+%     % pad zeros
+%     tfs_pad = padarray(tfs,[0 0 80]);
+%     Res_wt_pad = padarray(Res_wt,[0 0 80]);
+%     
+%     mask_ero0_pad = padarray(maskR,[0 0 80]);
+%     P_pad = mask_ero0_pad + 30*(1 - mask_ero0_pad);
+%     chi_ero0_500_pad = tikhonov_qsm(tfs_pad, Res_wt_pad.*mask_ero0_pad, 1, mask_ero0_pad, mask_ero0_pad, 0, 1e-4, 0.001, 0, vox, P_pad, z_prjs, 500);
+%     nii = make_nii(chi_ero0_500_pad(:,:,81:end-80).*maskR,vox);
+%     save_nii(nii,'LN-QSM/chi_ero0_tik_1e-3_tv_1e-4_500_pad80.nii');
+%     
+%     mask_ero3_pad = padarray(mask_ero3,[0 0 80]);
+%     P_pad = mask_ero3_pad + 30*(1 - mask_ero3_pad);
+%     chi_ero3_500_pad = tikhonov_qsm(tfs_pad, Res_wt_pad.*mask_ero3_pad, 1, mask_ero3_pad, mask_ero3_pad, 0, 1e-4, 0.001, 0, vox, P_pad, z_prjs, 500);
+%     nii = make_nii(chi_ero3_500_pad(:,:,81:end-80).*mask_ero3,vox);
+%     save_nii(nii,'LN-QSM/chi_ero3_tik_1e-3_tv_1e-4_500_pad80.nii');
+end
+
+    
 % background field removal
 % PDF
 if sum(strcmpi('pdf',bkg_rm))
@@ -600,8 +678,6 @@ end
 
 % TFI
 if sum(strcmpi('tfi',bkg_rm))
-
-
     mkdir TFI
     %%%% Generate the Magnitude image %%%%
     iMag = sqrt(sum(mag.^2,4));
@@ -722,8 +798,6 @@ if sum(strcmpi('tfi',bkg_rm))
     % QSM = TFI_L1('filename', 'RDF_brain.mat', 'lambda', 2000);
     % nii = make_nii(QSM.*Mask,vox);
     % save_nii(nii,'TFI/TFI_0_lambda2000_ero3.nii');
-
-
 end
 
 
