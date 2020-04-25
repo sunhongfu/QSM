@@ -1,5 +1,5 @@
 # Welcome to QSM
-The repository is for reconstructing Quantitative Susceptiblity Mapping (QSM) images from MRI. The codes cover image recons for single-echo SWI or multiple-echo GRE sequence as well as gradient EPI sequence.
+The repository is for reconstructing Quantitative Susceptibility Mapping (QSM) images from MRI. The codes cover image recons for single-echo SWI or multiple-echo GRE sequence as well as gradient EPI sequence.
 
 # References
 * For the background field removal method RESHARP, please reference:  
