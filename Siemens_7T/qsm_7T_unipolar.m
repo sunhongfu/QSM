@@ -54,11 +54,11 @@ nSL = length(ph_list);
 
 % get the sequence parameters
 dicom_info = dicominfo([path_pha,filesep,ph_list(end).name]);
-NumberOfEchoes = dicom_info.EchoNumber; 
+NumberOfEchoes = dicom_info.EchoNumbers; 
 
 for i = 1:nSL/NumberOfEchoes:nSL % read in TEs
     dicom_info = dicominfo([path_pha,filesep,ph_list(i).name]);
-    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+    TE(dicom_info.EchoNumbers) = dicom_info.EchoTime*1e-3;
 end
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
