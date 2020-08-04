@@ -60,9 +60,9 @@ D = fftshift(D);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 field = real(ifftn(D.*fftn(sus)));
+D = ifftshift(D);
 
 if padding_flag
     field = field(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
-    D = ifftshift(D);
     D = D(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
 end
