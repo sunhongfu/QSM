@@ -1,5 +1,5 @@
 
-function [field, D] = forward_field_calc(sus, vox, z_prjs, padding_flag)
+function [field, D, dipole_image] = forward_field_calc(sus, vox, z_prjs, padding_flag)
 
 %   SUS    : susceptibility distribution
 %   VOX    : voxel size, e.g. [1, 1, 1] for isotropic resolution
@@ -61,8 +61,10 @@ D = fftshift(D);
 
 field = real(ifftn(D.*fftn(sus)));
 D = ifftshift(D);
+dipole_image = real(fftshift(fftn(fftshift(D))));
 
 if padding_flag
     field = field(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
     D = D(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
+    dipole_image = dipole_image(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
 end
