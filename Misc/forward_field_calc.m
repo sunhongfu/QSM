@@ -1,5 +1,5 @@
 
-function [field, D, dipole_image] = forward_field_calc(sus, vox, z_prjs, padding_flag)
+function [field, D, d, field_kspace] = forward_field_calc(sus, vox, z_prjs, padding_flag)
 
 %   SUS    : susceptibility distribution
 %   VOX    : voxel size, e.g. [1, 1, 1] for isotropic resolution
@@ -47,24 +47,25 @@ D(floor(Nx/2+1),floor(Ny/2+1),floor(Nz/2+1)) = 0;
 D = fftshift(D);
 
 % % (2) image space domain
-% [X,Y,Z]=ndgrid(-Nx/2:(Nx/2-1),-Ny/2:(Ny/2-1),-Nz/2:(Nz/2-1));
+[X,Y,Z]=ndgrid(-Nx/2:(Nx/2-1),-Ny/2:(Ny/2-1),-Nz/2:(Nz/2-1));
 
-% X = X*vox(1);
-% Y = Y*vox(2);
-% Z = Z*vox(3);
+X = X*vox(1);
+Y = Y*vox(2);
+Z = Z*vox(3);
 
-% d = (3*( X*z_prjs(1) + Y*z_prjs(2) + Z*z_prjs(3)).^2 - X.^2-Y.^2-Z.^2)./(4*pi*(X.^2+Y.^2+Z.^2).^2.5);
+d = (3*( X*z_prjs(1) + Y*z_prjs(2) + Z*z_prjs(3)).^2 - X.^2-Y.^2-Z.^2)./(4*pi*(X.^2+Y.^2+Z.^2).^2.5);
 
-% d(isnan(d)) = 0;
+d(isnan(d)) = 0;
 % D = fftn(fftshift(d));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+field_kspace = ifftshift(D.*fftn(sus));
 field = real(ifftn(D.*fftn(sus)));
 D = ifftshift(D);
-dipole_image = real(fftshift(fftn(fftshift(D))));
 
 if padding_flag
     field = field(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
     D = D(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
-    dipole_image = dipole_image(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
+    d = d(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
+    field_kspace = field_kspace(1+Nx/4:end-Nx/4, 1+Ny/4:end-Ny/4, 1+Nz/4:end-Nz/4);
 end
