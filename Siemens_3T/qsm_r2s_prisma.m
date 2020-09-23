@@ -137,7 +137,7 @@ dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
 EchoTrainLength = dicom_info.EchoTrainLength;
 for i = 1:EchoTrainLength % read in TEs
     dicom_info = dicominfo([path_mag,filesep,mag_list(1+(i-1)*(length(mag_list))./EchoTrainLength).name]);
-    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+    TE(dicom_info.EchoNumbers) = dicom_info.EchoTime*1e-3;
 end
 vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 
