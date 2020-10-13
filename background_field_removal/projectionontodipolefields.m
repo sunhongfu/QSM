@@ -1,4 +1,4 @@
-function lfs = projectionontodipolefields(tfs,mask,vox,weight,z_prjs)
+function [lfs,bkg_sus,bkg_field] = projectionontodipolefields(tfs,mask,vox,weight,z_prjs,num_iter)
 
 
 if ~ exist('z_prjs','var') || isempty(z_prjs)
@@ -7,9 +7,9 @@ end
 
 
 % add zero slices
-tfs = padarray(tfs,[0 0 20]);
-mask = padarray(mask,[0 0 20]);
-weight = padarray(weight,[0 0 20]);
+% tfs = padarray(tfs,[0 0 20]);
+% mask = padarray(mask,[0 0 20]);
+% weight = padarray(weight,[0 0 20]);
 
 
 
@@ -42,7 +42,7 @@ W = weight.*mask; % weights
 b = M.*ifftn(D.*fftn(W.*W.*tfs));
 b = b(:);
 
-res = cgs(@Afun,b,1e-6, 200);
+res = cgs(@Afun,b,1e-6, num_iter);
 lfs = mask.*real(tfs-ifftn(D.*fftn(M.*reshape(res,[Nx,Ny,Nz]))));
 
 function y = Afun(x)
@@ -51,9 +51,11 @@ function y = Afun(x)
     y = y(:);
 end
 
+bkg_sus = reshape(res,[Nx,Ny,Nz]);
+bkg_field = mask.*real(ifftn(D.*fftn(M.*bkg_sus)));
 
-
-% remove added zero slices
-lfs = lfs(:,:,21:end-20);
+% % remove added zero slices
+% lfs = lfs(:,:,21:end-20);
+% bkg_sus = bkg_sus(:,:,21:end-20);
 
 end
