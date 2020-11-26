@@ -95,14 +95,14 @@ if strcmpi('smooth3',smooth_method)
     if parpool_flag
         parpool;
         parfor chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5)*2+1); 
     %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
         delete(gcp('nocreate'));
     else
         for chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5)*2+1); 
     %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
