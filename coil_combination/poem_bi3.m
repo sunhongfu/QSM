@@ -30,7 +30,7 @@ function [ph_cmb,mag_cmb] = poem_bi3(mag, pha, vox, te, mask, smooth_method, par
     TE3 = te(3)
     imsize = size(mag);
     
-    ph_diff = exp(1j*pha(:,:,:,2,:)).^2./exp(1j*pha(:,:,:,1,:))./exp(1j*pha(:,:,:,1,:)) ;
+    ph_diff = exp(1j*pha(:,:,:,2,:)).^2./exp(1j*pha(:,:,:,1,:))./exp(1j*pha(:,:,:,3,:)) ;
     ph_diff_cmb = sum(ph_diff,5);
     ph_diff_cmb(isnan(ph_diff_cmb)) = 0;
     
@@ -90,7 +90,7 @@ function [ph_cmb,mag_cmb] = poem_bi3(mag, pha, vox, te, mask, smooth_method, par
     % maybe later change to smooth the real and imag parts seperately, and try
     % guassian filter!
     if strcmpi('smooth3',smooth_method)
-                unph_diff_cmb = smooth3(unph_diff_cmb,'box',round(5./vox)*2+1); 
+                unph_diff_cmb = smooth3(unph_diff_cmb,'box',round(5)*2+1); 
         %       unph_diff_cmb = smooth3(unph_diff_cmb,'box',round(2./vox)*2+1); 
     
     elseif strcmpi('gaussian',smooth_method)
@@ -123,10 +123,10 @@ function [ph_cmb,mag_cmb] = poem_bi3(mag, pha, vox, te, mask, smooth_method, par
     else
         error('what method to use for smoothing? smooth3 or poly3 or poly3_nlcg')
     end
-    nii = make_nii(angle(offsets),vox);
+    nii = make_nii((unph_diff_cmb),vox);
     save_nii(nii,'offsets_smooth.nii');
     
     
 
-    pha(:,:,:,2,:) = angle(exp(1j.*pha(:,:,:,2,:))./exp(1j.*unph_diff_cmb)
-    [ph_cmb,mag_cmb] = poem(mag, pha, vox, te, mask, smooth_method, parpool_flag);
+pha(:,:,:,2,:) = angle(exp(1j.*pha(:,:,:,2,:))./exp(1j.*unph_diff_cmb));
+[ph_cmb,mag_cmb] = poem(mag, pha, vox, te, mask);
