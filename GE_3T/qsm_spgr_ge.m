@@ -167,7 +167,7 @@ for zCount = 1 : imsize(3)
         theReal = ...
             permute(chopper(zCount)*double( dicomread( [path_dicom,filesep,list_dicom(Counter).name] ) ),[2 1]) ;
         dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter).name]);
-	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+	    TE(dicom_info.EchoNumbers) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter ).name ) ;
@@ -444,13 +444,13 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(lfs_resharp,vox);
     save_nii(nii,['RESHARP/lfs_resharp_tik_', num2str(tik_reg), '_num_', num2str(cgs_num), '.nii']);
 
-%     % inversion of susceptibility 
-%     disp('--> TV susceptibility inversion on RESHARP...');
-%     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
-%    
-%     % save nifti
-%     nii = make_nii(sus_resharp.*mask_resharp,vox);
-%     save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
+    % inversion of susceptibility 
+    disp('--> TV susceptibility inversion on RESHARP...');
+    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
+   
+    % save nifti
+    nii = make_nii(sus_resharp.*mask_resharp,vox);
+    save_nii(nii,['RESHARP/sus_resharp_tik_', num2str(tik_reg), '_tv_', num2str(tv_reg), '_num_', num2str(inv_num), '.nii']);
     
     
     % iLSQR
@@ -479,15 +479,15 @@ if sum(strcmpi('resharp',bkg_rm))
     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 % other MEDI regularization weights
-    % QSM = MEDI_L1('lambda',2000);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    %  QSM = MEDI_L1('lambda',1500);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    %  QSM = MEDI_L1('lambda',5000);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',2000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+     QSM = MEDI_L1('lambda',1500);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+     QSM = MEDI_L1('lambda',5000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
