@@ -1,4 +1,6 @@
 # Welcome to QSM
+For deep learning-based QSM methods, check out the other github repo: [deepMRI](https://github.com/sunhongfu/deepMRI)
+
 The repository is for reconstructing Quantitative Susceptibility Mapping (QSM) images from MRI. The codes cover image recons for single-echo SWI or multiple-echo GRE sequence as well as gradient EPI sequence.
 
 # References
