@@ -34,7 +34,7 @@ if ~ inter
 
 	TE_rep = repmat(TE(:),[1 np*nv*ns]);
 
-	lfs = sum(mag.*ph.*TE_rep,1)./(sum(mag.*TE_rep.*TE_rep)+eps);
+	lfs = sum(mag.*ph.*TE_rep,1)./(sum(mag.*TE_rep.*TE_rep,1)+eps);
 	lfs = reshape(lfs,[np nv ns]);
 
 	% caculate the fitting residual
@@ -60,7 +60,7 @@ else
 		y = ph(:,i);
 		w = mag(:,i);
 		beta(:,i) = (x'*diag(w)*x)\(x'*diag(w)*y);
-		res(i) = (y-x*beta(:,i))'*diag(w)*(y-x*beta(:,i))/sum(w)*ne;
+		res(i) = (y-x*beta(:,i))'*diag(w)*(y-x*beta(:,i))/sum(w,1)*ne;
 	end
 	
 	if exist('parpool')
