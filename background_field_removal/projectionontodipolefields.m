@@ -17,20 +17,34 @@ end
 
 
 % create K-space filter kernel D
-%%%%% make this a seperate function in the future
-FOV = vox.*[Nx,Ny,Nz];
-FOVx = FOV(1);
-FOVy = FOV(2);
-FOVz = FOV(3);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (1) k-space domain
+% FOV = vox.*[Nx,Ny,Nz];
+% FOVx = FOV(1);
+% FOVy = FOV(2);
+% FOVz = FOV(3);
 
-x = -Nx/2:Nx/2-1;
-y = -Ny/2:Ny/2-1;
-z = -Nz/2:Nz/2-1;
-[kx,ky,kz] = ndgrid(x/FOVx,y/FOVy,z/FOVz);
-% D = 1/3 - kz.^2./(kx.^2 + ky.^2 + kz.^2);
-D = 1/3 - (kx.*z_prjs(1)+ky.*z_prjs(2)+kz.*z_prjs(3)).^2./(kx.^2 + ky.^2 + kz.^2);
-D(floor(Nx/2+1),floor(Ny/2+1),floor(Nz/2+1)) = 0;
-D = fftshift(D);
+% x = -Nx/2:Nx/2-1;
+% y = -Ny/2:Ny/2-1;
+% z = -Nz/2:Nz/2-1;
+% [kx,ky,kz] = ndgrid(x/FOVx,y/FOVy,z/FOVz);
+% % D = 1/3 - kz.^2./(kx.^2 + ky.^2 + kz.^2);
+% D = 1/3 - (kx.*z_prjs(1)+ky.*z_prjs(2)+kz.*z_prjs(3)).^2./(kx.^2 + ky.^2 + kz.^2);
+% D(floor(Nx/2+1),floor(Ny/2+1),floor(Nz/2+1)) = 0;
+% D = fftshift(D);
+
+% % (2) image space domain
+[X,Y,Z]=ndgrid(-Nx/2:(Nx/2-1),-Ny/2:(Ny/2-1),-Nz/2:(Nz/2-1));
+
+X = X*vox(1);
+Y = Y*vox(2);
+Z = Z*vox(3);
+
+d = (3*( X*z_prjs(1) + Y*z_prjs(2) + Z*z_prjs(3)).^2 - X.^2-Y.^2-Z.^2)./(4*pi*(X.^2+Y.^2+Z.^2).^2.5);
+
+d(isnan(d)) = 0;
+D = fftn(fftshift(d));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
