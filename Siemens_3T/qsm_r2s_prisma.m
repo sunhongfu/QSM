@@ -133,8 +133,9 @@ mag_list = dir(path_mag);
 mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
 
 % get the sequence parameters
-dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
-EchoTrainLength = dicom_info.EchoTrainLength;
+dicom_info = dicominfo([path_mag,filesep,mag_list(end).name]);
+% EchoTrainLength = dicom_info.EchoTrainLength;
+EchoTrainLength = dicom_info.EchoNumbers;
 for i = 1:EchoTrainLength % read in TEs
     dicom_info = dicominfo([path_mag,filesep,mag_list(1+(i-1)*(length(mag_list))./EchoTrainLength).name]);
     TE(dicom_info.EchoNumbers) = dicom_info.EchoTime*1e-3;
