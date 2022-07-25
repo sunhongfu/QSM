@@ -219,11 +219,12 @@ end
 mkdir('SWI')
 % perform multi-echo SWI ---- method 1
 % homodyne filtering raw phase
-swi = 0;
+swi_sos = 0;
 for echo = 1:imsize(4)
     % ph_filtered = angle(homodyne(exp(1j.*tfs),16));
     % ph_filtered = angle(homodyne(exp(1j.*ph(:,:,:,echo)),64));
-    ph_filtered = angle(homodyne(mag(:,:,:,echo).*exp(1j.*ph(:,:,:,echo)),64));
+    ph_filtered = angle(homodyne(mag(:,:,:,echo).*exp(1j.*ph_corr(:,:,:,echo)),64));
+    % ph_filtered = angle(homodyne(mag(:,:,:,echo).*exp(1j.*ph(:,:,:,echo)),double(64-4*echo)));
     swi_mask = ones(size(ph_filtered));
     swi_mask(ph_filtered<0) = (ph_filtered(ph_filtered<0) + pi)/pi;
 
@@ -237,46 +238,46 @@ for echo = 1:imsize(4)
     nii=make_nii(swi); 
     save_nii(nii,['SWI/swi_e' num2str(echo) '.nii']);
 
-    swi_sos = (swi*TE(echo)).^2 + swi_sos;
+    swi_sos = TE(echo)*swi.^2 + swi_sos;
 end
 
-nii = make_nii(swi_sos, vox);
+nii = make_nii(sqrt(swi_sos), vox);
 save_nii(nii,'SWI/swi_sos.nii');
 
 
 
-% perform multi-echo SWI ---- method 2
-% complex fit the raw phase from multiple echoes
-[p1, dp1, relres, p0, iter]=Fit_ppm_complex_TE(mag.*exp(1j.*ph),TE);
-nii = make_nii(p1,vox);
-save_nii(nii,'SWI/p1.nii');
-mag_sos = sum(mag.^2,4);
-nii = make_nii(mag_sos,vox);
-save_nii(nii,'SWI/mag_sos.nii');
+% % perform multi-echo SWI ---- method 2
+% % complex fit the raw phase from multiple echoes
+% [p1, dp1, relres, p0, iter]=Fit_ppm_complex_TE(mag.*exp(1j.*ph),TE);
+% nii = make_nii(p1,vox);
+% save_nii(nii,'SWI/p1.nii');
+% mag_sos = sum(mag.^2,4);
+% nii = make_nii(mag_sos,vox);
+% save_nii(nii,'SWI/mag_sos.nii');
 
-mag_sos_te = 0;
-for echo = 1:5
-    mag_sos_te = (mag(:,:,:,echo).*TE(echo)).^2 + mag_sos_te ;
-end
-nii = make_nii(mag_sos_te,vox);
-save_nii(nii,'SWI/mag_sos_te.nii');
+% mag_sos_te = 0;
+% for echo = 1:imsize(4)
+%     mag_sos_te = (mag(:,:,:,echo).*TE(echo)).^2 + mag_sos_te ;
+% end
+% nii = make_nii(mag_sos_te,vox);
+% save_nii(nii,'SWI/mag_sos_te.nii');
 
-% ph_filtered = angle(homodyne(mag_sos.*exp(1j.*p1*10),128));
-% ph_filtered = angle(homodyne(mag_sos.*exp(1j.*p1),64))*10;
-ph_filtered = angle(homodyne(mag_sos_te.*exp(1j.*p1),64))*5;
-ph_filtered(ph_filtered<-pi) = -pi;
-swi_mask = ones(size(ph_filtered));
-swi_mask(ph_filtered<0) = (ph_filtered(ph_filtered<0) + pi)/pi;
+% % ph_filtered = angle(homodyne(mag_sos.*exp(1j.*p1*10),128));
+% % ph_filtered = angle(homodyne(mag_sos.*exp(1j.*p1),64))*10;
+% ph_filtered = angle(homodyne(mag_sos_te.*exp(1j.*p1),64))*5;
+% ph_filtered(ph_filtered<-pi) = -pi;
+% swi_mask = ones(size(ph_filtered));
+% swi_mask(ph_filtered<0) = (ph_filtered(ph_filtered<0) + pi)/pi;
 
-nii = make_nii(ph_filtered,vox);
-save_nii(nii,'SWI/cpx_fit_ph_filtered.nii');
-nii = make_nii(swi_mask,vox);
-save_nii(nii,'SWI/cpx_fit_swi_mask.nii');
+% nii = make_nii(ph_filtered,vox);
+% save_nii(nii,'SWI/cpx_fit_ph_filtered.nii');
+% nii = make_nii(swi_mask,vox);
+% save_nii(nii,'SWI/cpx_fit_swi_mask.nii');
 
 
-swi = mag_sos_te.*(swi_mask.^4);
-nii=make_nii(swi); 
-save_nii(nii,'SWI/swi_cpx_fit.nii');
+% swi = mag_sos_te.*(swi_mask.^4);
+% nii=make_nii(swi); 
+% save_nii(nii,'SWI/swi_cpx_fit.nii');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SWI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
