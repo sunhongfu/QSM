@@ -155,7 +155,7 @@ for zCount = 1 : imsize(3)
         theMag = ...
             permute(double( dicomread( [path_dicom,filesep,list_dicom(Counter+2).name] ) ),[2 1]) ;
         dicom_info = dicominfo([path_dicom,filesep,list_dicom(Counter+2).name]);
-	    TE(dicom_info.EchoNumber) = dicom_info.EchoTime*1e-3;
+	    TE(dicom_info.EchoNumbers) = dicom_info.EchoTime*1e-3;
 		Counter = Counter + 1 ;
         
         %tmpHeaders{Counter} = dicominfo( imagelist( Counter+2 ).name ) ;

@@ -1,4 +1,4 @@
-function qsm_spgr_ge_daphne(path_dicom, path_out, options)
+function qsm_spgr_ge_fanny(path_dicom, path_out, options)
 %QSM_SPGR_GE Quantitative susceptibility mapping from SPGR sequence at GE (3T).
 %   QSM_SPGR_GE(PATH_DICOM, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -50,7 +50,7 @@ if ~ isfield(options,'r_mask')
 end
 
 if ~ isfield(options,'fit_thr')
-    options.fit_thr = 20;
+    options.fit_thr = 10;
 end
 
 if ~ isfield(options,'bet_thr')
@@ -130,7 +130,8 @@ list_dicom = list_dicom(~strncmpi('.', {list_dicom.name}, 1));
 
 
 dicom_info = dicominfo([path_dicom,filesep,list_dicom(1).name]);
-dicom_info.EchoTrainLength = 10;
+
+dicom_info.EchoTrainLength = 8;
 
 imsize = [dicom_info.Width, dicom_info.Height, ...
             length(list_dicom)/dicom_info.EchoTrainLength/2, ...
@@ -304,6 +305,7 @@ elseif strcmpi('bestpath',ph_unwrap)
         tmp = fread(fid,'float');
         % tmp = tmp - tmp(1);
         unph(:,:,:,echo_num) = reshape(tmp - round(mean(tmp(mask==1))/(2*pi))*2*pi ,imsize(1:3)).*mask;
+%         unph(:,:,:,echo_num) = reshape(tmp,imsize(1:3)).*mask;
         fclose(fid);
 
         fid = fopen(['reliability' num2str(echo_num) '.dat'],'r');
@@ -457,26 +459,26 @@ if sum(strcmpi('resharp',bkg_rm))
     chi_iLSQR = QSM_iLSQR(lfs_resharp*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
     nii = make_nii(chi_iLSQR,vox);
     save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
-    
-    % MEDI
-    %%%%% normalize signal intensity by noise to get SNR %%%
-    %%%% Generate the Magnitude image %%%%
-    iMag = sqrt(sum(mag.^2,4));
-    % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
-    matrix_size = single(imsize(1:3));
-    voxel_size = vox;
-    delta_TE = TE(2) - TE(1);
-    B0_dir = z_prjs';
-    CF = dicom_info.ImagingFrequency *1e6;
-    iFreq = [];
-    N_std = 1;
-    RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
-    Mask = mask_resharp;
-    save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
-         voxel_size delta_TE CF B0_dir;
-    QSM = MEDI_L1('lambda',1000);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+%     
+%     % MEDI
+%     %%%%% normalize signal intensity by noise to get SNR %%%
+%     %%%% Generate the Magnitude image %%%%
+%     iMag = sqrt(sum(mag.^2,4));
+%     % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
+%     matrix_size = single(imsize(1:3));
+%     voxel_size = vox;
+%     delta_TE = TE(2) - TE(1);
+%     B0_dir = z_prjs';
+%     CF = dicom_info.ImagingFrequency *1e6;
+%     iFreq = [];
+%     N_std = 1;
+%     RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+%     Mask = mask_resharp;
+%     save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+%          voxel_size delta_TE CF B0_dir;
+%     QSM = MEDI_L1('lambda',1000);
+%     nii = make_nii(QSM.*Mask,vox);
+%     save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
 end
 
@@ -585,6 +587,17 @@ end
 %
 %end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% % generate R2* maps
+% [R2, T2, amp] = r2imgfit(double(mag),TE,repmat(mask,[1 1 1 imsize(4)]));
+% nii = make_nii(R2,vox);
+% save_nii(nii,'R2.nii');
+% nii = make_nii(T2,vox);
+% save_nii(nii,'T2.nii');
+% nii = make_nii(amp,vox);
+% save_nii(nii,'amp.nii');
+% 
+
 
 save('all.mat','-v7.3');
 cd(init_dir);

@@ -1,4 +1,4 @@
-function [ph_cmb,mag_cmb,coil_sens] = geme_cmb(img, vox, te, mask, smooth_method, parpool_flag)
+function [ph_cmb,mag_cmb,img] = geme_cmb(img, vox, te, mask, smooth_method, parpool_flag)
 %Gradient-echo multi-echo combination (for phase).
 %   PH_CMB = GEME_CMB(IMG,VOX, TE,SMOOTH_METHOD) combines phase from multiple receivers
 %
@@ -10,16 +10,12 @@ function [ph_cmb,mag_cmb,coil_sens] = geme_cmb(img, vox, te, mask, smooth_method
 %   MAG_CMB: magnitude after combination
 %   SMOOTH:  smooth methods(1) smooth3, (2) poly3, (3) poly3_nlcg, (4) gaussian
 
-if ~ exist('mask','var') || isempty(mask)
-    mask = ones(size(img,[1,2,3]));
-end
-
 if ~ exist('smooth_method','var') || isempty(smooth_method)
     smooth_method = 'gaussian';
 end
 
 if ~ exist('parpool_flag','var') || isempty(parpool_flag)
-    parpool_flag = 0;
+    parpool_flag = 1;
 end
 
 if isdeployed
@@ -39,7 +35,6 @@ ph_diff_cmb(isnan(ph_diff_cmb)) = 0;
 nii = make_nii(angle(ph_diff_cmb),vox);
 save_nii(nii,'ph_diff.nii');
 
-clear ph_diff img_diff
 % % perform unwrapping
 % method (1)
 % unix('prelude -p ph_diff.nii -a BET.nii -u unph_diff -m BET_mask.nii -n 12');
@@ -49,7 +44,7 @@ clear ph_diff img_diff
 mag1 = sqrt(sum(abs(img(:,:,:,1,:).^2),5));
 mask_input = mask;
 mask = (mag1 > 0.1*median(mag1(logical(mask(:)))));
-mask = mask | mask_input;
+
 
 % method (2)
 % best path unwrapping
@@ -62,8 +57,6 @@ setenv('ns',num2str(imsize(3)));
 fid = fopen('wrapped_phase_diff.dat','w');
 fwrite(fid,angle(ph_diff_cmb),'float');
 fclose(fid);
-
-clear ph_diff_cmb
 
 mask_unwrp = uint8(mask*255);
 fid = fopen('mask_unwrp.dat','w');
@@ -90,8 +83,7 @@ save_nii(nii,'unph_diff.nii');
 
 % calculate initial phase offsets
 unph_te1_cmb = unph_diff_cmb*TE1/(TE2-TE1);
-% offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
-offsets = img(:,:,:,1,:)./exp(1j*unph_te1_cmb);
+offsets = img(:,:,:,1,:)./repmat(exp(1j*unph_te1_cmb),[1,1,1,1,nrcvrs]);
 offsets = offsets./abs(offsets); % complex phase offset
 offsets(isnan(offsets)) = 0;
 
@@ -105,14 +97,14 @@ if strcmpi('smooth3',smooth_method)
     if parpool_flag
         parpool;
         parfor chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5)*2+1); 
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
     %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
         delete(gcp('nocreate'));
     else
         for chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5)*2+1); 
+            offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(5./vox)*2+1); 
     %       offsets(:,:,:,1,chan) = smooth3(offsets(:,:,:,1,chan),'box',round(2./vox)*2+1); 
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
@@ -122,13 +114,13 @@ elseif strcmpi('gaussian',smooth_method)
     if parpool_flag
         parpool;
         parfor chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),6) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),6);
+            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),4) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),4);
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
         delete(gcp('nocreate'));
     else
         for chan = 1:nrcvrs
-            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),6) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),6);
+            offsets(:,:,:,1,chan) = imgaussfilt3(real(offsets(:,:,:,1,chan)),4) + 1j*imgaussfilt3(imag(offsets(:,:,:,1,chan)),4);
             offsets(:,:,:,1,chan) = offsets(:,:,:,1,chan)./abs(offsets(:,:,:,1,chan));
         end
     end
@@ -166,29 +158,11 @@ save_nii(nii,'offsets_smooth.nii');
 
 
 % combine phase according to complex summation
-% offsets = repmat(offsets,[1,1,1,ne,1]);
+offsets = repmat(offsets,[1,1,1,ne,1]);
 img = img./offsets;
 img(isnan(img)) = 0;
 ph_cmb = angle(sum(img,5));
 ph_cmb(isnan(ph_cmb)) = 0;
-mag_cmb = abs(mean(img,5));
+mag_cmb = abs(sum(img,5));
 mag_cmb(isnan(mag_cmb)) = 0;
 
-% sen = squeeze(abs(img(:,:,:,1,:)))./repmat(mag_cmb(:,:,:,1),[1 1 1 nrcvrs]);
-sen = squeeze(abs(img(:,:,:,1,:)))./mag_cmb(:,:,:,1);
-sen(isnan(sen)) = 0;
-sen(isinf(sen)) = 0;
-nii = make_nii(sen,vox);
-save_nii(nii,'sen_mag_raw.nii');
-
-
-% smooth the coil sensitivity
-for chan = 1:nrcvrs 
-    % sen_smooth(:,:,:,chan) = smooth3(sen(:,:,:,chan),'box',round(8)*2+1); 
-    sen(:,:,:,chan) = imgaussfilt3(real(sen(:,:,:,chan)),4); 
-end
-
-nii = make_nii(sen,vox);
-save_nii(nii,'sen_mag_smooth.nii');
-
-coil_sens = sen.*squeeze(offsets);
