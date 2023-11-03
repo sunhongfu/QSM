@@ -98,7 +98,7 @@ if ~ isfield(options,'lbv_peel')
 end
 
 if ~ isfield(options,'tv_reg')
-    options.tv_reg = 5e-4;
+    options.tv_reg = 1e-4;
 end
 
 if ~ isfield(options,'inv_num')
@@ -538,7 +538,7 @@ if sum(strcmpi('resharp',bkg_rm))
     % TVDI method
     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
     nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,'RESHARP/sus_resharp.nii');
+    save_nii(nii,['RESHARP/sus_resharp_',num2str(tv_reg),'.nii']);
 
 end
 
