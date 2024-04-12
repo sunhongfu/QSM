@@ -26,7 +26,7 @@ if ~ exist('ker_rad','var') || isempty(ker_rad)
 end
 
 if ~ exist('tik_reg','var') || isempty(tik_reg)
-    tik_reg = 1e-4;
+    tik_reg = 1e-4; % can change to 1e-6 if too much suppression
 end
 
 if ~ exist('iter_num','var') || isempty(iter_num)
