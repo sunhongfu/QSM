@@ -215,6 +215,39 @@ end
 
 
 
+% brain extraction
+% generate mask from magnitude of the 1th echo
+disp('--> extract brain volume and generate mask ...');
+setenv('bet_thr',num2str(bet_thr));
+setenv('bet_smooth',num2str(bet_smooth));
+[~,~] = unix('rm BET*');
+unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+unix('gunzip -f BET.nii.gz');
+unix('gunzip -f BET_mask.nii.gz');
+nii = load_nii('BET_mask.nii');
+mask = double(nii.img);
+
+
+% phase offset correction
+% if unipolar
+if strcmpi('unipolar',readout)
+    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
+% if bipolar
+elseif strcmpi('bipolar',readout)
+    ph_corr = zeros(imsize);
+    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask);
+    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask);
+else
+    error('is the sequence unipolar or bipolar readout?')
+end
+
+% save offset corrected phase niftis
+for echo = 1:imsize(4)
+    nii = make_nii(ph_corr(:,:,:,echo),vox);
+    save_nii(nii,['src/ph_corr' num2str(echo) '.nii']);
+end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SWI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 mkdir('SWI')
 % perform multi-echo SWI ---- method 1
@@ -281,39 +314,6 @@ save_nii(nii,'SWI/swi_sos.nii');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SWI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-% brain extraction
-% generate mask from magnitude of the 1th echo
-disp('--> extract brain volume and generate mask ...');
-setenv('bet_thr',num2str(bet_thr));
-setenv('bet_smooth',num2str(bet_smooth));
-[~,~] = unix('rm BET*');
-unix('bet2 src/mag1.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
-unix('gunzip -f BET.nii.gz');
-unix('gunzip -f BET_mask.nii.gz');
-nii = load_nii('BET_mask.nii');
-mask = double(nii.img);
-
-
-% phase offset correction
-% if unipolar
-if strcmpi('unipolar',readout)
-    ph_corr = geme_cmb(mag.*exp(1j*ph),vox,TE,mask);
-% if bipolar
-elseif strcmpi('bipolar',readout)
-    ph_corr = zeros(imsize);
-    ph_corr(:,:,:,1:2:end) = geme_cmb(mag(:,:,:,1:2:end).*exp(1j*ph(:,:,:,1:2:end)),vox,TE(1:2:end),mask);
-    ph_corr(:,:,:,2:2:end) = geme_cmb(mag(:,:,:,2:2:end).*exp(1j*ph(:,:,:,2:2:end)),vox,TE(2:2:end),mask);
-else
-    error('is the sequence unipolar or bipolar readout?')
-end
-
-% save offset corrected phase niftis
-for echo = 1:imsize(4)
-    nii = make_nii(ph_corr(:,:,:,echo),vox);
-    save_nii(nii,['src/ph_corr' num2str(echo) '.nii']);
-end
 
 
 % unwrap phase from each echo
