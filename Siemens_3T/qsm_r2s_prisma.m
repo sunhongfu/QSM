@@ -241,6 +241,14 @@ for echo = 1:imsize(4)
 end
 
 
+
+
+% iQSM+ deep learning method for quick reconstruction
+iQSM_plus(-ph_corr, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', 3, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
+iQSM_plus(-ph_corr, TE, 'mag', mag,  'voxel_size', vox, 'B0', 3, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
+
+
+
 % unwrap phase from each echo
 if strcmpi('prelude',ph_unwrap)
     disp('--> unwrap aliasing phase for all TEs using prelude...');
