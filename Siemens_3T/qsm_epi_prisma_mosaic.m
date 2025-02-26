@@ -1,4 +1,4 @@
-function qsm_epi_prisma(path_mag, path_ph, path_out, options)
+function qsm_epi_prisma_mosaic(path_mag, path_ph, path_out, options)
 %QSM_EPI_PRISMA Quantitative susceptibility mapping from EPI sequence at PRISMA (3T).
 %   QSM_EPI_PRISMA(PATH_MAG, PATH_PH, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
