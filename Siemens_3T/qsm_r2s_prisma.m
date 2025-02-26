@@ -192,6 +192,11 @@ end
 
 
 % define output directories
+if ~exist(path_out, 'dir')
+    % Directory does not exist, create it
+    mkdir(path_out);
+end
+path_out = cd(cd(path_out)); % get the absolute path instead of relative path
 path_qsm = [path_out '/QSM_R2S_PRISMA'];
 mkdir(path_qsm);
 init_dir = pwd;
@@ -245,7 +250,7 @@ end
 
 % iQSM+ deep learning method for quick reconstruction
 iQSM_plus(-ph_corr, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', 3, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
-iQSM_plus(-ph_corr, TE, 'mag', mag,  'voxel_size', vox, 'B0', 3, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
+iQSM_plus(-ph_corr, TE, 'mag', mag, 'voxel_size', vox, 'B0', 3, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
 
 
 
@@ -511,37 +516,25 @@ if sum(strcmpi('resharp',bkg_rm))
     nii = make_nii(chi_iLSQR,vox);
     save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
     
-    % % MEDI
-    % %%%%% normalize signal intensity by noise to get SNR %%%
-    % %%%% Generate the Magnitude image %%%%
-    % iMag = sqrt(sum(mag.^2,4));
-    % % [iFreq_raw N_std] = Fit_ppm_complex(ph_corr);
-    % matrix_size = single(imsize(1:3));
-    % voxel_size = vox;
-    % delta_TE = TE(2) - TE(1);
-    % B0_dir = z_prjs';
-    % CF = dicom_info.ImagingFrequency *1e6;
-    % iFreq = [];
-    % N_std = 1;
-    % RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
-    % Mask = mask_resharp;
-    % save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
-    %      voxel_size delta_TE CF B0_dir;
-    % QSM = MEDI_L1('lambda',1000);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    % QSM = MEDI_L1('lambda',2000);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI2000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    % QSM = MEDI_L1('lambda',1500);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI1500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    % QSM = MEDI_L1('lambda',5000);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI5000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    % QSM = MEDI_L1('lambda',500);
-    % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % MEDI
+    iMag = sqrt(sum(mag.^2,4));
+    matrix_size = single(imsize(1:3));
+    voxel_size = vox;
+    delta_TE = TE(2) - TE(1);
+    B0_dir = z_prjs';
+    CF = dicom_info.ImagingFrequency *1e6;
+    iFreq = [];
+    N_std = 1;
+    RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    Mask = mask_resharp;
+    save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+         voxel_size delta_TE CF B0_dir;
+    QSM = MEDI_L1('lambda',1000);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    QSM = MEDI_L1('lambda',500);
+    nii = make_nii(QSM.*Mask,vox);
+    save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
 
     % TVDI method
     sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag(:,:,:,end),z_prjs,inv_num); 
