@@ -1,5 +1,5 @@
 function [ph_cmb,mag_cmb,coil_sens] = poem_lr(mag, pha, vox, te, mask, cal_size, smooth_method, parpool_flag)
-%Gradient-echo multi-echo combination (for phase).
+%Gradient-echo multi-echo combination (for phase). lr stands for "low-resolution"
 %   PH_CMB = POEM(MAG, PHA, VOX, TE, MASK, SMOOTH_METHOD) combines phase from multiple receivers
 %
 %   MAG/PHA:     raw complex images from multiple receivers, 5D: [3D_image, echoes, receiver channels]

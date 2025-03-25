@@ -41,7 +41,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.5;
+    options.bet_thr = 0.1;
 end
 
 if ~ isfield(options,'bet_smooth')
@@ -49,7 +49,7 @@ if ~ isfield(options,'bet_smooth')
 end
 
 if ~ isfield(options,'ph_unwrap')
-    options.ph_unwrap = 'prelude';
+    options.ph_unwrap = 'laplacian';
 end
 
 if ~ isfield(options,'bkg_rm')
@@ -244,6 +244,13 @@ for i = 1:nVol % all time series
     mag = mag_all(:,:,:,i);
     ph = ph_all(:,:,:,i);
     
+    TE = dicom_info.EchoTime*1e-3; % second
+    B0 = dicom_info.MagneticFieldStrength;
+
+    % iQSM+ deep learning method for quick reconstruction
+    iQSM_plus(-ph, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
+    iQSM_plus(-ph, TE, 'mag', mag, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
+
     % unwrap the phase
     if strcmpi('prelude',ph_unwrap)
         % unwrap phase with PRELUDE
@@ -356,7 +363,7 @@ for i = 1:nVol % all time series
     	disp('--> RESHARP to remove background field ...');
         [lfs_resharp, mask_resharp] = resharp(tfs,mask,vox,smv_rad,tik_reg,cgs_num);
         % 2D 2nd order polyfit to remove any residual background
-        lfs_resharp = lfs_resharp - poly2d(lfs_resharp,mask_resharp);
+        lfs_resharp = (lfs_resharp - poly2d(lfs_resharp,mask_resharp)).*mask_resharp;
 
         % save nifti
         mkdir('RESHARP');

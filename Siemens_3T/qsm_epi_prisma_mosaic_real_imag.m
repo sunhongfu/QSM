@@ -1,4 +1,4 @@
-function qsm_epi_prisma_dcm(path_mag, path_ph, path_out, options)
+function qsm_epi_prisma_mosaic_real_imag(path_mag, path_ph, path_out, options)
 %QSM_EPI_PRISMA Quantitative susceptibility mapping from EPI sequence at PRISMA (3T).
 %   QSM_EPI_PRISMA(PATH_MAG, PATH_PH, PATH_OUT, OPTIONS) reconstructs susceptibility maps.
 %
@@ -8,9 +8,9 @@ function qsm_epi_prisma_dcm(path_mag, path_ph, path_out, options)
 %   PATH_PH      - directory of unfiltered phase dicoms (mosaic)
 %   PATH_OUT     - directory to save nifti and/or matrixes   : QSM_EPI_PRISMA
 %   OPTIONS      - parameter structure including fields below
-%    .bet_thr    - threshold for BET brain mask              : 0.2
+%    .bet_thr    - threshold for BET brain mask              : 0.5
 %    .bet_smooth - smoothness of BET brain mask at edges     : 2
-%    .ph_unwrap  - 'prelude' or 'laplacian' or 'bestpath'    : 'laplacian'
+%    .ph_unwrap  - 'prelude' or 'laplacian' or 'bestpath'    : 'prelude'
 %    .bkg_rm     - background field removal method(s)        : 'resharp'
 %                  options: 'pdf','sharp','resharp','esharp','lbv'
 %                  to try all e.g.: {'pdf','sharp','resharp','esharp','lbv'}
@@ -41,7 +41,7 @@ if ~ exist('options','var') || isempty(options)
 end
 
 if ~ isfield(options,'bet_thr')
-    options.bet_thr = 0.2;
+    options.bet_thr = 0.1;
 end
 
 if ~ isfield(options,'bet_smooth')
@@ -112,12 +112,46 @@ ph_list = dir(path_ph);
 mag_list = mag_list(~strncmpi('.', {mag_list.name}, 1));
 ph_list = ph_list(~strncmpi('.', {ph_list.name}, 1));
 
-mag_all = squeeze(single(dicomread([path_mag,filesep,mag_list(1).name])));
-ph_all = squeeze(single(dicomread([path_ph,filesep,ph_list(1).name])));
-ph_all = ph_all/4095*2*pi - pi;
+% mosaic form to 4D nifti
+for i = 1:length(mag_list)
+    mag_mosaic(:,:,i) = dicomread([path_mag,filesep,mag_list(i).name]);
+end
+for i = 1:length(ph_list)
+    ph_mosaic(:,:,i) = dicomread([path_ph,filesep,ph_list(i).name]);
+    % ph_mosaic(:,:,i) = ph_mosaic(:,:,i)/4095*2*pi - pi;
+end
 
+% crop mosaic into individual images
 dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
+AcqMatrix = regexp(dicom_info.Private_0051_100b,'(\d)*(\d)','match');
 
+if strcmpi(dicom_info.InPlanePhaseEncodingDirection,'COL')
+% phase encoding along column
+    wRow = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
+    wCol = str2num(AcqMatrix{2});
+else
+    wCol = round(str2num(AcqMatrix{1})/dicom_info.PercentSampling*100);
+    wRow = str2num(AcqMatrix{2});
+end
+
+nCol = double(dicom_info.Columns/wCol);
+nRow = double(dicom_info.Rows/wRow);
+nSL = double(dicom_info.Private_0019_100a);
+
+mag_all = zeros(wRow,wCol,nSL,size(mag_mosaic,3));
+ph_all = mag_all;
+for i = 1:size(mag_mosaic,3)
+    for x = 1:wRow
+        for y = 1:wCol
+            for z = 1:nSL
+                X = floor((z-1)/nCol)*wRow + x;
+                Y = mod(z-1,nCol)*wCol + y;
+                mag_all(x,y,z,i) = mag_mosaic(X,Y,i);
+                ph_all(x,y,z,i) = ph_mosaic(X,Y,i);
+            end
+        end
+    end
+end
 
 % permute the images to 
 % x:right-to-left
@@ -126,29 +160,32 @@ dicom_info = dicominfo([path_mag,filesep,mag_list(1).name]);
 mag_all = permute(mag_all,[2 1 3 4]);
 ph_all = permute(ph_all,[2 1 3 4]);
 
+
+slope = dicom_info.RescaleSlope;
+intercept = dicom_info.RescaleIntercept;
+
+mag_all = mag_all * slope + intercept;
+ph_all = ph_all * slope + intercept;
+
+% convert real and image to mag and phase
+complex_all = mag_all + 1j*ph_all;
+mag_all = abs(complex_all);
+ph_all = angle(complex_all);
+
+
+
 % get the sequence parameters
-% vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
-
-dicom_info_pixel = dicom_info.PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1;
-vox = [dicom_info_pixel.PixelSpacing(1), dicom_info_pixel.PixelSpacing(2), dicom_info_pixel.SliceThickness];
-EchoTime = dicom_info.PerFrameFunctionalGroupsSequence.Item_1.MREchoSequence.Item_1.EffectiveEchoTime;
-
-
+vox = [dicom_info.PixelSpacing(1), dicom_info.PixelSpacing(2), dicom_info.SliceThickness];
 imsize = size(mag_all);
 [~,~,~,nVol] = size(mag_all);
 
-% % angles!!! (z projections)
-
-ImageOrientationPatient = dicom_info.PerFrameFunctionalGroupsSequence.Item_1.PlaneOrientationSequence.Item_1.ImageOrientationPatient;
-
-Xz = ImageOrientationPatient(3);
-Yz = ImageOrientationPatient(6);
-Zxyz = cross(ImageOrientationPatient(1:3),ImageOrientationPatient(4:6));
+% angles!!! (z projections)
+Xz = dicom_info.ImageOrientationPatient(3);
+Yz = dicom_info.ImageOrientationPatient(6);
+Zxyz = cross(dicom_info.ImageOrientationPatient(1:3),dicom_info.ImageOrientationPatient(4:6));
 Zz = Zxyz(3);
 %Zz = sqrt(1 - Xz^2 - Yz^2);
 z_prjs = [Xz, Yz, Zz];
-
-
 
 
 % define output directories
@@ -220,15 +257,14 @@ for i = 1:nVol % all time series
     mask = mask_all(:,:,:,i);
     mag = mag_all(:,:,:,i);
     ph = ph_all(:,:,:,i);
-
-    TE = EchoTime*1e-3; % second
+    
+    TE = dicom_info.EchoTime*1e-3; % second
     B0 = dicom_info.MagneticFieldStrength;
 
     % iQSM+ deep learning method for quick reconstruction
     iQSM_plus(-ph, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
     iQSM_plus(-ph, TE, 'mag', mag, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
 
-    
     % unwrap the phase
     if strcmpi('prelude',ph_unwrap)
         % unwrap phase with PRELUDE
@@ -282,7 +318,7 @@ for i = 1:nVol % all time series
     end
 
 	% normalize to ppm unit
-	tfs = unph/(2.675e8*EchoTime*dicom_info.MagneticFieldStrength)*1e9; % unit ppm
+	tfs = unph/(2.675e8*dicom_info.EchoTime*dicom_info.MagneticFieldStrength)*1e9; % unit ppm
 
 
     % background field removal
@@ -345,7 +381,7 @@ for i = 1:nVol % all time series
 
         % save nifti
         mkdir('RESHARP');
-        nii = make_nii(lfs_resharp.*mask_resharp,vox);
+        nii = make_nii(lfs_resharp,vox);
         save_nii(nii,['RESHARP/lfs_resharp' num2str(i,'%03i') '.nii']);
 
         % inversion of susceptibility 
