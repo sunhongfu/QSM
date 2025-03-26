@@ -159,21 +159,35 @@ save_nii(nii,'src/ph.nii');
 
 
 % extract the brain and generate mask
-setenv('bet_thr',num2str(bet_thr));
-setenv('bet_smooth',num2str(bet_smooth));
-[status,cmdout] = unix('rm BET*');
-unix('bet2 src/mag.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
-unix('gunzip -f BET.nii.gz');
-unix('gunzip -f BET_mask.nii.gz');
-nii = load_nii('BET_mask.nii');
-mask = double(nii.img);
+disp('--> extract brain volume and generate mask ...');
+[status, ~] = system('which bet2');
+if status == 0
+    setenv('bet_thr',num2str(bet_thr));
+    setenv('bet_smooth',num2str(bet_smooth));
+    [status,cmdout] = unix('rm BET*');
+    unix('bet2 src/mag.nii BET -f ${bet_thr} -m -w ${bet_smooth}');
+    unix('gunzip -f BET.nii.gz');
+    unix('gunzip -f BET_mask.nii.gz');
+    nii = load_nii('BET_mask.nii');
+    mask = double(nii.img);
+else
+    mask_medi = double(genMask(mag.*exp(1j*ph),vox));
+    mask_sti = double(mythreshfun(mag(:,:,:,1)));
+    mask = double(mask_medi | mask_sti);
+    nii = make_nii(mask_medi,vox);
+    save_nii(nii,'mask_medi.nii')
+    nii = make_nii(mask_sti,vox);
+    save_nii(nii,'mask_sti.nii')
+    nii = make_nii(mask,vox);
+    save_nii(nii,'mask.nii')
+end
 
 TE = dicom_info.EchoTime*1e-3; % second
 B0 = dicom_info.MagneticFieldStrength;
 
-% iQSM+ deep learning method for quick reconstruction
-iQSM_plus(-ph, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
-iQSM_plus(-ph, TE, 'mag', mag, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
+% % iQSM+ deep learning method for quick reconstruction
+% iQSM_plus(-ph, TE, 'mag', mag, 'mask', mask, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'eroded_rad', 3, 'output_dir', fullfile(path_out, 'iQSM_plus_masked'), 'save_flag', 1);
+% iQSM_plus(-ph, TE, 'mag', mag, 'voxel_size', vox, 'B0', B0, 'B0_dir', z_prjs, 'output_dir', fullfile(path_out, 'iQSM_plus_whole'), 'save_flag', 1);
 
 
 % phase unwrapping, prelude is preferred!
@@ -197,10 +211,10 @@ elseif strcmpi('laplacian',ph_unwrap)
 elseif strcmpi('bestpath',ph_unwrap)
     % unwrap the phase using best path
     [pathstr, ~, ~] = fileparts(which('3DSRNCP.m'));
-    setenv('pathstr',pathstr);
-    setenv('nv',num2str(imsize(1)));
-    setenv('np',num2str(imsize(2)));
-    setenv('ns',num2str(imsize(3)));
+    % setenv('pathstr',pathstr);
+    % setenv('nv',num2str(imsize(1)));
+    % setenv('np',num2str(imsize(2)));
+    % setenv('ns',num2str(imsize(3)));
 
     fid = fopen('wrapped_phase.dat','w');
     fwrite(fid,ph,'float');
@@ -210,9 +224,18 @@ elseif strcmpi('bestpath',ph_unwrap)
     fwrite(fid,mask_unwrp,'uchar');
     fclose(fid);
 
-    bash_script = ['${pathstr}/3DSRNCP wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ' ...
-        '$nv $np $ns reliability.dat'];
-    unix(bash_script);
+
+    if ispc
+        system_script = [pathstr, '\3DSRNCP_windows.exe wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ', num2str(imsize(1:3))];
+    elseif ismac
+        system_script = [pathstr, '/3DSRNCP_mac wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ', num2str(imsize(1:3))];
+    elseif islinux
+        system_script = [pathstr, '/3DSRNCP_linux wrapped_phase.dat mask_unwrp.dat unwrapped_phase.dat ', num2str(imsize(1:3))];
+    else
+            error('What platform is this?');
+    end
+    
+    system(system_script) ;
 
     fid = fopen('unwrapped_phase.dat','r');
     tmp = fread(fid,'float');
@@ -222,13 +245,13 @@ elseif strcmpi('bestpath',ph_unwrap)
     nii = make_nii(unph,vox);
     save_nii(nii,'unph_bestpath.nii');
 
-    fid = fopen('reliability.dat','r');
-    reliability_raw = fread(fid,'float');
-    reliability_raw = reshape(reliability_raw,imsize(1:3));
-    fclose(fid);
-
-    nii = make_nii(reliability_raw.*mask,vox);
-    save_nii(nii,'reliability_raw.nii');
+    % fid = fopen('reliability.dat','r');
+    % reliability_raw = fread(fid,'float');
+    % reliability_raw = reshape(reliability_raw,imsize(1:3));
+    % fclose(fid);
+    % 
+    % nii = make_nii(reliability_raw.*mask,vox);
+    % save_nii(nii,'reliability_raw.nii');
 
 else
     error('what unwrapping methods to use? prelude or laplacian or bestpath?')
@@ -301,34 +324,34 @@ if sum(strcmpi('resharp',bkg_rm))
     chi_iLSQR = QSM_iLSQR(lfs_resharp*(2.675e8*dicom_info.MagneticFieldStrength)/1e6,mask_resharp,'H',z_prjs,'voxelsize',vox,'niter',50,'TE',1000,'B0',dicom_info.MagneticFieldStrength);
     nii = make_nii(chi_iLSQR,vox);
     save_nii(nii,['RESHARP/chi_iLSQR_smvrad' num2str(smv_rad) '.nii']);
-
-    % MEDI
-    iMag = sqrt(sum(mag.^2,4));
-    matrix_size = single(imsize(1:3));
-    voxel_size = vox;
-    delta_TE = TE;
-    B0_dir = z_prjs';
-    CF = dicom_info.ImagingFrequency *1e6;
-    iFreq = [];
-    N_std = 1;
-    RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
-    Mask = mask_resharp;
-    save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
-    voxel_size delta_TE CF B0_dir;
-    % QSM = MEDI_L1('lambda',1000);
+    % 
+    % % MEDI
+    % iMag = sqrt(sum(mag.^2,4));
+    % matrix_size = single(imsize(1:3));
+    % voxel_size = vox;
+    % delta_TE = TE;
+    % B0_dir = z_prjs';
+    % CF = dicom_info.ImagingFrequency *1e6;
+    % iFreq = [];
+    % N_std = 1;
+    % RDF = lfs_resharp*2.675e8*dicom_info.MagneticFieldStrength*delta_TE*1e-6;
+    % Mask = mask_resharp;
+    % save RDF.mat RDF iFreq iMag N_std Mask matrix_size...
+    % voxel_size delta_TE CF B0_dir;
+    % % QSM = MEDI_L1('lambda',1000);
+    % % nii = make_nii(QSM.*Mask,vox);
+    % % save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % QSM = MEDI_L1('lambda',500);
     % nii = make_nii(QSM.*Mask,vox);
-    % save_nii(nii,['RESHARP/MEDI1000_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-    QSM = MEDI_L1('lambda',500);
-    nii = make_nii(QSM.*Mask,vox);
-    save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
-
-    % inversion of susceptibility 
-    disp('--> TV susceptibility inversion on RESHARP...');
-    sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag,z_prjs,inv_num); 
-   
-    % save nifti
-    nii = make_nii(sus_resharp.*mask_resharp,vox);
-    save_nii(nii,'RESHARP/sus_resharp.nii');
+    % save_nii(nii,['RESHARP/MEDI500_RESHARP_smvrad' num2str(smv_rad) '.nii']);
+    % 
+    % % inversion of susceptibility 
+    % disp('--> TV susceptibility inversion on RESHARP...');
+    % sus_resharp = tvdi(lfs_resharp,mask_resharp,vox,tv_reg,mag,z_prjs,inv_num); 
+    % 
+    % % save nifti
+    % nii = make_nii(sus_resharp.*mask_resharp,vox);
+    % save_nii(nii,'RESHARP/sus_resharp.nii');
 end
 
 % E-SHARP (SHARP edge extension)

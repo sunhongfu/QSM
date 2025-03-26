@@ -310,13 +310,11 @@ elseif strcmpi('bestpath',ph_unwrap)
         fclose(fid);
 
         if ispc
-            system_script=[pathstr,'\3DSRNCP_windows.exe wrapped_phase', num2str(echo_num), '.dat mask_unwrp.dat unwrapped_phase', num2str(echo_num), '.dat ', num2str(imsize(1:3)), ' reliability', num2str(echo_num), '.dat'];
+            system_script=[pathstr,'\3DSRNCP_windows.exe wrapped_phase', num2str(echo_num), '.dat mask_unwrp.dat unwrapped_phase', num2str(echo_num), '.dat ', num2str(imsize(1:3))];
         elseif ismac
-            system_script = ['${pathstr}/3DSRNCP_mac wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
-             'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+            system_script=[pathstr,'/3DSRNCP_mac wrapped_phase', num2str(echo_num), '.dat mask_unwrp.dat unwrapped_phase', num2str(echo_num), '.dat ', num2str(imsize(1:3))];
         elseif isunix
-            system_script = ['${pathstr}/3DSRNCP_linux wrapped_phase${echo_num}.dat mask_unwrp.dat ' ...
-             'unwrapped_phase${echo_num}.dat $nv $np $ns reliability${echo_num}.dat'];
+            system_script=[pathstr,'/3DSRNCP_linux wrapped_phase', num2str(echo_num), '.dat mask_unwrp.dat unwrapped_phase', num2str(echo_num), '.dat ', num2str(imsize(1:3))];
         else
             error('What platform is this?');
         end
