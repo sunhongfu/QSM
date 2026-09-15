@@ -53,7 +53,8 @@ X = X*vox(1);
 Y = Y*vox(2);
 Z = Z*vox(3);
 
-d = (3*( X*z_prjs(1) + Y*z_prjs(2) + Z*z_prjs(3)).^2 - X.^2-Y.^2-Z.^2)./(4*pi*(X.^2+Y.^2+Z.^2).^2.5);
+% HONGFU edit: the prod(vox(1:3)) is to make sure this is the same as D in k-space domain, even for non-isotropic voxels.
+d = prod(vox(1:3))*(3*( X*z_prjs(1) + Y*z_prjs(2) + Z*z_prjs(3)).^2 - X.^2-Y.^2-Z.^2)./(4*pi*(X.^2+Y.^2+Z.^2).^2.5);
 
 d(isnan(d)) = 0;
 % D = fftn(fftshift(d));
