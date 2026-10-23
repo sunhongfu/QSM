@@ -47,6 +47,7 @@ The repository is for reconstructing Quantitative Susceptibility Mapping (QSM) i
     + **qsm_hemo_prisma.m**
   - *GE_3T*: recon codes for 3T GE sequence, e.g. R2*
     + **qsm_spgr_ge.m**
+    + **qsm_ge_nifti.m**: multi-echo GRE from NIfTIs made by `dicom_to_nifti.py` (iQSM / iQSM_Plus repos); RESHARP + TV, and iLSQR if STI Suite is on the path
   - *Philips_3T*: recon codes for 3T Philips sequence, currently only R2*
     + **qsm_spgr_philips.m**
   - *Siemens_7T*: recon codes for 7T Magnetom sequences, e.g. SWI, ME-GRE and ME-MP2RAGE
